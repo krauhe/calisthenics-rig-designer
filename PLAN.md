@@ -256,8 +256,9 @@ Du behøver ikke kunne koden – men nogle valg er dine:
 - [x] Ansvarsfraskrivelse tilføjet (app + README).
 - [x] **Fase 1 færdig:** regnekernen (`src/core/`) som browser-native ES-moduler + 30 tests (håndregnet + parity). Alle består.
 - [x] **Fase 2 færdig:** fane-skal (`app.html` + `src/main.js`) med da/en-skift, enheder pr. fane (m/fod + mm/tommer), materialebibliotek (med "tilføj"), **Stolpe-** og **Bar-analyse** (med kapacitets-graf), og autosave. Verificeret i browser. Kort/3D/Materialer er pladsholdere indtil senere faser.
+- [x] **Fase 3 færdig:** gem/hent navngivne tegninger som `.json`-filer (til deling) + schema-version (afviser nyere filer pænt) + **automatisk import** af din gamle rig fra den oprindelige app. Verificeret i browser (42/42 tests; ren første-start matcher den gamle apps tal).
 - [ ] Fase 0-tooling (Vite) — **afventer at Node bliver installeret** (se note nedenfor). Appen kører fint build-frit imens.
-- [ ] Faser 3–6 (gem/del-filer + schema, graf-model, kort-editor m. værktøjspalette + stige-element, 3D-omskrivning, materialeliste).
+- [ ] **Tilbage:** kort-editor (graf-model + værktøjspalette + stige-som-element), 3D-omskrivning så scenen læser grafen, materialeliste-fane (skæreplan), og polish.
 
 **Live (ny udgave):** https://krauhe.github.io/calisthenics-rig-designer/app.html — `index.html` peger stadig på den gamle app, indtil v2 er klar til at overtage.
 
