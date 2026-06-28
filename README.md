@@ -40,12 +40,16 @@ These are simplified hand-calculation models for planning, **not** a substitute 
 - Soil horizontal subgrade modulus ≈ 20 MN/m³ (medium/firm soil).
 - Loads are static; add a dynamic factor (≈ ×2) for swinging/jumping.
 
+## Disclaimer
+
+This tool produces **simplified estimates for planning only**. It is **not** a substitute for a qualified structural engineer, and **no guarantee is made as to the correctness, accuracy, or fitness for any purpose** of any result it produces. You use it **entirely at your own risk**. The author accepts **no liability** for any injury, damage, or loss arising from its use. Always have load-bearing or body-weight-bearing structures reviewed and verified by a qualified professional before building. (This is in addition to the warranty disclaimer in the [GPLv3](LICENSE).)
+
 ## Tech
 
 Vanilla JS + Three.js (ES modules via CDN). No build step.
 
 ## License
 
-[GNU GPLv3](LICENSE) — © 2026 Kristian Rauhe. You may copy, modify and redistribute, including commercially, but derivative works must remain open source under the GPLv3 and credit the author.
+[GNU GPLv3](LICENSE) — © 2026 Kristian Rauhe Harreby. You may copy, modify and redistribute, including commercially, but derivative works must remain open source under the GPLv3 and credit the author.
 
 🤖 Initial version generated with [Claude Code](https://claude.com/claude-code).
