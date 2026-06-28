@@ -49,3 +49,33 @@ export function capacityChart({ library, fixity, currentSpan, load, t, lang }) {
     <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t('bar.chart.y', lang)}</text>
   </svg>`;
 }
+
+// Generisk enkelt-kurve graf (genbruges af stolpe- og bar-fanen).
+// points: [{x,y}] · vLine/hLine: valgfri lodret/vandret reference.
+export function lineChart({ points, xMin, xMax, yMax, xLabel, yLabel, color = '#0b66c3', vLine, hLine, lang }) {
+  const W = 400, H = 210, L = 48, R = 14, Tp = 10, B = 30;
+  const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
+  yMax = yMax > 0 ? yMax : 1;
+  const X = x => x0 + (x - xMin) / (xMax - xMin) * (x1 - x0);
+  const Y = y => y0 - Math.min(Math.max(y, 0), yMax) / yMax * (y0 - y1);
+  const frac = [0, 0.25, 0.5, 0.75, 1];
+  const yGrid = frac.map(f => f * yMax).map(v =>
+    `<line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" stroke="#e6ecf2"/>` +
+    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#6b7682">${fmt(v, v < 10 ? 1 : 0, lang)}</text>`).join('');
+  const xGrid = frac.map(f => xMin + f * (xMax - xMin)).map(v =>
+    `<line x1="${X(v)}" y1="${y0}" x2="${X(v)}" y2="${y1}" stroke="#f1f4f7"/>` +
+    `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#6b7682">${fmt(v, (xMax - xMin) <= 10 ? 1 : 0, lang)}</text>`).join('');
+  const poly = `<polyline fill="none" stroke="${color}" stroke-width="2" points="${points.map(p => `${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ')}"/>`;
+  const vl = (vLine != null && vLine >= xMin && vLine <= xMax)
+    ? `<line x1="${X(vLine)}" y1="${y0}" x2="${X(vLine)}" y2="${y1}" stroke="#0b66c3" stroke-dasharray="3 3" stroke-width="1.2"/>` : '';
+  const hl = (hLine != null && hLine <= yMax)
+    ? `<line x1="${x0}" y1="${Y(hLine)}" x2="${x1}" y2="${Y(hLine)}" stroke="#b3261e" stroke-dasharray="4 3" stroke-width="1.2"/>` : '';
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart" xmlns="http://www.w3.org/2000/svg">
+    ${yGrid}${xGrid}
+    <line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y0}" stroke="#9aa6b2"/>
+    <line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="#9aa6b2"/>
+    ${poly}${vl}${hl}
+    <text x="${(x0 + x1) / 2}" y="${H - 2}" text-anchor="middle" font-size="9.5" fill="#52606d">${xLabel}</text>
+    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${yLabel}</text>
+  </svg>`;
+}

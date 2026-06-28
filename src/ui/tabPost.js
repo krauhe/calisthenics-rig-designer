@@ -7,6 +7,7 @@ import { resolveMaterial } from '../core/model.js';
 import { sectionProps } from '../core/sections.js';
 import { foundation } from '../core/foundation.js';
 import { fmt } from '../core/units.js';
+import { lineChart } from './chart.js';
 
 export const tabPost = {
   id: 'post',
@@ -21,6 +22,7 @@ export const tabPost = {
 
     const set = mut => { store.update(mut); compute(); };
     const results = el('div', { class: 'results' });
+    const chartHost = el('div', { class: 'charthost' });
 
     const inputs = el('div', { class: 'panel' },
       el('div', { class: 'unit-row' },
@@ -55,12 +57,24 @@ export const tabPost = {
         resRow('', `${fmt(swayMm / 2, swayMm < 20 ? 1 : 0, lang)} mm (${tt('post.res.sway2')})`),
         resRow(tt('post.res.rot'), `${Math.round(f.Ktheta / 1000)} kNm/rad`),
         resRow(tt('post.res.feel'), tt(feelKey)));
+
+      // graf: sving som funktion af nedgravningsdybde
+      const depths = [];
+      for (let dp = 0.4; dp <= 2.0 + 1e-9; dp += 0.1) depths.push(Math.round(dp * 10) / 10);
+      const pts = depths.map(dp => ({
+        x: dp,
+        y: foundation({ postSide, depth: dp, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E }).dTop * 1000,
+      }));
+      const yMax = Math.max(...pts.map(p => p.y)) * 1.1;
+      chartHost.innerHTML = `<div class="chart-title">${tt('post.chart.title')}</div>` +
+        lineChart({ points: pts, xMin: 0.4, xMax: 2.0, yMax, xLabel: tt('post.chart.x'), yLabel: tt('post.chart.y'),
+          vLine: a.depth_m, hLine: swayMm, lang });
     }
 
     compute();
     container.append(
       el('h2', {}, tt('post.heading')),
       el('p', { class: 'intro' }, tt('post.intro')),
-      el('div', { class: 'twocol' }, inputs, results));
+      el('div', { class: 'twocol' }, inputs, el('div', {}, results, chartHost)));
   },
 };

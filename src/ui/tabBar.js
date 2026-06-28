@@ -6,7 +6,7 @@ import { materialControl } from './library.js';
 import { resolveMaterial } from '../core/model.js';
 import { beam } from '../core/mechanics.js';
 import { fmt, fmtDeflection } from '../core/units.js';
-import { capacityChart, COLORS } from './chart.js';
+import { capacityChart, COLORS, lineChart } from './chart.js';
 
 export const tabBar = {
   id: 'bar',
@@ -20,6 +20,7 @@ export const tabBar = {
 
     const set = mut => { store.update(mut); compute(); };
     const results = el('div', { class: 'results' });
+    const deflHost = el('div', { class: 'charthost' });
     const chartHost = el('div', { class: 'charthost' });
     const legend = el('div', { class: 'legend' });
 
@@ -61,6 +62,15 @@ export const tabBar = {
         el('span', { class: 'leg-item' },
           el('span', { class: 'leg-sw', style: `background:${COLORS[i % COLORS.length]}` }),
           m.name)));
+
+      // graf: nedbøjning som funktion af belastning (for det valgte materiale + spændvidde)
+      const loads = [];
+      for (let Lk = 0; Lk <= 200 + 1e-9; Lk += 10) loads.push(Lk);
+      const dpts = loads.map(Lk => ({ x: Lk, y: beam(a.span_m, mat, Lk, a.fixity).dReal * 1000 }));
+      const dyMax = Math.max(...dpts.map(p => p.y), 1) * 1.1;
+      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')}</div>` +
+        lineChart({ points: dpts, xMin: 0, xMax: 200, yMax: dyMax, xLabel: tt('bar.chart2.x'), yLabel: tt('bar.chart2.y'),
+          vLine: a.load_kg, hLine: deflMm, lang });
     }
 
     compute();
@@ -69,6 +79,6 @@ export const tabBar = {
       el('p', { class: 'intro' }, tt('bar.intro')),
       el('div', { class: 'twocol' },
         inputs,
-        el('div', {}, results, chartHost, legend)));
+        el('div', {}, results, deflHost, chartHost, legend)));
   },
 };

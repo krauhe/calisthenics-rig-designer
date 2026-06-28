@@ -48,6 +48,9 @@ export const en = {
   'post.res.sway2': '2 posts share',
   'post.res.rot': 'Rotational stiffness',
   'post.res.feel': 'Feel',
+  'post.chart.title': 'Sway vs. embedment depth',
+  'post.chart.x': 'Depth (m)',
+  'post.chart.y': 'Sway (mm)',
 
   'bar.heading': 'Bar analysis',
   'bar.intro': 'Analyse a horizontal bar between two supports.',
@@ -62,6 +65,9 @@ export const en = {
   'bar.chart.x': 'Span (m)',
   'bar.chart.y': 'Max load (kg)',
   'bar.chart.load': 'your load',
+  'bar.chart2.title': 'Deflection vs. load',
+  'bar.chart2.x': 'Load (kg)',
+  'bar.chart2.y': 'Deflection (mm)',
 
   'feel.solid': 'solid',
   'feel.springy': 'a bit springy',
