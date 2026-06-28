@@ -1,0 +1,12 @@
+# Local agent / editor config
+.claude/
+
+# OS / Dropbox cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.tmp
+
+# Scratch / temp preview helpers
+serve_shot.py
