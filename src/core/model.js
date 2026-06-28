@@ -21,8 +21,18 @@ export function defaultDesign() {
     library: CATALOG.map(m => ({ ...m, builtin: true })),
     // Selvstændige analyse-faner:
     analysis: {
-      post: { materialId: 'wood-10', depth_m: 1.2, hole_mm: 300, height_m: 2.7 },
+      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 300, height_m: 2.7 },
       bar:  { materialId: 'pipe-1', span_m: 2.4, load_kg: 120, fixity: 0.25 },
+    },
+    // Sted-model (bruges fra Fase 5 — tom indtil kort-editoren bygges):
+    posts: [],
+    connections: [],
+    attachments: [],
+    stock: {},
+    defaults: {
+      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 300, height_m: 3.0 },
+      soil: {},
+      load: { centerKg: 120, fixity: 0.25 },
     },
   };
 }

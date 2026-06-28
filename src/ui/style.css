@@ -22,10 +22,14 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); 
 #hd {
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px; padding: 12px 20px; background: var(--card);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line); flex-wrap: wrap;
 }
 .brand strong { font-size: 17px; }
 .brand .sub { margin-left: 8px; color: var(--muted); font-size: 13px; }
+
+.filebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.name-inp { font: inherit; padding: 4px 8px; border: 1px solid #c2cdd8; border-radius: 8px; font-size: 13px; width: 150px; }
+.name-inp:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
 .lang { display: flex; align-items: center; gap: 6px; }
 .lang-l { color: var(--muted); font-size: 12px; }
 .lang-b, .tab, .utog-b, .btn-sm {

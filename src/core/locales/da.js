@@ -9,6 +9,13 @@ export const da = {
   'tab.materials': 'Materialer',
 
   'lang.label': 'Sprog',
+  'file.name': 'Tegningens navn',
+  'file.save': 'Gem fil',
+  'file.load': 'Hent fil',
+  'file.new': 'Ny',
+  'file.error': 'Kunne ikke læse filen — er det en gyldig .json-tegning?',
+  'file.newConfirm': 'Start forfra? Den nuværende tegning ryddes (gem den først som fil, hvis du vil beholde den).',
+
   'units.length': 'Længde',
   'units.section': 'Tværsnit',
   'unit.m': 'm',

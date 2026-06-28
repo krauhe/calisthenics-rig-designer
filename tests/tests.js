@@ -13,6 +13,8 @@ import { beam } from '../src/core/mechanics.js';
 import { foundation } from '../src/core/foundation.js';
 import { packPieces } from '../src/core/cutplan.js';
 import { CATALOG, findMaterial } from '../src/core/materials.js';
+import { defaultDesign } from '../src/core/model.js';
+import { serialize, deserialize, validate, fromLegacy } from '../src/core/schema.js';
 
 export function runTests() {
   const results = [];
@@ -80,6 +82,28 @@ export function runTests() {
      cp.bars.reduce((n, b) => n + b.pieces.length, 0) === 4);
   ok('cutplan: ingen stang overfyldt',
      cp.bars.every(b => b.used <= 6.0 + 1e-9));
+
+  // ---- schema: round-trip + validering + migrering ----
+  const dd = defaultDesign();
+  const rt = deserialize(serialize(dd));
+  ok('schema round-trip: sprog bevaret', rt.settings.lang === dd.settings.lang);
+  ok('schema round-trip: bibliotek bevaret', rt.library.length === dd.library.length);
+  ok('schema validate(default) = sandt', validate(dd) === true);
+  ok('schema validate(junk) = falsk', validate({}) === false);
+  let refused = false;
+  try { deserialize(JSON.stringify({ schemaVersion: 99 })); } catch (e) { refused = true; }
+  ok('schema afviser nyere version', refused);
+
+  // ---- legacy-import (gammelt fast-firkant format) ----
+  const leg = fromLegacy({ lenLong: 2.4, lenShort: 1.2, sideSizes: [0, 1, 2, 3],
+    heights: [3.1, 2.3, 1.5, 1.0], depth: 1.2, hole: 0.3, load: 120, ladderWidth: 0.5 });
+  ok('legacy: 4 stolper', leg.posts.length === 4);
+  ok('legacy: 4 forbindelser', leg.connections.length === 4);
+  ok('legacy: side A → 3/4"', leg.connections[0].material.id === 'pipe-3-4');
+  ok('legacy: side D → 10×10 træ', leg.connections[3].material.id === 'wood-10');
+  ok('legacy: bar ≥ 3,0 m lægges ovenpå', leg.connections[0].onTop === true);
+  ok('legacy: stige-attachment', leg.attachments.length === 1 && leg.attachments[0].type === 'ladder');
+  ok('legacy: gyldigt design', validate(leg) === true);
 
   const passed = results.filter(r => r.ok).length;
   return { passed, failed: results.length - passed, results };

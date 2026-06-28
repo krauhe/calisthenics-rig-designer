@@ -9,6 +9,13 @@ export const en = {
   'tab.materials': 'Materials',
 
   'lang.label': 'Language',
+  'file.name': 'Design name',
+  'file.save': 'Save file',
+  'file.load': 'Load file',
+  'file.new': 'New',
+  'file.error': 'Could not read the file — is it a valid .json design?',
+  'file.newConfirm': 'Start over? The current design will be cleared (save it to a file first if you want to keep it).',
+
   'units.length': 'Length',
   'units.section': 'Section',
   'unit.m': 'm',

@@ -6,6 +6,7 @@ import { el, clear } from './ui/dom.js';
 import { tabPost } from './ui/tabPost.js';
 import { tabBar } from './ui/tabBar.js';
 import { placeholderTab } from './ui/tabs.js';
+import { fileBar } from './ui/saveload.js';
 
 const TABS = [
   tabPost,
@@ -18,7 +19,7 @@ const TABS = [
 let active = 'post';
 
 const lang = () => store.getDesign().settings.lang;
-const ctx = () => ({ design: store.getDesign(), store, t, lang: lang(), rerender: renderActive });
+const ctx = () => ({ design: store.getDesign(), store, t, lang: lang(), rerender: renderActive, rerenderAll: renderAll });
 
 function renderHeader() {
   const hd = clear(document.getElementById('hd'));
@@ -26,6 +27,7 @@ function renderHeader() {
     el('div', { class: 'brand' },
       el('strong', {}, t('app.title', lang())),
       el('span', { class: 'sub' }, t('app.subtitle', lang()))),
+    fileBar(ctx()),
     el('div', { class: 'lang' },
       el('span', { class: 'lang-l' }, t('lang.label', lang())),
       ...LANGS.map(([code, name]) =>

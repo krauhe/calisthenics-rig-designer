@@ -1,7 +1,8 @@
 // Tilstands-container: holder design-objektet, gemmer automatisk i localStorage,
 // og giver besked til abonnenter ved ændringer.
 
-import { defaultDesign, SCHEMA_VERSION } from './model.js';
+import { defaultDesign } from './model.js';
+import { adopt, LEGACY_KEY } from './schema.js';
 
 const KEY = 'calisthenics-rig-designer';
 
@@ -23,6 +24,9 @@ export function commit() {
 // Bekvem helper: muter design og commit i ét.
 export function update(mutator) { mutator(design); commit(); }
 
+// Erstat hele designet (fx ved fil-load eller "Ny tegning").
+export function replace(newDesign) { design = newDesign; commit(); }
+
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
@@ -31,11 +35,16 @@ function scheduleSave() {
 }
 
 function loadDesign() {
+  // 1) nuværende v2-tegning (migreres/udfyldes via adopt)
   try {
-    const s = JSON.parse(localStorage.getItem(KEY) || 'null');
-    if (s && s.schemaVersion === SCHEMA_VERSION) return s;
-    // (migrate() af ældre versioner kommer i en senere fase)
-  } catch (e) { /* korrupt */ }
+    const cur = localStorage.getItem(KEY);
+    if (cur) return adopt(JSON.parse(cur));
+  } catch (e) { /* korrupt — prøv næste */ }
+  // 2) importér automatisk fra den oprindelige app, hvis den findes
+  try {
+    const old = localStorage.getItem(LEGACY_KEY);
+    if (old) return adopt(JSON.parse(old));
+  } catch (e) { /* ignorér */ }
   return defaultDesign();
 }
 
