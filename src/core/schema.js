@@ -64,6 +64,7 @@ function fill(d) {
     attachments: Array.isArray(d.attachments) ? d.attachments : base.attachments,
     stock: d.stock || base.stock,
     defaults: d.defaults || base.defaults,
+    site: { ...base.site, ...(d.site || {}) },
   };
 }
 

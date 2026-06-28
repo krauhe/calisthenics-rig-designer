@@ -7,11 +7,12 @@ import { tabPost } from './ui/tabPost.js';
 import { tabBar } from './ui/tabBar.js';
 import { placeholderTab } from './ui/tabs.js';
 import { fileBar } from './ui/saveload.js';
+import { tabSite } from './ui/tabSite.js';
 
 const TABS = [
   tabPost,
   tabBar,
-  placeholderTab('site', 'tab.site'),
+  tabSite,
   placeholderTab('view3d', 'tab.view3d'),
   placeholderTab('materials', 'tab.materials'),
 ];

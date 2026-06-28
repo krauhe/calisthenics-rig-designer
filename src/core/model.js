@@ -24,11 +24,18 @@ export function defaultDesign() {
       post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 300, height_m: 2.7 },
       bar:  { materialId: 'pipe-1', span_m: 2.4, load_kg: 120, fixity: 0.25 },
     },
-    // Sted-model (bruges fra Fase 5 — tom indtil kort-editoren bygges):
+    // Sted-model (kort-editoren):
     posts: [],
     connections: [],
     attachments: [],
     stock: {},
+    // Kort-editorens indstillinger:
+    site: {
+      grid_m: 0.125,          // gitter-opløsning (default = stolpetykkelse 12,5 cm)
+      connMaterialId: 'pipe-1',
+      connHeight_m: 2.0,
+      ladderWidth_m: 0.5,
+    },
     defaults: {
       post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 300, height_m: 3.0 },
       soil: {},

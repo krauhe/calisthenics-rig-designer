@@ -104,6 +104,31 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); 
 .leg-item { display: inline-flex; align-items: center; gap: 5px; }
 .leg-sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 
+/* ---- Site map editor ---- */
+.site-settings { display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: flex-end; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--line); }
+.fld.inline { flex-direction: row; align-items: center; gap: 8px; }
+.fld.inline .fld-l { margin: 0; }
+.gridpresets { display: inline-flex; gap: 3px; margin-left: 4px; }
+.gridpresets .btn-sm { padding: 3px 7px; font-size: 11px; }
+
+.map-wrap { display: flex; gap: 12px; align-items: stretch; }
+.toolpalette { display: flex; flex-direction: column; gap: 6px; flex: 0 0 96px; }
+.toolbtn { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid var(--line); background: #f4f7fb; border-radius: 9px; cursor: pointer; font: inherit; font-size: 12.5px; text-align: left; }
+.toolbtn:hover { background: #e9f0f8; }
+.toolbtn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.toolbtn-i { font-size: 15px; width: 18px; text-align: center; }
+.zoombar { display: flex; gap: 4px; margin-top: 6px; }
+.zoombar .btn-sm { flex: 1; text-align: center; font-size: 15px; padding: 2px 0; }
+
+.map { flex: 1; min-width: 0; height: auto; background: #fbfdff; border: 1px solid #cdd8e2; border-radius: 10px; touch-action: none; cursor: crosshair; }
+.map-help { margin-top: 8px; font-size: 12px; color: var(--muted); background: #f6f9fc; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+
+@media (max-width: 560px) {
+  .map-wrap { flex-direction: column; }
+  .toolpalette { flex-direction: row; flex-wrap: wrap; }
+  .toolbtn { flex: 1 1 auto; }
+}
+
 /* ---- Coming soon ---- */
 .soon { padding: 30px; text-align: center; color: var(--muted); }
 .soon-badge { display: inline-block; padding: 4px 12px; background: #fff7e6; border: 1px solid #f0d9a8; color: #8a6d2f; border-radius: 999px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
