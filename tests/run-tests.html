@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!-- Browser-test af regnekernen. Åbn via en lokal statisk server
+     (ES-moduler virker ikke fra file://), fx:  python -m http.server
+     og gå til  http://localhost:8000/tests/run-tests.html -->
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<title>Core tests</title>
+<style>
+  body { font-family: ui-monospace, Menlo, Consolas, monospace; margin: 24px; color:#1d2733; }
+  h1 { font-size: 16px; }
+  .sum { font-size: 18px; font-weight: 700; padding: 8px 12px; border-radius: 8px; display:inline-block; }
+  .pass { background:#e7f6ec; color:#1b7a3d; border:1px solid #b6e2c4; }
+  .fail { background:#fdeeee; color:#a3271f; border:1px solid #e6b3b0; }
+  pre { font-size: 12.5px; line-height: 1.55; }
+  .ok { color:#1b7a3d; } .no { color:#a3271f; font-weight:700; }
+</style>
+</head>
+<body>
+<h1>Calisthenics Rig Designer — regnekerne-tests</h1>
+<div id="sum" class="sum">Kører…</div>
+<pre id="out"></pre>
+<script type="module">
+  import { runTests } from './tests.js';
+  const r = runTests();
+  const lines = r.results.map(t =>
+    (t.ok ? '<span class="ok">✓</span>' : '<span class="no">✗</span>') +
+    '  ' + t.name + (t.ok ? '' : '   — ' + t.msg));
+  const sum = document.getElementById('sum');
+  sum.textContent = `${r.passed}/${r.passed + r.failed} bestået`;
+  sum.className = 'sum ' + (r.failed === 0 ? 'pass' : 'fail');
+  document.getElementById('out').innerHTML = lines.join('\n');
+  document.title = (r.failed === 0 ? 'PASS ' : 'FAIL ') + `${r.passed}/${r.passed + r.failed}`;
+  window.__testresult = r;   // til automatisk aflæsning
+</script>
+</body>
+</html>
