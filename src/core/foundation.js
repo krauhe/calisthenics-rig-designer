@@ -13,17 +13,19 @@
 //   depth      nedgravningsdybde (m)
 //   hole       betonhullets sidemål (m)
 //   topHeight  højde til øverste bar = momentarm (m)
+//   Ipost      pælens inertimoment (m⁴), valgfri — fx for rør-stolper.
+//              Hvis udeladt antages massiv kvadrat: postSide⁴/12.
 //   E          pælens E-modul (Pa)         — default E_WOOD
 //   kSoil      jordens reaktionsmodul      — default K_SOIL
 //   refKg      reference vandret last (kg) — default 50
 
 import { G, E_WOOD, K_SOIL } from './constants.js';
 
-export function foundation({ postSide, depth, hole, topHeight,
+export function foundation({ postSide, depth, hole, topHeight, Ipost,
                              E = E_WOOD, kSoil = K_SOIL, refKg = 50 }) {
   const Ktheta = kSoil * hole * depth ** 3 / 3;      // Nm/rad
   const Href = refKg * G;                            // N
-  const Iw = postSide ** 4 / 12;                     // pælens inertimoment (m⁴)
+  const Iw = Ipost != null ? Ipost : postSide ** 4 / 12;  // pælens inertimoment (m⁴)
 
   const dBend = Href * topHeight ** 3 / (3 * E * Iw);        // pælens egen bøjning (m)
   const dRot  = (Href * topHeight / Ktheta) * topHeight;     // top-flyt pga. drejning (m)

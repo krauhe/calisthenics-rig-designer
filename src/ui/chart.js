@@ -1,0 +1,51 @@
+// Håndtegnet SVG-graf: bæreevne (arbejdsgrænse, kg) som funktion af spændvidde,
+// én kurve pr. materiale i biblioteket. Ingen chart-bibliotek nødvendigt.
+
+import { beam } from '../core/mechanics.js';
+import { fmt } from '../core/units.js';
+
+export const COLORS = ['#0b66c3', '#2e9e5b', '#d98324', '#7a4fb5', '#0e7490', '#b3261e', '#5b7c0a', '#9b1c6b'];
+
+export function capacityChart({ library, fixity, currentSpan, load, t, lang }) {
+  const W = 400, H = 250, L = 46, R = 14, Tp = 12, B = 34;
+  const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
+  const sMin = 0.5, sMax = 3.0, yMax = 250;             // kg-loft for læsbarhed
+  const X = s => x0 + (s - sMin) / (sMax - sMin) * (x1 - x0);
+  const Y = v => y0 - Math.min(Math.max(v, 0), yMax) / yMax * (y0 - y1);
+
+  const spans = [];
+  for (let s = sMin; s <= sMax + 1e-9; s += 0.1) spans.push(Math.round(s * 100) / 100);
+
+  const yTicks = [0, 50, 100, 150, 200, 250];
+  const yGrid = yTicks.map(v =>
+    `<line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" stroke="#e6ecf2"/>` +
+    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#6b7682">${v}</text>`).join('');
+
+  const xTicks = [0.5, 1, 1.5, 2, 2.5, 3];
+  const xGrid = xTicks.map(v =>
+    `<line x1="${X(v)}" y1="${y0}" x2="${X(v)}" y2="${y1}" stroke="#f1f4f7"/>` +
+    `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#6b7682">${fmt(v, 1, lang)}</text>`).join('');
+
+  const lines = library.map((m, i) => {
+    const pts = spans.map(s => `${X(s).toFixed(1)},${Y(beam(s, m, 1, fixity).pYield).toFixed(1)}`).join(' ');
+    return `<polyline fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="2" points="${pts}"/>`;
+  }).join('');
+
+  const loadLine = load <= yMax
+    ? `<line x1="${x0}" y1="${Y(load)}" x2="${x1}" y2="${Y(load)}" stroke="#b3261e" stroke-dasharray="4 3" stroke-width="1.4"/>` +
+      `<text x="${x1 - 2}" y="${Y(load) - 3}" text-anchor="end" font-size="9" fill="#b3261e">${Math.round(load)} kg · ${t('bar.chart.load', lang)}</text>`
+    : '';
+
+  const spanLine = currentSpan >= sMin && currentSpan <= sMax
+    ? `<line x1="${X(currentSpan)}" y1="${y0}" x2="${X(currentSpan)}" y2="${y1}" stroke="#0b66c3" stroke-dasharray="3 3" stroke-width="1.2"/>`
+    : '';
+
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart" xmlns="http://www.w3.org/2000/svg">
+    ${yGrid}${xGrid}
+    <line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y0}" stroke="#9aa6b2"/>
+    <line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="#9aa6b2"/>
+    ${lines}${loadLine}${spanLine}
+    <text x="${(x0 + x1) / 2}" y="${H - 2}" text-anchor="middle" font-size="9.5" fill="#52606d">${t('bar.chart.x', lang)}</text>
+    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t('bar.chart.y', lang)}</text>
+  </svg>`;
+}
