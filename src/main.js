@@ -1,6 +1,8 @@
 // App-bootstrap: bygger header (sprog), fanebjælke, indhold og footer.
 
-import * as store from './core/store.js';
+import { getDesign, subscribe, commit, update, replace, addMaterial, removeMaterial } from './core/store.js';
+// Saml store-funktionerne i ét objekt (virker både som ES-modul og i enkelt-fil-bundlen).
+const store = { getDesign, subscribe, commit, update, replace, addMaterial, removeMaterial };
 import { t, LANGS } from './core/i18n.js';
 import { el, clear } from './ui/dom.js';
 import { tabPost } from './ui/tabPost.js';
