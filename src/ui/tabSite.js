@@ -29,7 +29,7 @@ const tabSite = {
     const tt = k => ctx.t(k, lang);
     if (!view) view = { k: 70, tx: W / 2, ty: H * 0.6 };
 
-    const svg = el('svg', { class: 'map', viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: 'xMidYMid meet' });
+    const mapBox = el('div', { class: 'map' });   // container; vi indsætter et helt <svg> via innerHTML
     const help = el('div', { class: 'map-help' });
 
     // ---- koordinat-transform ----
@@ -37,7 +37,7 @@ const tabSite = {
     const toWorld = (sx, sy) => [(sx - view.tx) / view.k, (sy - view.ty) / view.k];
     const snap = w => { const g = design.site.grid_m || 0.125; return Math.round(w / g) * g; };
     const evtToUser = e => {
-      const r = svg.getBoundingClientRect();
+      const r = mapBox.getBoundingClientRect();
       return [(e.clientX - r.left) * (W / r.width), (e.clientY - r.top) * (H / r.height)];
     };
 
@@ -104,29 +104,31 @@ const tabSite = {
       const empty = design.posts.length === 0
         ? `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="#9aa6b2">${tt('site.empty')}</text>` : '';
 
-      svg.innerHTML =
+      mapBox.innerHTML =
+        `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;height:100%">` +
         `<rect data-el="bg" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>` +
-        grid + conns + ladders + posts + empty;
+        grid + conns + ladders + posts + empty +
+        `</svg>`;
     }
 
     // ---- interaktion ----
     let drag = null;   // { mode:'pan'|'move', id?, startUx, startUy, startTx, startTy, moved }
 
-    svg.addEventListener('pointerdown', e => {
+    mapBox.addEventListener('pointerdown', e => {
       const [ux, uy] = evtToUser(e);
       const t = e.target.closest('[data-el]');
       const kind = t && t.getAttribute('data-el');
       const id = t && t.getAttribute('data-id');
       if (tool === 'select' && kind === 'post') {
         drag = { mode: 'move', id, startUx: ux, startUy: uy, moved: false };
-        svg.setPointerCapture(e.pointerId);
+        mapBox.setPointerCapture(e.pointerId);
       } else if (tool === 'select') {
         drag = { mode: 'pan', startUx: ux, startUy: uy, startTx: view.tx, startTy: view.ty, moved: false };
-        svg.setPointerCapture(e.pointerId);
+        mapBox.setPointerCapture(e.pointerId);
       }
     });
 
-    svg.addEventListener('pointermove', e => {
+    mapBox.addEventListener('pointermove', e => {
       if (!drag) return;
       const [ux, uy] = evtToUser(e);
       if (Math.hypot(ux - drag.startUx, uy - drag.startUy) > 3) drag.moved = true;
@@ -142,7 +144,7 @@ const tabSite = {
       }
     });
 
-    svg.addEventListener('pointerup', e => {
+    mapBox.addEventListener('pointerup', e => {
       const wasDrag = drag && drag.moved;
       if (drag && drag.mode === 'move' && drag.moved) store.commit();   // gem flytning
       drag = null;
@@ -195,7 +197,7 @@ const tabSite = {
       }
     }
 
-    svg.addEventListener('wheel', e => {
+    mapBox.addEventListener('wheel', e => {
       e.preventDefault();
       const [ux, uy] = evtToUser(e);
       const [wx, wz] = toWorld(ux, uy);
@@ -255,7 +257,7 @@ const tabSite = {
       el('h2', {}, tt('tab.site')),
       el('p', { class: 'intro' }, tt('site.intro')),
       settings,
-      el('div', { class: 'map-wrap' }, palette, svg),
+      el('div', { class: 'map-wrap' }, palette, mapBox),
       help);
   },
 };
