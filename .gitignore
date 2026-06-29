@@ -10,6 +10,7 @@ desktop.ini
 
 # Scratch / temp preview helpers
 serve_shot.py
+vis-lokalt.bat
 
 # Node / build output (keep these OUT of Dropbox sync too — see PLAN.md §8)
 node_modules/
