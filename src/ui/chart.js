@@ -10,7 +10,7 @@ function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, la
   const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
   const sMin = 0.5, sMax = 3.0, yMax = 250;             // kg-skala (loft for læsbarhed)
   const X = s => x0 + (s - sMin) / (sMax - sMin) * (x1 - x0);
-  const Y = v => y0 - Math.min(Math.max(v, 0), yMax) / yMax * (y0 - y1);
+  const Y = v => y0 - Math.max(v, 0) / yMax * (y0 - y1);  // ingen øvre klemning — klippes i toppen
 
   const spans = [];
   for (let s = sMin; s <= sMax + 1e-9; s += 0.1) spans.push(Math.round(s * 100) / 100);
@@ -23,7 +23,7 @@ function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, la
     `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#6b7682">${fmt(v, 1, lang)}</text>`).join('');
 
   const lines = library.map((m, i) => {
-    const pts = spans.map(s => `${X(s).toFixed(1)},${Y(beam(s, m, 1, fixity).pYield).toFixed(1)}`).join(' ');
+    const pts = spans.map(s => `${X(s).toFixed(1)},${Y(beam(s, m, 1, fixity).pUlt).toFixed(1)}`).join(' ');
     return `<polyline fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="2" points="${pts}"/>`;
   }).join('');
 
@@ -38,7 +38,8 @@ function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, la
     ${yGrid}${xGrid}
     <line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y0}" stroke="#9aa6b2"/>
     <line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="#9aa6b2"/>
-    ${lines}${loadLine}${spanLine}
+    <defs><clipPath id="ccclip"><rect x="${x0}" y="${y1}" width="${x1 - x0}" height="${y0 - y1}"/></clipPath></defs>
+    <g clip-path="url(#ccclip)">${lines}</g>${loadLine}${spanLine}
     <text x="${(x0 + x1) / 2}" y="${H - 2}" text-anchor="middle" font-size="9.5" fill="#52606d">${t('bar.chart.x', lang)}</text>
     <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t('bar.chart.y', lang)} (${massU === 'lb' ? 'lbs' : 'kg'})</text>
   </svg>`;
