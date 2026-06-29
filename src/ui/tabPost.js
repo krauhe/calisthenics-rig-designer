@@ -1,15 +1,7 @@
 // Fane: Stolpe-analyse. Bruger foundation() fra kernen.
 
-import { el, clear } from './dom.js';
-import { field, lenInput, dimInput, numInput, unitToggle } from './controls.js';
-import { materialControl } from './library.js';
-import { resolveMaterial } from '../core/model.js';
-import { sectionProps } from '../core/sections.js';
-import { foundation } from '../core/foundation.js';
-import { fmt, fmtDispl } from '../core/units.js';
-import { lineChart } from './chart.js';
 
-export const tabPost = {
+const tabPost = {
   id: 'post',
   labelKey: 'tab.post',
   render(container, ctx) {
@@ -57,10 +49,10 @@ export const tabPost = {
       results.append(
         el('h3', {}, tt('post.res.title')),
         resRow(tt('post.res.stiffness'), `${fmt(f.kLat / 1000, 1, lang)} N/mm`),
-        resRow(tt('post.res.sway'), `${fmtDispl(swayMm, u.dim, lang)} (${tt('post.res.sway1')})`, 'big'),
-        resRow('', `${fmtDispl(swayMm / 2, u.dim, lang)} (${tt('post.res.sway2')})`),
         resRow(tt('post.res.swayPost'), fmtDispl(f.dBend * 1000, u.dim, lang)),
         resRow(tt('post.res.swayBase'), fmtDispl(f.dRot * 1000, u.dim, lang)),
+        resRow(`${tt('post.res.swaySum')} (${tt('post.res.sway1')})`, fmtDispl(swayMm, u.dim, lang), 'big'),
+        resRow('', `${fmtDispl(swayMm / 2, u.dim, lang)} (${tt('post.res.sway2')})`),
         resRow(tt('post.res.rot'), `${Math.round(f.Ktheta / 1000)} kNm/rad`),
         resRow(tt('post.res.feel'), tt(feelKey)));
 

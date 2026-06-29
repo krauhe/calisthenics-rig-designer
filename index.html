@@ -1,12 +1,45 @@
 <!DOCTYPE html>
 <html lang="da">
 <head>
-  <meta charset="utf-8">
-  <title>Calisthenics Rig Designer</title>
-  <meta http-equiv="refresh" content="0; url=app.html">
-  <script>location.replace('app.html');</script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calisthenics Rig Designer</title>
+<link rel="stylesheet" href="src/ui/style.css" />
 </head>
 <body>
-  <a href="app.html">Åbn designeren →</a>
+<div id="app">
+  <header id="hd"></header>
+  <nav id="tabbar"></nav>
+  <main id="content"></main>
+  <footer id="ft"></footer>
+</div>
+<script>
+  if (location.protocol !== 'file:' && 'serviceWorker' in navigator) {
+    addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+</script>
+<script src="src/core/constants.js"></script>
+<script src="src/core/units.js"></script>
+<script src="src/core/sections.js"></script>
+<script src="src/core/mechanics.js"></script>
+<script src="src/core/foundation.js"></script>
+<script src="src/core/cutplan.js"></script>
+<script src="src/core/materials.js"></script>
+<script src="src/core/model.js"></script>
+<script src="src/core/schema.js"></script>
+<script src="src/core/store.js"></script>
+<script src="src/core/locales/da.js"></script>
+<script src="src/core/locales/en.js"></script>
+<script src="src/core/i18n.js"></script>
+<script src="src/ui/dom.js"></script>
+<script src="src/ui/controls.js"></script>
+<script src="src/ui/chart.js"></script>
+<script src="src/ui/library.js"></script>
+<script src="src/ui/saveload.js"></script>
+<script src="src/ui/tabPost.js"></script>
+<script src="src/ui/tabBar.js"></script>
+<script src="src/ui/tabSite.js"></script>
+<script src="src/ui/tabs.js"></script>
+<script src="src/main.js"></script>
 </body>
 </html>

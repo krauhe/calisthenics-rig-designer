@@ -1,42 +1,12 @@
 <!DOCTYPE html>
-<!--
-  Chalestetics – Calisthenics Rig Designer (v2, under ombygning)
-  Copyright (C) 2026 Kristian Rauhe Harreby — GPLv3 (se LICENSE).
-
-  Dette er den nye, fane-baserede udgave under opbygning. Den nuværende
-  app ligger stadig i chalestetics-3d.html (og er det index.html peger på),
-  indtil v2 er klar til at overtage.
--->
 <html lang="da">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Calisthenics Rig Designer</title>
-<link rel="stylesheet" href="src/ui/style.css" />
+  <meta charset="utf-8">
+  <title>Calisthenics Rig Designer</title>
+  <meta http-equiv="refresh" content="0; url=index.html">
+  <script>location.replace('index.html');</script>
 </head>
 <body>
-<div id="app">
-  <header id="hd"></header>
-  <nav id="tabbar"></nav>
-  <main id="content"></main>
-  <footer id="ft"></footer>
-</div>
-
-<!-- Three.js kun nødvendig for 3D-fanen (senere fase) -->
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
-<!-- Service worker: sørger for at den nyeste version altid hentes (intet cache-bøvl) -->
-<script>
-  if ('serviceWorker' in navigator) {
-    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-  }
-</script>
-<script type="module" src="src/main.js"></script>
+  <a href="index.html">Åbn designeren →</a>
 </body>
 </html>

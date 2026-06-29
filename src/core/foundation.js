@@ -19,9 +19,8 @@
 //   kSoil      jordens reaktionsmodul      — default K_SOIL
 //   refKg      reference vandret last (kg) — default 50
 
-import { G, E_WOOD, K_SOIL } from './constants.js';
 
-export function foundation({ postSide, depth, hole, topHeight, Ipost,
+function foundation({ postSide, depth, hole, topHeight, Ipost,
                              E = E_WOOD, kSoil = K_SOIL, refKg = 50 }) {
   const Ktheta = kSoil * hole * depth ** 3 / 3;      // Nm/rad
   const Href = refKg * G;                            // N

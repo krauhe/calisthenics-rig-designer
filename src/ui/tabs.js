@@ -1,8 +1,7 @@
 // Pladsholder-fane for funktioner der bygges i senere faser (kort, 3D, materialeliste).
 
-import { el } from './dom.js';
 
-export function placeholderTab(id, labelKey, opts = {}) {
+function placeholderTab(id, labelKey, opts = {}) {
   return {
     id,
     labelKey,

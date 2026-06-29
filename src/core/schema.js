@@ -1,29 +1,26 @@
 // Serialisering, validering, versionsmigrering og import af det gamle format.
 // Det er rygraden i at kunne gemme/dele tegninger sikkert over tid.
 
-import { defaultDesign, SCHEMA_VERSION } from './model.js';
-import { POST, POST_ABOVE } from './constants.js';
-import { CATALOG } from './materials.js';
 
 // Nøgle den OPRINDELIGE app gemte under (fast firkant-parametre).
-export const LEGACY_KEY = 'chalestetics-3d';
+const LEGACY_KEY = 'chalestetics-3d';
 // Gammel SIZES-rækkefølge → nye biblioteks-id'er.
 const LEGACY_SIZE_IDS = ['pipe-3-4', 'pipe-1', 'pipe-1-4', 'wood-10'];
 
 const num = (v, dflt) => (typeof v === 'number' && isFinite(v)) ? v : dflt;
 
-export function serialize(design) {
+function serialize(design) {
   return JSON.stringify(design, null, 2);
 }
 
-export function deserialize(text) {
+function deserialize(text) {
   let raw;
   try { raw = JSON.parse(text); } catch (e) { throw new Error('invalid-json'); }
   return adopt(raw);
 }
 
 // Tag et rå-objekt (fra fil eller localStorage) og gør det til et gyldigt design.
-export function adopt(raw) {
+function adopt(raw) {
   if (!raw || typeof raw !== 'object') throw new Error('not-a-design');
   // Gammelt format fra den oprindelige app?
   if (raw.schemaVersion == null && (raw.lenLong != null || raw.sideSizes != null)) {
@@ -34,7 +31,7 @@ export function adopt(raw) {
   return migrated;
 }
 
-export function migrate(raw) {
+function migrate(raw) {
   const v = raw.schemaVersion || 0;
   if (v > SCHEMA_VERSION) throw new Error('newer-schema'); // afvis nyere filer pænt
   // Fremtidige trin indsættes her, fx:  if (raw.schemaVersion === 1) raw = up1to2(raw);
@@ -83,7 +80,7 @@ function mergeCatalog(lib) {
   return out;
 }
 
-export function validate(d) {
+function validate(d) {
   return !!d && d.schemaVersion === SCHEMA_VERSION
     && d.settings && (d.settings.lang === 'da' || d.settings.lang === 'en')
     && Array.isArray(d.library) && d.library.length > 0
@@ -92,7 +89,7 @@ export function validate(d) {
 }
 
 // Konvertér den oprindelige apps gemte data (fast firkant) til den nye graf-model.
-export function fromLegacy(o) {
+function fromLegacy(o) {
   const d = defaultDesign();
   const lenLong = num(o.lenLong, 2.4), lenShort = num(o.lenShort, 1.2);
   const hL = (lenLong + POST) / 2, hS = (lenShort + POST) / 2;

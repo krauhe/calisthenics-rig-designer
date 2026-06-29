@@ -1,6 +1,6 @@
 // Bittesmå DOM-hjælpere, så vi slipper for at gentage createElement-kedsommelighed.
 
-export function el(tag, attrs = {}, ...kids) {
+function el(tag, attrs = {}, ...kids) {
   const n = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v == null) continue;
@@ -16,7 +16,7 @@ export function el(tag, attrs = {}, ...kids) {
   return n;
 }
 
-export function clear(node) {
+function clear(node) {
   while (node.firstChild) node.removeChild(node.firstChild);
   return node;
 }

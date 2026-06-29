@@ -8,9 +8,8 @@
 //
 // Returnerer { bars:[{ used, waste, pieces }], count }.
 
-import { STOCK, KERF } from './constants.js';
 
-export function packPieces(pieces, stock = STOCK, kerf = KERF) {
+function packPieces(pieces, stock = STOCK, kerf = KERF) {
   const sorted = pieces.slice().sort((a, b) => b.len - a.len); // største først
   const bars = [];
 

@@ -3,10 +3,6 @@
 // stolpetykkelse), snapping, pan/zoom, og placering af stolper, forbindelser
 // og stiger direkte i graf-modellen (design.posts/connections/attachments).
 
-import { el, clear } from './dom.js';
-import { lenInput, select } from './controls.js';
-import { resolveMaterial } from '../core/model.js';
-import { COLORS } from './chart.js';
 
 const W = 520, H = 440;                 // SVG bruger-koordinater (viewBox)
 const MIN_K = 12, MAX_K = 400;          // zoom-grænser (px pr. meter)
@@ -25,7 +21,7 @@ const TOOLS = [
   ['delete', '🗑', 'tool.delete'],
 ];
 
-export const tabSite = {
+const tabSite = {
   id: 'site',
   labelKey: 'tab.site',
   render(container, ctx) {

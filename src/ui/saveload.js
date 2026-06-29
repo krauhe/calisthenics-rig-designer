@@ -1,11 +1,8 @@
 // Fil-bjælke: navngiv, gem til fil, hent fil, ny tegning.
 // Ren klient-side I/O — ingen server, virker offline.
 
-import { el } from './dom.js';
-import { serialize, deserialize } from '../core/schema.js';
-import { defaultDesign } from '../core/model.js';
 
-export function fileBar(ctx) {
+function fileBar(ctx) {
   const { design, store } = ctx;
   const tt = k => ctx.t(k, ctx.lang);
 

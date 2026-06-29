@@ -1,14 +1,7 @@
 // Fane: Bar-analyse. Bruger beam() fra kernen + to grafer.
 
-import { el, clear } from './dom.js';
-import { field, lenInput, numInput, unitToggle } from './controls.js';
-import { materialControl } from './library.js';
-import { resolveMaterial } from '../core/model.js';
-import { beam } from '../core/mechanics.js';
-import { fmtDispl, fmtMass, massFromSI, massToSI } from '../core/units.js';
-import { capacityChart, COLORS, lineChart } from './chart.js';
 
-export const tabBar = {
+const tabBar = {
   id: 'bar',
   labelKey: 'tab.bar',
   render(container, ctx) {

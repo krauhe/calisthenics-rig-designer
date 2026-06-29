@@ -5,7 +5,7 @@
 //   { kind:'pipe', od, wall }   hult cirkulært rør (ydre-Ø og godstykkelse)
 //   { kind:'wood', side }       massivt kvadratisk træ (sidemål)
 
-export function sectionProps(section) {
+function sectionProps(section) {
   if (section.kind === 'wood') {
     const b = section.side / 1000;            // mm → m
     return { I: b ** 4 / 12, Z: b ** 3 / 6, A: b * b };

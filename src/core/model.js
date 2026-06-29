@@ -2,11 +2,10 @@
 // I denne fase bruges kun settings/units/library/analysis. Posts, connections,
 // attachments og stock kommer i de senere faser (kort + 3D + materialeliste).
 
-import { CATALOG } from './materials.js';
 
-export const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 1;
 
-export function defaultDesign() {
+function defaultDesign() {
   return {
     schemaVersion: SCHEMA_VERSION,
     meta: { name: 'Min rig', created: Date.now(), modified: Date.now() },
@@ -45,6 +44,6 @@ export function defaultDesign() {
 }
 
 // Slå et materiale op i designets bibliotek (falder tilbage til første).
-export function resolveMaterial(design, id) {
+function resolveMaterial(design, id) {
   return design.library.find(m => m.id === id) || design.library[0];
 }

@@ -2,13 +2,11 @@
 // Number-inputs bruger altid '.' som decimaltegn (krav for <input type=number>);
 // dansk komma bruges kun i visningstekst (resultater), ikke i input.
 
-import { el } from './dom.js';
-import { lenFromSI, lenToSI, dimFromMM, dimToMM } from '../core/units.js';
 
 const round = (v, d = 3) => Math.round(v * 10 ** d) / 10 ** d;
 
 // En etiketteret felt-række.
-export function field(labelText, control, hint) {
+function field(labelText, control, hint) {
   return el('label', { class: 'fld' },
     el('span', { class: 'fld-l' }, labelText),
     control,
@@ -16,7 +14,7 @@ export function field(labelText, control, hint) {
 }
 
 // Rå talinput.
-export function numInput(value, step, onValue) {
+function numInput(value, step, onValue) {
   const inp = el('input', { type: 'number', step: String(step), value: String(value) });
   inp.addEventListener('input', () => {
     const v = parseFloat(inp.value);
@@ -26,18 +24,18 @@ export function numInput(value, step, onValue) {
 }
 
 // Længde-input: gemmer SI (m), viser i 'm' | 'ft'.
-export function lenInput(si, unit, onSI) {
+function lenInput(si, unit, onSI) {
   return numInput(round(lenFromSI(si, unit)), unit === 'ft' ? 0.1 : 0.05,
     v => onSI(lenToSI(v, unit)));
 }
 
 // Tværsnits-input: gemmer mm, viser i 'mm' | 'in'.
-export function dimInput(mm, unit, onMM) {
+function dimInput(mm, unit, onMM) {
   return numInput(round(dimFromMM(mm, unit)), unit === 'in' ? 0.05 : 1,
     v => onMM(dimToMM(v, unit)));
 }
 
-export function select(options, value, onChange) {
+function select(options, value, onChange) {
   const sel = el('select', {},
     ...options.map(([v, label]) => {
       const o = el('option', { value: v }, label);
@@ -49,7 +47,7 @@ export function select(options, value, onChange) {
 }
 
 // Enheds-skifter (segmenteret knaprække).
-export function unitToggle(label, options, value, onChange) {
+function unitToggle(label, options, value, onChange) {
   return el('div', { class: 'utog' },
     el('span', { class: 'utog-l' }, label),
     el('div', { class: 'utog-bs' },

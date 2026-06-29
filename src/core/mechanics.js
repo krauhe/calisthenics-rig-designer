@@ -11,10 +11,8 @@
 //   { kind:'pipe', od, wall, E, sRe, sRm } | { kind:'wood', side, E, sRe, sRm }
 //   sRe = arbejds-/flydegrænse, sRm = brud-/maksgrænse.
 
-import { G, FIXITY } from './constants.js';
-import { sectionProps } from './sections.js';
 
-export function beam(L, member, loadKg, fixity = FIXITY) {
+function beam(L, member, loadKg, fixity = FIXITY) {
   const { I, Z } = sectionProps(member);
   const E = member.E;
   const W = loadKg * G;                       // last på midten (N)

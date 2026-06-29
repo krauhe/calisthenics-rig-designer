@@ -1,4 +1,4 @@
-export const da = {
+const da = {
   'app.title': 'Calisthenics Rig Designer',
   'app.subtitle': 'Stativ-designer',
 
@@ -49,8 +49,9 @@ export const da = {
   'post.res.sway': 'Sving v. 50 kg vandret',
   'post.res.sway1': '1 pæl',
   'post.res.sway2': '2 pæle deler',
-  'post.res.swayPost': 'heraf stolpe (bøjning)',
-  'post.res.swayBase': 'heraf sokkel (drejning)',
+  'post.res.swayPost': 'Stolpe-elasticitet',
+  'post.res.swayBase': 'Fundament-eftergivenhed',
+  'post.res.swaySum': 'Sving i alt v. 50 kg',
   'post.res.rot': 'Drejestivhed',
   'post.res.feel': 'Føles',
   'post.chart.title': 'Sving vs. nedgravningsdybde',

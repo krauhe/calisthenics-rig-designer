@@ -1,10 +1,5 @@
 <!DOCTYPE html>
-<!--
-  Chalestetics - Calisthenics Rig Designer (lokal, selvstaendig udgave)
-  Copyright (C) 2026 Kristian Rauhe Harreby - GPLv3 (se LICENSE).
-  GENERERET af build.py. Du kan bare DOBBELTKLIKKE denne fil - ingen server.
-  Ret ikke i denne fil direkte; ret i src/ og koer "python build.py".
--->
+<!-- GENERERET af build.py - selvstaendig enkelt-fil. Ret i src/ og koer build.py. -->
 <html lang="da">
 <head>
 <meta charset="UTF-8" />
@@ -688,8 +683,9 @@ const da = {
   'post.res.sway': 'Sving v. 50 kg vandret',
   'post.res.sway1': '1 pæl',
   'post.res.sway2': '2 pæle deler',
-  'post.res.swayPost': 'heraf stolpe (bøjning)',
-  'post.res.swayBase': 'heraf sokkel (drejning)',
+  'post.res.swayPost': 'Stolpe-elasticitet',
+  'post.res.swayBase': 'Fundament-eftergivenhed',
+  'post.res.swaySum': 'Sving i alt v. 50 kg',
   'post.res.rot': 'Drejestivhed',
   'post.res.feel': 'Føles',
   'post.chart.title': 'Sving vs. nedgravningsdybde',
@@ -794,8 +790,9 @@ const en = {
   'post.res.sway': 'Sway at 50 kg lateral',
   'post.res.sway1': '1 post',
   'post.res.sway2': '2 posts share',
-  'post.res.swayPost': 'of which post (bending)',
-  'post.res.swayBase': 'of which footing (rotation)',
+  'post.res.swayPost': 'Post elasticity',
+  'post.res.swayBase': 'Foundation compliance',
+  'post.res.swaySum': 'Total sway at 50 kg',
   'post.res.rot': 'Rotational stiffness',
   'post.res.feel': 'Feel',
   'post.chart.title': 'Sway vs. embedment depth',
@@ -1222,10 +1219,10 @@ const tabPost = {
       results.append(
         el('h3', {}, tt('post.res.title')),
         resRow(tt('post.res.stiffness'), `${fmt(f.kLat / 1000, 1, lang)} N/mm`),
-        resRow(tt('post.res.sway'), `${fmtDispl(swayMm, u.dim, lang)} (${tt('post.res.sway1')})`, 'big'),
-        resRow('', `${fmtDispl(swayMm / 2, u.dim, lang)} (${tt('post.res.sway2')})`),
         resRow(tt('post.res.swayPost'), fmtDispl(f.dBend * 1000, u.dim, lang)),
         resRow(tt('post.res.swayBase'), fmtDispl(f.dRot * 1000, u.dim, lang)),
+        resRow(`${tt('post.res.swaySum')} (${tt('post.res.sway1')})`, fmtDispl(swayMm, u.dim, lang), 'big'),
+        resRow('', `${fmtDispl(swayMm / 2, u.dim, lang)} (${tt('post.res.sway2')})`),
         resRow(tt('post.res.rot'), `${Math.round(f.Ktheta / 1000)} kNm/rad`),
         resRow(tt('post.res.feel'), tt(feelKey)));
 

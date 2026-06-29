@@ -1,8 +1,6 @@
 // Tilstands-container: holder design-objektet, gemmer automatisk i localStorage,
 // og giver besked til abonnenter ved ændringer.
 
-import { defaultDesign } from './model.js';
-import { adopt, LEGACY_KEY } from './schema.js';
 
 const KEY = 'calisthenics-rig-designer';
 
@@ -10,22 +8,22 @@ let design = loadDesign();
 const subs = new Set();
 let saveTimer = null;
 
-export function getDesign() { return design; }
+function getDesign() { return design; }
 
-export function subscribe(fn) { subs.add(fn); return () => subs.delete(fn); }
+function subscribe(fn) { subs.add(fn); return () => subs.delete(fn); }
 
 // Kald efter en ændring i design: notificér + gem (debounced).
-export function commit() {
+function commit() {
   design.meta.modified = Date.now();
   subs.forEach(fn => fn(design));
   scheduleSave();
 }
 
 // Bekvem helper: muter design og commit i ét.
-export function update(mutator) { mutator(design); commit(); }
+function update(mutator) { mutator(design); commit(); }
 
 // Erstat hele designet (fx ved fil-load eller "Ny tegning").
-export function replace(newDesign) { design = newDesign; commit(); }
+function replace(newDesign) { design = newDesign; commit(); }
 
 function scheduleSave() {
   clearTimeout(saveTimer);
@@ -49,7 +47,7 @@ function loadDesign() {
 }
 
 // --- Materialebibliotek ---
-export function addMaterial(mat) {
+function addMaterial(mat) {
   const id = 'user-' + Date.now().toString(36);
   const entry = { ...mat, id, builtin: false };
   design.library.push(entry);
@@ -57,7 +55,7 @@ export function addMaterial(mat) {
   return entry;
 }
 
-export function removeMaterial(id) {
+function removeMaterial(id) {
   const m = design.library.find(x => x.id === id);
   if (!m || m.builtin) return false;          // byg-ind materialer kan ikke slettes
   design.library = design.library.filter(x => x.id !== id);

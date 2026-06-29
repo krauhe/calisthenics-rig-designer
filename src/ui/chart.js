@@ -1,13 +1,11 @@
 // Håndtegnede SVG-grafer. Ingen chart-bibliotek nødvendigt.
 
-import { beam } from '../core/mechanics.js';
-import { fmt, massFromSI, fmtMass } from '../core/units.js';
 
-export const COLORS = ['#0b66c3', '#2e9e5b', '#d98324', '#7a4fb5', '#0e7490', '#b3261e', '#5b7c0a', '#9b1c6b'];
+const COLORS = ['#0b66c3', '#2e9e5b', '#d98324', '#7a4fb5', '#0e7490', '#b3261e', '#5b7c0a', '#9b1c6b'];
 
 // Bæreevne (arbejdsgrænse) som funktion af spændvidde, én kurve pr. materiale.
 // massU: 'kg' | 'lb' — kun visnings-/akse-enhed; y-skalaen regnes i kg.
-export function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, lang }) {
+function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, lang }) {
   const W = 400, H = 250, L = 46, R = 14, Tp = 12, B = 34;
   const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
   const sMin = 0.5, sMax = 3.0, yMax = 250;             // kg-skala (loft for læsbarhed)
@@ -48,7 +46,7 @@ export function capacityChart({ library, fixity, currentSpan, load, massU = 'kg'
 
 // Generisk graf: én ELLER flere kurver. Giv enten `points` (+ color) eller
 // `series` = [{ points, color }]. vLine/hLine: valgfri lodret/vandret reference.
-export function lineChart({ points, series, xMin, xMax, yMax, xLabel, yLabel, color = '#0b66c3', vLine, hLine, lang }) {
+function lineChart({ points, series, xMin, xMax, yMax, xLabel, yLabel, color = '#0b66c3', vLine, hLine, lang }) {
   const W = 400, H = 210, L = 48, R = 14, Tp = 10, B = 30;
   const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
   yMax = yMax > 0 ? yMax : 1;

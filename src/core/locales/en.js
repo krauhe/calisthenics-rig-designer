@@ -1,4 +1,4 @@
-export const en = {
+const en = {
   'app.title': 'Calisthenics Rig Designer',
   'app.subtitle': 'Rig designer',
 
@@ -49,8 +49,9 @@ export const en = {
   'post.res.sway': 'Sway at 50 kg lateral',
   'post.res.sway1': '1 post',
   'post.res.sway2': '2 posts share',
-  'post.res.swayPost': 'of which post (bending)',
-  'post.res.swayBase': 'of which footing (rotation)',
+  'post.res.swayPost': 'Post elasticity',
+  'post.res.swayBase': 'Foundation compliance',
+  'post.res.swaySum': 'Total sway at 50 kg',
   'post.res.rot': 'Rotational stiffness',
   'post.res.feel': 'Feel',
   'post.chart.title': 'Sway vs. embedment depth',

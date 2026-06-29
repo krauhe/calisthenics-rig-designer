@@ -1,10 +1,6 @@
 // Delt materiale-kontrol brugt af både stolpe- og bar-fanen:
 // vælg fra biblioteket, tilføj egne standardmaterialer, slet egne.
 
-import { el, clear } from './dom.js';
-import { select } from './controls.js';
-import { fmtDim } from '../core/units.js';
-import { resolveMaterial } from '../core/model.js';
 
 function matLabel(m, dimUnit, lang) {
   if (m.kind === 'wood') return `${m.name} · ${fmtDim(m.side, dimUnit, lang)}`;
@@ -16,7 +12,7 @@ const DEFAULTS = {
   wood: { E: 10e9,  sRe: 10e6,  sRm: 24e6,  side: 100 },
 };
 
-export function materialControl(ctx, scope) {
+function materialControl(ctx, scope) {
   const { design, store, lang, rerender } = ctx;
   const tt = k => ctx.t(k, lang);
   const dimUnit = design.units[scope].dim;
