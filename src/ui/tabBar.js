@@ -18,6 +18,7 @@ const tabBar = {
     const set = mut => { store.update(mut); compute(); };
     const results = el('div', { class: 'results' });
     const deflHost = el('div', { class: 'charthost' });
+    const workHost = el('div', { class: 'charthost' });
     const chartHost = el('div', { class: 'charthost' });
     const legend = el('div', { class: 'legend' });
 
@@ -55,7 +56,8 @@ const tabBar = {
         resRow(`${tt('bar.res.deflection')} (${fmtMass(a.load_kg, massU, lang)})`, fmtDispl(deflMm, u.dim, lang), 'big'),
         resRow(tt('post.res.feel'), tt(feelKey)),
         resRow(tt('bar.res.yield'), fmtMass(b.pYield, massU, lang)),
-        resRow(tt('bar.res.ultimate'), fmtMass(b.pUlt, massU, lang)));
+        resRow(tt('bar.res.ultimate'), fmtMass(b.pUlt, massU, lang)),
+        el('div', { class: 'res-note' }, tt('bar.res.note')));
 
       // graf 1: nedbøjning vs. belastning — alle materialer, samme farvekode
       const loads = [];
@@ -79,9 +81,12 @@ const tabBar = {
           el('span', { class: 'leg-sw', style: `background:${COLORS[i % COLORS.length]}` }),
           m.name)));
 
-      // graf 2: bæreevne vs. spændvidde — alle materialer
+      // graf 2: sikker arbejdslast vs. spændvidde
+      workHost.innerHTML = `<div class="chart-title">${tt('bar.chart.titleWork')}</div>` +
+        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, metric: 'yield', yLabelKey: 'bar.chart.yWork', t: ctx.t, lang });
+      // graf 3: brudlast vs. spændvidde
       chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')}</div>` +
-        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, t: ctx.t, lang });
+        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, metric: 'ult', yLabelKey: 'bar.chart.y', t: ctx.t, lang });
     }
 
     compute();
@@ -90,6 +95,6 @@ const tabBar = {
       el('p', { class: 'intro' }, tt('bar.intro')),
       el('div', { class: 'twocol' },
         inputs,
-        el('div', {}, results, deflHost, legend, chartHost)));
+        el('div', {}, results, deflHost, legend, workHost, chartHost)));
   },
 };

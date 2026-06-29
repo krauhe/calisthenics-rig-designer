@@ -95,6 +95,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); 
 .res-l { color: var(--muted); }
 .res-v { font-weight: 600; font-variant-numeric: tabular-nums; }
 .res.big .res-v { font-size: 18px; color: var(--danger); }
+.res-note { margin-top: 8px; font-size: 11px; line-height: 1.45; color: var(--muted); }
 
 /* ---- Chart ---- */
 .charthost { margin-top: 16px; }

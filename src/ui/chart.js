@@ -5,7 +5,8 @@ const COLORS = ['#0b66c3', '#2e9e5b', '#d98324', '#7a4fb5', '#0e7490', '#b3261e'
 
 // Bæreevne (arbejdsgrænse) som funktion af spændvidde, én kurve pr. materiale.
 // massU: 'kg' | 'lb' — kun visnings-/akse-enhed; y-skalaen regnes i kg.
-function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, lang }) {
+function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', metric = 'ult', yLabelKey = 'bar.chart.y', t, lang }) {
+  const prop = metric === 'yield' ? 'pYield' : 'pUlt';
   const W = 400, H = 250, L = 46, R = 14, Tp = 12, B = 34;
   const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
   const sMin = 0.5, sMax = 3.0, yMax = 250;             // kg-skala (loft for læsbarhed)
@@ -23,7 +24,7 @@ function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, la
     `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#6b7682">${fmt(v, 1, lang)}</text>`).join('');
 
   const lines = library.map((m, i) => {
-    const pts = spans.map(s => `${X(s).toFixed(1)},${Y(beam(s, m, 1, fixity).pUlt).toFixed(1)}`).join(' ');
+    const pts = spans.map(s => `${X(s).toFixed(1)},${Y(beam(s, m, 1, fixity)[prop]).toFixed(1)}`).join(' ');
     return `<polyline fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="2" points="${pts}"/>`;
   }).join('');
 
@@ -41,7 +42,7 @@ function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, la
     <defs><clipPath id="ccclip"><rect x="${x0}" y="${y1}" width="${x1 - x0}" height="${y0 - y1}"/></clipPath></defs>
     <g clip-path="url(#ccclip)">${lines}</g>${loadLine}${spanLine}
     <text x="${(x0 + x1) / 2}" y="${H - 2}" text-anchor="middle" font-size="9.5" fill="#52606d">${t('bar.chart.x', lang)}</text>
-    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t('bar.chart.y', lang)} (${massU === 'lb' ? 'lbs' : 'kg'})</text>
+    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t(yLabelKey, lang)} (${massU === 'lb' ? 'lbs' : 'kg'})</text>
   </svg>`;
 }
 

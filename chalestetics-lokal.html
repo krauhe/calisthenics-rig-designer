@@ -103,6 +103,7 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); 
 .res-l { color: var(--muted); }
 .res-v { font-weight: 600; font-variant-numeric: tabular-nums; }
 .res.big .res-v { font-size: 18px; color: var(--danger); }
+.res-note { margin-top: 8px; font-size: 11px; line-height: 1.45; color: var(--muted); }
 
 /* ---- Chart ---- */
 .charthost { margin-top: 16px; }
@@ -701,9 +702,12 @@ const da = {
   'bar.res.deflection': 'Nedbøjning',
   'bar.res.yield': 'Sikker arbejdslast',
   'bar.res.ultimate': 'Brudlast',
+  'bar.res.note': '💡 Sikker arbejdslast = så meget kan baren bære og stadig fjedre tilbage til lige. Belastes den mere, bliver den varigt skæv (bøjet for altid). Brudlast = der hvor den knækker helt.',
   'bar.chart.title': 'Brudlast vs. spændvidde',
   'bar.chart.x': 'Spændvidde (m)',
   'bar.chart.y': 'Brudlast',
+  'bar.chart.titleWork': 'Sikker arbejdslast vs. spændvidde',
+  'bar.chart.yWork': 'Sikker last',
   'bar.chart.load': 'din last',
   'bar.chart2.title': 'Nedbøjning vs. belastning',
   'bar.chart2.x': 'Last',
@@ -808,9 +812,12 @@ const en = {
   'bar.res.deflection': 'Deflection',
   'bar.res.yield': 'Safe working load',
   'bar.res.ultimate': 'Breaking load',
+  'bar.res.note': '💡 Safe working load = how much the bar carries while still springing back straight. Load it more and it stays permanently bent. Breaking load = where it snaps.',
   'bar.chart.title': 'Breaking load vs. span',
   'bar.chart.x': 'Span (m)',
   'bar.chart.y': 'Breaking load',
+  'bar.chart.titleWork': 'Safe working load vs. span',
+  'bar.chart.yWork': 'Safe load',
   'bar.chart.load': 'your load',
   'bar.chart2.title': 'Deflection vs. load',
   'bar.chart2.x': 'Load',
@@ -953,7 +960,8 @@ const COLORS = ['#0b66c3', '#2e9e5b', '#d98324', '#7a4fb5', '#0e7490', '#b3261e'
 
 // Bæreevne (arbejdsgrænse) som funktion af spændvidde, én kurve pr. materiale.
 // massU: 'kg' | 'lb' — kun visnings-/akse-enhed; y-skalaen regnes i kg.
-function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, lang }) {
+function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', metric = 'ult', yLabelKey = 'bar.chart.y', t, lang }) {
+  const prop = metric === 'yield' ? 'pYield' : 'pUlt';
   const W = 400, H = 250, L = 46, R = 14, Tp = 12, B = 34;
   const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
   const sMin = 0.5, sMax = 3.0, yMax = 250;             // kg-skala (loft for læsbarhed)
@@ -971,7 +979,7 @@ function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, la
     `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#6b7682">${fmt(v, 1, lang)}</text>`).join('');
 
   const lines = library.map((m, i) => {
-    const pts = spans.map(s => `${X(s).toFixed(1)},${Y(beam(s, m, 1, fixity).pUlt).toFixed(1)}`).join(' ');
+    const pts = spans.map(s => `${X(s).toFixed(1)},${Y(beam(s, m, 1, fixity)[prop]).toFixed(1)}`).join(' ');
     return `<polyline fill="none" stroke="${COLORS[i % COLORS.length]}" stroke-width="2" points="${pts}"/>`;
   }).join('');
 
@@ -989,7 +997,7 @@ function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, la
     <defs><clipPath id="ccclip"><rect x="${x0}" y="${y1}" width="${x1 - x0}" height="${y0 - y1}"/></clipPath></defs>
     <g clip-path="url(#ccclip)">${lines}</g>${loadLine}${spanLine}
     <text x="${(x0 + x1) / 2}" y="${H - 2}" text-anchor="middle" font-size="9.5" fill="#52606d">${t('bar.chart.x', lang)}</text>
-    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t('bar.chart.y', lang)} (${massU === 'lb' ? 'lbs' : 'kg'})</text>
+    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t(yLabelKey, lang)} (${massU === 'lb' ? 'lbs' : 'kg'})</text>
   </svg>`;
 }
 
@@ -1272,6 +1280,7 @@ const tabBar = {
     const set = mut => { store.update(mut); compute(); };
     const results = el('div', { class: 'results' });
     const deflHost = el('div', { class: 'charthost' });
+    const workHost = el('div', { class: 'charthost' });
     const chartHost = el('div', { class: 'charthost' });
     const legend = el('div', { class: 'legend' });
 
@@ -1309,7 +1318,8 @@ const tabBar = {
         resRow(`${tt('bar.res.deflection')} (${fmtMass(a.load_kg, massU, lang)})`, fmtDispl(deflMm, u.dim, lang), 'big'),
         resRow(tt('post.res.feel'), tt(feelKey)),
         resRow(tt('bar.res.yield'), fmtMass(b.pYield, massU, lang)),
-        resRow(tt('bar.res.ultimate'), fmtMass(b.pUlt, massU, lang)));
+        resRow(tt('bar.res.ultimate'), fmtMass(b.pUlt, massU, lang)),
+        el('div', { class: 'res-note' }, tt('bar.res.note')));
 
       // graf 1: nedbøjning vs. belastning — alle materialer, samme farvekode
       const loads = [];
@@ -1333,9 +1343,12 @@ const tabBar = {
           el('span', { class: 'leg-sw', style: `background:${COLORS[i % COLORS.length]}` }),
           m.name)));
 
-      // graf 2: bæreevne vs. spændvidde — alle materialer
+      // graf 2: sikker arbejdslast vs. spændvidde
+      workHost.innerHTML = `<div class="chart-title">${tt('bar.chart.titleWork')}</div>` +
+        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, metric: 'yield', yLabelKey: 'bar.chart.yWork', t: ctx.t, lang });
+      // graf 3: brudlast vs. spændvidde
       chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')}</div>` +
-        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, t: ctx.t, lang });
+        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, metric: 'ult', yLabelKey: 'bar.chart.y', t: ctx.t, lang });
     }
 
     compute();
@@ -1344,7 +1357,7 @@ const tabBar = {
       el('p', { class: 'intro' }, tt('bar.intro')),
       el('div', { class: 'twocol' },
         inputs,
-        el('div', {}, results, deflHost, legend, chartHost)));
+        el('div', {}, results, deflHost, legend, workHost, chartHost)));
   },
 };
 
