@@ -31,6 +31,12 @@
   }
 }
 </script>
+<!-- Service worker: sørger for at den nyeste version altid hentes (intet cache-bøvl) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+</script>
 <script type="module" src="src/main.js"></script>
 </body>
 </html>
