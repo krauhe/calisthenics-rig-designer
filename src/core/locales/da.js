@@ -107,6 +107,11 @@ const da = {
   'site.conn.deflection': 'Nedbøjning ved',
   'site.conn.critical': '⚠ Lavt dimensioneret — for spinkelt til designlasten',
   'site.conn.none': 'Vælg en forbindelse (med Vælg/flyt) for at se styrke og ændre materiale/højde.',
+  'site.conn.tableTitle': 'Forbindelser',
+  'site.conn.empty': 'Ingen forbindelser endnu — brug Forbind-værktøjet.',
+  'site.conn.th.mat': 'Materiale',
+  'site.conn.th.load': 'Sikker',
+  'site.conn.encoding': 'Farve = materiale · tykkelse = dimension · rød = lavt dimensioneret',
 
   'soon.title': 'Kommer snart',
   'soon.body': 'Denne fane bygges i en senere fase af ombygningen.',

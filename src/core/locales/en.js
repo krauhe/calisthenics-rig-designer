@@ -107,6 +107,11 @@ const en = {
   'site.conn.deflection': 'Deflection at',
   'site.conn.critical': '⚠ Under-dimensioned — too slim for the design load',
   'site.conn.none': 'Select a connection (with Select/move) to see its strength and change material/height.',
+  'site.conn.tableTitle': 'Connections',
+  'site.conn.empty': 'No connections yet — use the Connect tool.',
+  'site.conn.th.mat': 'Material',
+  'site.conn.th.load': 'Safe',
+  'site.conn.encoding': 'Colour = material · thickness = size · red = under-dimensioned',
 
   'soon.title': 'Coming soon',
   'soon.body': 'This tab is built in a later phase of the rebuild.',
