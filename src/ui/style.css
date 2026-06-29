@@ -133,6 +133,15 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); 
 .sel-info { margin-top: 4px; background: #f0f6ff; border: 1px solid #d3e3f7; border-radius: 8px; padding: 8px 10px; }
 .sel-info .res { font-size: 12.5px; padding: 3px 0; }
 .crit { margin-top: 9px; padding: 7px 10px; background: #fdeeee; border: 1px solid #e6b3b0; color: var(--danger); border-radius: 8px; font-size: 12px; font-weight: 600; line-height: 1.4; }
+.conntable-area { margin-top: 16px; }
+.conntable-area h3 { margin: 0 0 8px; font-size: 14px; color: var(--accent-d); }
+.conntab.full { font-size: 13px; }
+.conntab.full td, .conntab.full th { padding: 5px 8px; vertical-align: middle; }
+.conntab.full .editc { padding: 3px 6px; }
+.conntab.full td.numc { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.conntab.full select, .conntab.full input[type=number] { width: 100%; min-width: 64px; font: inherit; font-size: 13px; padding: 4px 6px; border: 1px solid #c2cdd8; border-radius: 6px; }
+.conntab.full input[type=number] { max-width: 100px; }
+.conntab.full select:focus, .conntab.full input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
 .conntab { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
 .conntab th { text-align: left; color: var(--muted); font-weight: 600; font-size: 10.5px; padding: 3px 4px; border-bottom: 1px solid var(--line); }
 .conntab td { padding: 4px 4px; border-bottom: 1px solid var(--line); }
@@ -150,6 +159,30 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); 
   .toolpalette { flex-direction: row; flex-wrap: wrap; }
   .toolbtn { flex: 1 1 auto; }
 }
+
+/* ---- 3D view ---- */
+.view3d-host { position: relative; width: 100%; max-width: 900px; aspect-ratio: 16 / 10; background: #dfe6ee; border: 1px solid #cdd8e2; border-radius: 10px; overflow: hidden; }
+.view3d-status { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--muted); font-size: 13px; text-align: center; padding: 16px; }
+.view3d-hint { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+/* ---- Materials list + cut list ---- */
+.mat-list { width: 100%; max-width: 640px; border-collapse: collapse; font-size: 13.5px; }
+.mat-list td { padding: 5px 8px; border-bottom: 1px solid var(--line); }
+.mat-list td.q { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); font-weight: 600; }
+.mat-note { margin: 8px 0 4px; font-size: 11.5px; color: var(--muted); line-height: 1.45; max-width: 640px; }
+.cut-h { margin-top: 22px; }
+.cutlist { max-width: 720px; }
+.cl-grp { margin-bottom: 14px; }
+.cl-grp-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cl-grp-h b { font-size: 13px; color: var(--accent-d); }
+.cl-stock { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.cl-stock-inp { width: 72px; font: inherit; font-size: 13px; padding: 3px 6px; border: 1px solid #c2cdd8; border-radius: 6px; }
+.cl-stock-inp:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+.cl-warn { font-size: 12px; color: var(--danger); margin-top: 4px; }
+.cl-bar { display: flex; height: 26px; margin: 5px 0 2px; border: 1px solid #c2cdd8; border-radius: 5px; overflow: hidden; background: #f1f5f9; }
+.cl-seg { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 600; overflow: hidden; white-space: nowrap; border-right: 1px solid rgba(255,255,255,.5); }
+.cl-waste { display: flex; align-items: center; justify-content: center; background: repeating-linear-gradient(45deg, #e2e8ef, #e2e8ef 5px, #eef2f7 5px, #eef2f7 10px); color: #6b7682; font-size: 11px; }
+.cl-list { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
 
 /* ---- Coming soon ---- */
 .soon { padding: 30px; text-align: center; color: var(--muted); }

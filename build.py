@@ -18,7 +18,7 @@ ORDER = [
     'src/core/locales/da.js', 'src/core/locales/en.js', 'src/core/i18n.js',
     'src/ui/dom.js', 'src/ui/controls.js', 'src/ui/chart.js', 'src/ui/library.js',
     'src/ui/saveload.js', 'src/ui/tabPost.js', 'src/ui/tabBar.js', 'src/ui/tabSite.js',
-    'src/ui/tabs.js', 'src/main.js',
+    'src/ui/tabView3d.js', 'src/ui/tabMaterials.js', 'src/ui/tabs.js', 'src/main.js',
 ]
 
 SHELL = '''<div id="app">

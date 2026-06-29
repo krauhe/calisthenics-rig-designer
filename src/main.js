@@ -7,11 +7,15 @@ const TABS = [
   tabPost,
   tabBar,
   tabSite,
-  placeholderTab('view3d', 'tab.view3d', { linkHref: 'chalestetics-3d.html', linkKey: 'view3d.classic' }),
-  placeholderTab('materials', 'tab.materials'),
+  tabView3d,
+  tabMaterials,
 ];
 
-let active = 'post';
+const ACTIVE_KEY = 'crd-active-tab';
+let active = (() => {
+  try { const s = localStorage.getItem(ACTIVE_KEY); if (s && TABS.some(t => t.id === s)) return s; } catch (_) {}
+  return 'post';
+})();
 
 const lang = () => store.getDesign().settings.lang;
 const ctx = () => ({ design: store.getDesign(), store, t, lang: lang(), rerender: renderActive, rerenderAll: renderAll });
@@ -61,6 +65,7 @@ function setLang(code) {
 
 function setActive(id) {
   active = id;
+  try { localStorage.setItem(ACTIVE_KEY, id); } catch (_) {}
   renderTabbar();
   renderActive();
 }
