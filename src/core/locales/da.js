@@ -62,6 +62,7 @@ const da = {
   'bar.intro': 'Analysér en vandret bar mellem to støtter.',
   'bar.span': 'Spændvidde',
   'bar.load': 'Last på midten',
+  'bar.load.hint': '💡 Husk dynamik: at hænge, svinge eller hoppe giver ofte ~2× din kropsvægt (eller mere) — regn med det.',
   'bar.fixity': 'Indspænding',
   'bar.fixity.hint': '0 = frit oplagt · 1 = fast indspændt',
   'bar.res.deflection': 'Nedbøjning',

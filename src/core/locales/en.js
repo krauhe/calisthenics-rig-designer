@@ -62,6 +62,7 @@ const en = {
   'bar.intro': 'Analyse a horizontal bar between two supports.',
   'bar.span': 'Span',
   'bar.load': 'Centre load',
+  'bar.load.hint': '💡 Remember dynamics: hanging, swinging or dropping is often ~2× your body weight (or more) — plan for it.',
   'bar.fixity': 'End fixity',
   'bar.fixity.hint': '0 = pinned · 1 = fully fixed',
   'bar.res.deflection': 'Deflection',

@@ -36,7 +36,8 @@ const tabBar = {
       field(`${tt('bar.span')} (${lenTxt})`, lenInput(a.span_m, u.len, v => set(d => { d.analysis.bar.span_m = v; }))),
       field(`${tt('bar.load')} (${massTxt})`,
         numInput(Math.round(massFromSI(a.load_kg, massU)), massU === 'lb' ? 10 : 5,
-          v => set(d => { d.analysis.bar.load_kg = massToSI(v, massU); }))),
+          v => set(d => { d.analysis.bar.load_kg = massToSI(v, massU); })),
+        tt('bar.load.hint')),
       field(`${tt('bar.fixity')}`, numInput(a.fixity, 0.05,
         v => set(d => { d.analysis.bar.fixity = Math.min(1, Math.max(0, v)); })), tt('bar.fixity.hint')));
 

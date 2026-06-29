@@ -698,6 +698,7 @@ const da = {
   'bar.intro': 'Analysér en vandret bar mellem to støtter.',
   'bar.span': 'Spændvidde',
   'bar.load': 'Last på midten',
+  'bar.load.hint': '💡 Husk dynamik: at hænge, svinge eller hoppe giver ofte ~2× din kropsvægt (eller mere) — regn med det.',
   'bar.fixity': 'Indspænding',
   'bar.fixity.hint': '0 = frit oplagt · 1 = fast indspændt',
   'bar.res.deflection': 'Nedbøjning',
@@ -808,6 +809,7 @@ const en = {
   'bar.intro': 'Analyse a horizontal bar between two supports.',
   'bar.span': 'Span',
   'bar.load': 'Centre load',
+  'bar.load.hint': '💡 Remember dynamics: hanging, swinging or dropping is often ~2× your body weight (or more) — plan for it.',
   'bar.fixity': 'End fixity',
   'bar.fixity.hint': '0 = pinned · 1 = fully fixed',
   'bar.res.deflection': 'Deflection',
@@ -1299,7 +1301,8 @@ const tabBar = {
       field(`${tt('bar.span')} (${lenTxt})`, lenInput(a.span_m, u.len, v => set(d => { d.analysis.bar.span_m = v; }))),
       field(`${tt('bar.load')} (${massTxt})`,
         numInput(Math.round(massFromSI(a.load_kg, massU)), massU === 'lb' ? 10 : 5,
-          v => set(d => { d.analysis.bar.load_kg = massToSI(v, massU); }))),
+          v => set(d => { d.analysis.bar.load_kg = massToSI(v, massU); })),
+        tt('bar.load.hint')),
       field(`${tt('bar.fixity')}`, numInput(a.fixity, 0.05,
         v => set(d => { d.analysis.bar.fixity = Math.min(1, Math.max(0, v)); })), tt('bar.fixity.hint')));
 
