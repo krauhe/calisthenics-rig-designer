@@ -1,7 +1,7 @@
 // Fane: Stolpe-analyse. Bruger foundation() fra kernen.
 
 import { el, clear } from './dom.js';
-import { field, lenInput, dimInput, unitToggle } from './controls.js';
+import { field, lenInput, dimInput, numInput, unitToggle } from './controls.js';
 import { materialControl } from './library.js';
 import { resolveMaterial } from '../core/model.js';
 import { sectionProps } from '../core/sections.js';
@@ -34,7 +34,11 @@ export const tabPost = {
         el('span', { class: 'fld-l' }, tt('mat.title')),
         materialControl(ctx, 'post')),
       field(`${tt('post.depth')} (${lenTxt})`, lenInput(a.depth_m, u.len, v => set(d => { d.analysis.post.depth_m = v; }))),
-      field(`${tt('post.hole')} (${dimTxt})`, dimInput(a.hole_mm, u.dim, v => set(d => { d.analysis.post.hole_mm = v; }))),
+      field(`${tt('post.hole')} (${u.dim === 'in' ? tt('unit.in') : 'cm'})`,
+        numInput(
+          Math.round((u.dim === 'in' ? a.hole_mm / 25.4 : a.hole_mm / 10) * 100) / 100,
+          u.dim === 'in' ? 0.5 : 1,
+          v => set(d => { d.analysis.post.hole_mm = u.dim === 'in' ? v * 25.4 : v * 10; }))),
       field(`${tt('post.height')} (${lenTxt})`, lenInput(a.height_m, u.len, v => set(d => { d.analysis.post.height_m = v; }))));
 
     function resRow(label, value, cls) {
@@ -55,6 +59,8 @@ export const tabPost = {
         resRow(tt('post.res.stiffness'), `${fmt(f.kLat / 1000, 1, lang)} N/mm`),
         resRow(tt('post.res.sway'), `${fmtDispl(swayMm, u.dim, lang)} (${tt('post.res.sway1')})`, 'big'),
         resRow('', `${fmtDispl(swayMm / 2, u.dim, lang)} (${tt('post.res.sway2')})`),
+        resRow(tt('post.res.swayPost'), fmtDispl(f.dBend * 1000, u.dim, lang)),
+        resRow(tt('post.res.swayBase'), fmtDispl(f.dRot * 1000, u.dim, lang)),
         resRow(tt('post.res.rot'), `${Math.round(f.Ktheta / 1000)} kNm/rad`),
         resRow(tt('post.res.feel'), tt(feelKey)));
 
