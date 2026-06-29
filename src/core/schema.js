@@ -3,6 +3,7 @@
 
 import { defaultDesign, SCHEMA_VERSION } from './model.js';
 import { POST, POST_ABOVE } from './constants.js';
+import { CATALOG } from './materials.js';
 
 // Nøgle den OPRINDELIGE app gemte under (fast firkant-parametre).
 export const LEGACY_KEY = 'chalestetics-3d';
@@ -44,7 +45,7 @@ export function migrate(raw) {
 function fill(d) {
   const base = defaultDesign();
   const u = d.units || {};
-  return {
+  const merged = {
     ...base, ...d,
     schemaVersion: SCHEMA_VERSION,
     meta: { ...base.meta, ...(d.meta || {}) },
@@ -66,6 +67,20 @@ function fill(d) {
     defaults: d.defaults || base.defaults,
     site: { ...base.site, ...(d.site || {}) },
   };
+  merged.library = mergeCatalog(merged.library);
+  return merged;
+}
+
+// Hold de indbyggede materialer i biblioteket opdaterede med kataloget:
+// nye materialer tilføjes, navne/mål på indbyggede opdateres, egne bevares.
+function mergeCatalog(lib) {
+  const out = Array.isArray(lib) ? lib.slice() : [];
+  for (const c of CATALOG) {
+    const i = out.findIndex(m => m.id === c.id);
+    if (i < 0) out.push({ ...c, builtin: true });
+    else if (out[i].builtin) out[i] = { ...c, builtin: true };
+  }
+  return out;
 }
 
 export function validate(d) {

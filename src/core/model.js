@@ -14,7 +14,7 @@ export function defaultDesign() {
     // Enheder uafhængigt pr. fane:
     units: {
       post: { len: 'm', dim: 'mm' },
-      bar:  { len: 'm', dim: 'mm' },
+      bar:  { len: 'm', dim: 'mm', mass: 'kg' },
       site: { len: 'm' },
     },
     // Materialebibliotek (kim = standardkataloget; brugeren kan tilføje egne):

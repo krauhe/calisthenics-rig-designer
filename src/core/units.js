@@ -38,6 +38,14 @@ export function fmtDeflection(si_m, lang = 'da') {
   return fmt(mm, mm < 10 ? 2 : 1, lang) + ' mm';
 }
 
+// ---- Masse/last: kilogram (intern) ↔ visningsenhed 'kg' | 'lb' ----
+export const LB_PER_KG = 2.2046226218;
+export const massFromSI = (kg, unit) => unit === 'lb' ? kg * LB_PER_KG : kg;  // kg →
+export const massToSI = (v, unit) => unit === 'lb' ? v / LB_PER_KG : v;       // → kg
+export function fmtMass(kg, unit = 'kg', lang = 'da') {
+  return unit === 'lb' ? fmt(kg * LB_PER_KG, 0, lang) + ' lbs' : fmt(kg, 0, lang) + ' kg';
+}
+
 // Lille forskydning (nedbøjning/sving) vist i valgt tværsnitsenhed: mm eller tommer.
 export function fmtDispl(mm, unit = 'mm', lang = 'da') {
   return unit === 'in'

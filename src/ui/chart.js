@@ -1,28 +1,26 @@
-// Håndtegnet SVG-graf: bæreevne (arbejdsgrænse, kg) som funktion af spændvidde,
-// én kurve pr. materiale i biblioteket. Ingen chart-bibliotek nødvendigt.
+// Håndtegnede SVG-grafer. Ingen chart-bibliotek nødvendigt.
 
 import { beam } from '../core/mechanics.js';
-import { fmt } from '../core/units.js';
+import { fmt, massFromSI, fmtMass } from '../core/units.js';
 
 export const COLORS = ['#0b66c3', '#2e9e5b', '#d98324', '#7a4fb5', '#0e7490', '#b3261e', '#5b7c0a', '#9b1c6b'];
 
-export function capacityChart({ library, fixity, currentSpan, load, t, lang }) {
+// Bæreevne (arbejdsgrænse) som funktion af spændvidde, én kurve pr. materiale.
+// massU: 'kg' | 'lb' — kun visnings-/akse-enhed; y-skalaen regnes i kg.
+export function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, lang }) {
   const W = 400, H = 250, L = 46, R = 14, Tp = 12, B = 34;
   const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
-  const sMin = 0.5, sMax = 3.0, yMax = 250;             // kg-loft for læsbarhed
+  const sMin = 0.5, sMax = 3.0, yMax = 250;             // kg-skala (loft for læsbarhed)
   const X = s => x0 + (s - sMin) / (sMax - sMin) * (x1 - x0);
   const Y = v => y0 - Math.min(Math.max(v, 0), yMax) / yMax * (y0 - y1);
 
   const spans = [];
   for (let s = sMin; s <= sMax + 1e-9; s += 0.1) spans.push(Math.round(s * 100) / 100);
 
-  const yTicks = [0, 50, 100, 150, 200, 250];
-  const yGrid = yTicks.map(v =>
+  const yGrid = [0, 50, 100, 150, 200, 250].map(v =>
     `<line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" stroke="#e6ecf2"/>` +
-    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#6b7682">${v}</text>`).join('');
-
-  const xTicks = [0.5, 1, 1.5, 2, 2.5, 3];
-  const xGrid = xTicks.map(v =>
+    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#6b7682">${massU === 'lb' ? Math.round(massFromSI(v, 'lb')) : v}</text>`).join('');
+  const xGrid = [0.5, 1, 1.5, 2, 2.5, 3].map(v =>
     `<line x1="${X(v)}" y1="${y0}" x2="${X(v)}" y2="${y1}" stroke="#f1f4f7"/>` +
     `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#6b7682">${fmt(v, 1, lang)}</text>`).join('');
 
@@ -33,12 +31,10 @@ export function capacityChart({ library, fixity, currentSpan, load, t, lang }) {
 
   const loadLine = load <= yMax
     ? `<line x1="${x0}" y1="${Y(load)}" x2="${x1}" y2="${Y(load)}" stroke="#b3261e" stroke-dasharray="4 3" stroke-width="1.4"/>` +
-      `<text x="${x1 - 2}" y="${Y(load) - 3}" text-anchor="end" font-size="9" fill="#b3261e">${Math.round(load)} kg · ${t('bar.chart.load', lang)}</text>`
+      `<text x="${x1 - 2}" y="${Y(load) - 3}" text-anchor="end" font-size="9" fill="#b3261e">${fmtMass(load, massU, lang)} · ${t('bar.chart.load', lang)}</text>`
     : '';
-
   const spanLine = currentSpan >= sMin && currentSpan <= sMax
-    ? `<line x1="${X(currentSpan)}" y1="${y0}" x2="${X(currentSpan)}" y2="${y1}" stroke="#0b66c3" stroke-dasharray="3 3" stroke-width="1.2"/>`
-    : '';
+    ? `<line x1="${X(currentSpan)}" y1="${y0}" x2="${X(currentSpan)}" y2="${y1}" stroke="#0b66c3" stroke-dasharray="3 3" stroke-width="1.2"/>` : '';
 
   return `<svg viewBox="0 0 ${W} ${H}" class="chart" xmlns="http://www.w3.org/2000/svg">
     ${yGrid}${xGrid}
@@ -46,13 +42,13 @@ export function capacityChart({ library, fixity, currentSpan, load, t, lang }) {
     <line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="#9aa6b2"/>
     ${lines}${loadLine}${spanLine}
     <text x="${(x0 + x1) / 2}" y="${H - 2}" text-anchor="middle" font-size="9.5" fill="#52606d">${t('bar.chart.x', lang)}</text>
-    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t('bar.chart.y', lang)}</text>
+    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t('bar.chart.y', lang)} (${massU === 'lb' ? 'lbs' : 'kg'})</text>
   </svg>`;
 }
 
-// Generisk enkelt-kurve graf (genbruges af stolpe- og bar-fanen).
-// points: [{x,y}] · vLine/hLine: valgfri lodret/vandret reference.
-export function lineChart({ points, xMin, xMax, yMax, xLabel, yLabel, color = '#0b66c3', vLine, hLine, lang }) {
+// Generisk graf: én ELLER flere kurver. Giv enten `points` (+ color) eller
+// `series` = [{ points, color }]. vLine/hLine: valgfri lodret/vandret reference.
+export function lineChart({ points, series, xMin, xMax, yMax, xLabel, yLabel, color = '#0b66c3', vLine, hLine, lang }) {
   const W = 400, H = 210, L = 48, R = 14, Tp = 10, B = 30;
   const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
   yMax = yMax > 0 ? yMax : 1;
@@ -65,7 +61,9 @@ export function lineChart({ points, xMin, xMax, yMax, xLabel, yLabel, color = '#
   const xGrid = frac.map(f => xMin + f * (xMax - xMin)).map(v =>
     `<line x1="${X(v)}" y1="${y0}" x2="${X(v)}" y2="${y1}" stroke="#f1f4f7"/>` +
     `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#6b7682">${fmt(v, (xMax - xMin) <= 10 ? 1 : 0, lang)}</text>`).join('');
-  const poly = `<polyline fill="none" stroke="${color}" stroke-width="2" points="${points.map(p => `${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ')}"/>`;
+  const allSeries = series || [{ points, color }];
+  const poly = allSeries.map(s =>
+    `<polyline fill="none" stroke="${s.color || color}" stroke-width="2" points="${s.points.map(p => `${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ')}"/>`).join('');
   const vl = (vLine != null && vLine >= xMin && vLine <= xMax)
     ? `<line x1="${X(vLine)}" y1="${y0}" x2="${X(vLine)}" y2="${y1}" stroke="#0b66c3" stroke-dasharray="3 3" stroke-width="1.2"/>` : '';
   const hl = (hLine != null && hLine <= yMax)

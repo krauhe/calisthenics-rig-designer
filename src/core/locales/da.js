@@ -22,6 +22,9 @@ export const da = {
   'unit.ft': 'fod',
   'unit.mm': 'mm',
   'unit.in': 'tommer',
+  'units.mass': 'Vægt',
+  'unit.kg': 'kg',
+  'unit.lb': 'lbs',
 
   'mat.title': 'Materiale',
   'mat.add': '＋ Nyt materiale',
@@ -65,10 +68,10 @@ export const da = {
   'bar.res.ultimate': 'Brudlast',
   'bar.chart.title': 'Bæreevne vs. spændvidde',
   'bar.chart.x': 'Spændvidde (m)',
-  'bar.chart.y': 'Maks last (kg)',
+  'bar.chart.y': 'Maks last',
   'bar.chart.load': 'din last',
   'bar.chart2.title': 'Nedbøjning vs. belastning',
-  'bar.chart2.x': 'Last (kg)',
+  'bar.chart2.x': 'Last',
   'bar.chart2.y': 'Nedbøjning',
 
   'feel.solid': 'solidt',

@@ -231,6 +231,14 @@ function fmtDeflection(si_m, lang = 'da') {
   return fmt(mm, mm < 10 ? 2 : 1, lang) + ' mm';
 }
 
+// ---- Masse/last: kilogram (intern) ↔ visningsenhed 'kg' | 'lb' ----
+const LB_PER_KG = 2.2046226218;
+const massFromSI = (kg, unit) => unit === 'lb' ? kg * LB_PER_KG : kg;  // kg →
+const massToSI = (v, unit) => unit === 'lb' ? v / LB_PER_KG : v;       // → kg
+function fmtMass(kg, unit = 'kg', lang = 'da') {
+  return unit === 'lb' ? fmt(kg * LB_PER_KG, 0, lang) + ' lbs' : fmt(kg, 0, lang) + ' kg';
+}
+
 // Lille forskydning (nedbøjning/sving) vist i valgt tværsnitsenhed: mm eller tommer.
 function fmtDispl(mm, unit = 'mm', lang = 'da') {
   return unit === 'in'
@@ -371,9 +379,9 @@ function packPieces(pieces, stock = STOCK, kerf = KERF) {
 // Stål: EN 10255 S195T. Træ: C24 fyr.
 
 const CATALOG = [
-  { id: 'pipe-3-4', name: '3/4"',      kind: 'pipe', od: 26.9, wall: 2.6, E: 210e9, sRe: 195e6, sRm: 320e6 },
-  { id: 'pipe-1',   name: '1"',        kind: 'pipe', od: 33.7, wall: 3.2, E: 210e9, sRe: 195e6, sRm: 320e6 },
-  { id: 'pipe-1-4', name: '1 1/4"',    kind: 'pipe', od: 42.4, wall: 3.2, E: 210e9, sRe: 195e6, sRm: 320e6 },
+  { id: 'pipe-3-4', name: '3/4" rør',   kind: 'pipe', od: 26.9, wall: 2.6, E: 210e9, sRe: 195e6, sRm: 320e6 },
+  { id: 'pipe-1',   name: '1" rør',     kind: 'pipe', od: 33.7, wall: 3.2, E: 210e9, sRe: 195e6, sRm: 320e6 },
+  { id: 'pipe-1-4', name: '1 1/4" rør', kind: 'pipe', od: 42.4, wall: 3.2, E: 210e9, sRe: 195e6, sRm: 320e6 },
   { id: 'wood-10',  name: '10×10 træ', kind: 'wood', side: 100,           E: 10e9,  sRe: 10e6,  sRm: 24e6  },
   { id: 'wood-125', name: '12,5×12,5 træ', kind: 'wood', side: 125,       E: 10e9,  sRe: 10e6,  sRm: 24e6  },
   { id: 'wood-15',  name: '15×15 træ',     kind: 'wood', side: 150,       E: 10e9,  sRe: 10e6,  sRm: 24e6  },
@@ -400,7 +408,7 @@ function defaultDesign() {
     // Enheder uafhængigt pr. fane:
     units: {
       post: { len: 'm', dim: 'mm' },
-      bar:  { len: 'm', dim: 'mm' },
+      bar:  { len: 'm', dim: 'mm', mass: 'kg' },
       site: { len: 'm' },
     },
     // Materialebibliotek (kim = standardkataloget; brugeren kan tilføje egne):
@@ -480,7 +488,7 @@ function migrate(raw) {
 function fill(d) {
   const base = defaultDesign();
   const u = d.units || {};
-  return {
+  const merged = {
     ...base, ...d,
     schemaVersion: SCHEMA_VERSION,
     meta: { ...base.meta, ...(d.meta || {}) },
@@ -502,6 +510,20 @@ function fill(d) {
     defaults: d.defaults || base.defaults,
     site: { ...base.site, ...(d.site || {}) },
   };
+  merged.library = mergeCatalog(merged.library);
+  return merged;
+}
+
+// Hold de indbyggede materialer i biblioteket opdaterede med kataloget:
+// nye materialer tilføjes, navne/mål på indbyggede opdateres, egne bevares.
+function mergeCatalog(lib) {
+  const out = Array.isArray(lib) ? lib.slice() : [];
+  for (const c of CATALOG) {
+    const i = out.findIndex(m => m.id === c.id);
+    if (i < 0) out.push({ ...c, builtin: true });
+    else if (out[i].builtin) out[i] = { ...c, builtin: true };
+  }
+  return out;
 }
 
 function validate(d) {
@@ -639,6 +661,9 @@ const da = {
   'unit.ft': 'fod',
   'unit.mm': 'mm',
   'unit.in': 'tommer',
+  'units.mass': 'Vægt',
+  'unit.kg': 'kg',
+  'unit.lb': 'lbs',
 
   'mat.title': 'Materiale',
   'mat.add': '＋ Nyt materiale',
@@ -682,10 +707,10 @@ const da = {
   'bar.res.ultimate': 'Brudlast',
   'bar.chart.title': 'Bæreevne vs. spændvidde',
   'bar.chart.x': 'Spændvidde (m)',
-  'bar.chart.y': 'Maks last (kg)',
+  'bar.chart.y': 'Maks last',
   'bar.chart.load': 'din last',
   'bar.chart2.title': 'Nedbøjning vs. belastning',
-  'bar.chart2.x': 'Last (kg)',
+  'bar.chart2.x': 'Last',
   'bar.chart2.y': 'Nedbøjning',
 
   'feel.solid': 'solidt',
@@ -742,6 +767,9 @@ const en = {
   'unit.ft': 'ft',
   'unit.mm': 'mm',
   'unit.in': 'inch',
+  'units.mass': 'Weight',
+  'unit.kg': 'kg',
+  'unit.lb': 'lbs',
 
   'mat.title': 'Material',
   'mat.add': '＋ New material',
@@ -785,10 +813,10 @@ const en = {
   'bar.res.ultimate': 'Breaking load',
   'bar.chart.title': 'Capacity vs. span',
   'bar.chart.x': 'Span (m)',
-  'bar.chart.y': 'Max load (kg)',
+  'bar.chart.y': 'Max load',
   'bar.chart.load': 'your load',
   'bar.chart2.title': 'Deflection vs. load',
-  'bar.chart2.x': 'Load (kg)',
+  'bar.chart2.x': 'Load',
   'bar.chart2.y': 'Deflection',
 
   'feel.solid': 'solid',
@@ -921,29 +949,27 @@ function unitToggle(label, options, value, onChange) {
 }
 
 // ===== src/ui/chart.js =====
-// Håndtegnet SVG-graf: bæreevne (arbejdsgrænse, kg) som funktion af spændvidde,
-// én kurve pr. materiale i biblioteket. Ingen chart-bibliotek nødvendigt.
+// Håndtegnede SVG-grafer. Ingen chart-bibliotek nødvendigt.
 
 
 const COLORS = ['#0b66c3', '#2e9e5b', '#d98324', '#7a4fb5', '#0e7490', '#b3261e', '#5b7c0a', '#9b1c6b'];
 
-function capacityChart({ library, fixity, currentSpan, load, t, lang }) {
+// Bæreevne (arbejdsgrænse) som funktion af spændvidde, én kurve pr. materiale.
+// massU: 'kg' | 'lb' — kun visnings-/akse-enhed; y-skalaen regnes i kg.
+function capacityChart({ library, fixity, currentSpan, load, massU = 'kg', t, lang }) {
   const W = 400, H = 250, L = 46, R = 14, Tp = 12, B = 34;
   const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
-  const sMin = 0.5, sMax = 3.0, yMax = 250;             // kg-loft for læsbarhed
+  const sMin = 0.5, sMax = 3.0, yMax = 250;             // kg-skala (loft for læsbarhed)
   const X = s => x0 + (s - sMin) / (sMax - sMin) * (x1 - x0);
   const Y = v => y0 - Math.min(Math.max(v, 0), yMax) / yMax * (y0 - y1);
 
   const spans = [];
   for (let s = sMin; s <= sMax + 1e-9; s += 0.1) spans.push(Math.round(s * 100) / 100);
 
-  const yTicks = [0, 50, 100, 150, 200, 250];
-  const yGrid = yTicks.map(v =>
+  const yGrid = [0, 50, 100, 150, 200, 250].map(v =>
     `<line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" stroke="#e6ecf2"/>` +
-    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#6b7682">${v}</text>`).join('');
-
-  const xTicks = [0.5, 1, 1.5, 2, 2.5, 3];
-  const xGrid = xTicks.map(v =>
+    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#6b7682">${massU === 'lb' ? Math.round(massFromSI(v, 'lb')) : v}</text>`).join('');
+  const xGrid = [0.5, 1, 1.5, 2, 2.5, 3].map(v =>
     `<line x1="${X(v)}" y1="${y0}" x2="${X(v)}" y2="${y1}" stroke="#f1f4f7"/>` +
     `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#6b7682">${fmt(v, 1, lang)}</text>`).join('');
 
@@ -954,12 +980,10 @@ function capacityChart({ library, fixity, currentSpan, load, t, lang }) {
 
   const loadLine = load <= yMax
     ? `<line x1="${x0}" y1="${Y(load)}" x2="${x1}" y2="${Y(load)}" stroke="#b3261e" stroke-dasharray="4 3" stroke-width="1.4"/>` +
-      `<text x="${x1 - 2}" y="${Y(load) - 3}" text-anchor="end" font-size="9" fill="#b3261e">${Math.round(load)} kg · ${t('bar.chart.load', lang)}</text>`
+      `<text x="${x1 - 2}" y="${Y(load) - 3}" text-anchor="end" font-size="9" fill="#b3261e">${fmtMass(load, massU, lang)} · ${t('bar.chart.load', lang)}</text>`
     : '';
-
   const spanLine = currentSpan >= sMin && currentSpan <= sMax
-    ? `<line x1="${X(currentSpan)}" y1="${y0}" x2="${X(currentSpan)}" y2="${y1}" stroke="#0b66c3" stroke-dasharray="3 3" stroke-width="1.2"/>`
-    : '';
+    ? `<line x1="${X(currentSpan)}" y1="${y0}" x2="${X(currentSpan)}" y2="${y1}" stroke="#0b66c3" stroke-dasharray="3 3" stroke-width="1.2"/>` : '';
 
   return `<svg viewBox="0 0 ${W} ${H}" class="chart" xmlns="http://www.w3.org/2000/svg">
     ${yGrid}${xGrid}
@@ -967,13 +991,13 @@ function capacityChart({ library, fixity, currentSpan, load, t, lang }) {
     <line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y1}" stroke="#9aa6b2"/>
     ${lines}${loadLine}${spanLine}
     <text x="${(x0 + x1) / 2}" y="${H - 2}" text-anchor="middle" font-size="9.5" fill="#52606d">${t('bar.chart.x', lang)}</text>
-    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t('bar.chart.y', lang)}</text>
+    <text x="11" y="${(y0 + y1) / 2}" text-anchor="middle" font-size="9.5" fill="#52606d" transform="rotate(-90 11 ${(y0 + y1) / 2})">${t('bar.chart.y', lang)} (${massU === 'lb' ? 'lbs' : 'kg'})</text>
   </svg>`;
 }
 
-// Generisk enkelt-kurve graf (genbruges af stolpe- og bar-fanen).
-// points: [{x,y}] · vLine/hLine: valgfri lodret/vandret reference.
-function lineChart({ points, xMin, xMax, yMax, xLabel, yLabel, color = '#0b66c3', vLine, hLine, lang }) {
+// Generisk graf: én ELLER flere kurver. Giv enten `points` (+ color) eller
+// `series` = [{ points, color }]. vLine/hLine: valgfri lodret/vandret reference.
+function lineChart({ points, series, xMin, xMax, yMax, xLabel, yLabel, color = '#0b66c3', vLine, hLine, lang }) {
   const W = 400, H = 210, L = 48, R = 14, Tp = 10, B = 30;
   const x0 = L, x1 = W - R, y0 = H - B, y1 = Tp;
   yMax = yMax > 0 ? yMax : 1;
@@ -986,7 +1010,9 @@ function lineChart({ points, xMin, xMax, yMax, xLabel, yLabel, color = '#0b66c3'
   const xGrid = frac.map(f => xMin + f * (xMax - xMin)).map(v =>
     `<line x1="${X(v)}" y1="${y0}" x2="${X(v)}" y2="${y1}" stroke="#f1f4f7"/>` +
     `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#6b7682">${fmt(v, (xMax - xMin) <= 10 ? 1 : 0, lang)}</text>`).join('');
-  const poly = `<polyline fill="none" stroke="${color}" stroke-width="2" points="${points.map(p => `${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ')}"/>`;
+  const allSeries = series || [{ points, color }];
+  const poly = allSeries.map(s =>
+    `<polyline fill="none" stroke="${s.color || color}" stroke-width="2" points="${s.points.map(p => `${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`).join(' ')}"/>`).join('');
   const vl = (vLine != null && vLine >= xMin && vLine <= xMax)
     ? `<line x1="${X(vLine)}" y1="${y0}" x2="${X(vLine)}" y2="${y1}" stroke="#0b66c3" stroke-dasharray="3 3" stroke-width="1.2"/>` : '';
   const hl = (hLine != null && hLine <= yMax)
@@ -1227,7 +1253,7 @@ const tabPost = {
 };
 
 // ===== src/ui/tabBar.js =====
-// Fane: Bar-analyse. Bruger beam() fra kernen + en kapacitets-graf.
+// Fane: Bar-analyse. Bruger beam() fra kernen + to grafer.
 
 
 const tabBar = {
@@ -1239,6 +1265,10 @@ const tabBar = {
     const u = design.units.bar;
     const tt = k => ctx.t(k, lang);
     const lenTxt = tt(u.len === 'ft' ? 'unit.ft' : 'unit.m');
+    const massU = u.mass || 'kg';
+    const massTxt = massU === 'lb' ? 'lbs' : 'kg';
+    const inch = u.dim === 'in';
+    const cvDim = v => inch ? v / 25.4 : v;          // mm → visningsenhed
 
     const set = mut => { store.update(mut); compute(); };
     const results = el('div', { class: 'results' });
@@ -1251,13 +1281,18 @@ const tabBar = {
         unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], u.len,
           v => { store.update(d => { d.units.bar.len = v; }); rerender(); }),
         unitToggle(tt('units.section'), [['mm', tt('unit.mm')], ['in', tt('unit.in')]], u.dim,
-          v => { store.update(d => { d.units.bar.dim = v; }); rerender(); })),
+          v => { store.update(d => { d.units.bar.dim = v; }); rerender(); }),
+        unitToggle(tt('units.mass'), [['kg', tt('unit.kg')], ['lb', tt('unit.lb')]], massU,
+          v => { store.update(d => { d.units.bar.mass = v; }); rerender(); })),
       el('div', { class: 'mat-block' },
         el('span', { class: 'fld-l' }, tt('mat.title')),
         materialControl(ctx, 'bar')),
       field(`${tt('bar.span')} (${lenTxt})`, lenInput(a.span_m, u.len, v => set(d => { d.analysis.bar.span_m = v; }))),
-      field(`${tt('bar.load')} (kg)`, numInput(a.load_kg, 5, v => set(d => { d.analysis.bar.load_kg = v; }))),
-      field(`${tt('bar.fixity')}`, numInput(a.fixity, 0.05, v => set(d => { d.analysis.bar.fixity = Math.min(1, Math.max(0, v)); })), tt('bar.fixity.hint')));
+      field(`${tt('bar.load')} (${massTxt})`,
+        numInput(Math.round(massFromSI(a.load_kg, massU)), massU === 'lb' ? 10 : 5,
+          v => set(d => { d.analysis.bar.load_kg = massToSI(v, massU); }))),
+      field(`${tt('bar.fixity')}`, numInput(a.fixity, 0.05,
+        v => set(d => { d.analysis.bar.fixity = Math.min(1, Math.max(0, v)); })), tt('bar.fixity.hint')));
 
     function resRow(label, value, cls) {
       return el('div', { class: 'res' + (cls ? ' ' + cls : '') },
@@ -1272,29 +1307,36 @@ const tabBar = {
       clear(results);
       results.append(
         el('h3', {}, tt('post.res.title')),
-        resRow(`${tt('bar.res.deflection')} (${Math.round(a.load_kg)} kg)`, fmtDispl(deflMm, u.dim, lang), 'big'),
+        resRow(`${tt('bar.res.deflection')} (${fmtMass(a.load_kg, massU, lang)})`, fmtDispl(deflMm, u.dim, lang), 'big'),
         resRow(tt('post.res.feel'), tt(feelKey)),
-        resRow(tt('bar.res.yield'), `${Math.round(b.pYield)} kg`),
-        resRow(tt('bar.res.ultimate'), `${Math.round(b.pUlt)} kg`));
+        resRow(tt('bar.res.yield'), fmtMass(b.pYield, massU, lang)),
+        resRow(tt('bar.res.ultimate'), fmtMass(b.pUlt, massU, lang)));
 
-      chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')}</div>` +
-        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, t: ctx.t, lang });
+      // graf 1: nedbøjning vs. belastning — alle materialer, samme farvekode
+      const loads = [];
+      for (let Lk = 0; Lk <= 200 + 1e-9; Lk += 10) loads.push(Lk);
+      let maxMm = 0;
+      design.library.forEach(m => { maxMm = Math.max(maxMm, beam(a.span_m, m, 200, a.fixity).dReal * 1000); });
+      const dyMax = cvDim(Math.min(maxMm * 1.1, 80) || 1);
+      const series = design.library.map((m, i) => ({
+        color: COLORS[i % COLORS.length],
+        points: loads.map(Lk => ({ x: massFromSI(Lk, massU), y: cvDim(beam(a.span_m, m, Lk, a.fixity).dReal * 1000) })),
+      }));
+      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')}</div>` +
+        lineChart({ series, xMin: 0, xMax: massFromSI(200, massU), yMax: dyMax,
+          xLabel: `${tt('bar.chart2.x')} (${massTxt})`, yLabel: `${tt('bar.chart2.y')} (${inch ? 'in' : 'mm'})`,
+          vLine: massFromSI(a.load_kg, massU), lang });
+
+      // delt farve-legende (mellem graferne)
       clear(legend);
       design.library.forEach((m, i) => legend.append(
         el('span', { class: 'leg-item' },
           el('span', { class: 'leg-sw', style: `background:${COLORS[i % COLORS.length]}` }),
           m.name)));
 
-      // graf: nedbøjning som funktion af belastning (for det valgte materiale + spændvidde)
-      const loads = [];
-      for (let Lk = 0; Lk <= 200 + 1e-9; Lk += 10) loads.push(Lk);
-      const inch = u.dim === 'in';
-      const cv = v => inch ? v / 25.4 : v;
-      const dpts = loads.map(Lk => ({ x: Lk, y: cv(beam(a.span_m, mat, Lk, a.fixity).dReal * 1000) }));
-      const dyMax = Math.max(...dpts.map(p => p.y), inch ? 0.04 : 1) * 1.1;
-      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')}</div>` +
-        lineChart({ points: dpts, xMin: 0, xMax: 200, yMax: dyMax, xLabel: tt('bar.chart2.x'),
-          yLabel: tt('bar.chart2.y') + (inch ? ' (in)' : ' (mm)'), vLine: a.load_kg, hLine: cv(deflMm), lang });
+      // graf 2: bæreevne vs. spændvidde — alle materialer
+      chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')}</div>` +
+        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, t: ctx.t, lang });
     }
 
     compute();
@@ -1303,7 +1345,7 @@ const tabBar = {
       el('p', { class: 'intro' }, tt('bar.intro')),
       el('div', { class: 'twocol' },
         inputs,
-        el('div', {}, results, deflHost, chartHost, legend)));
+        el('div', {}, results, deflHost, legend, chartHost)));
   },
 };
 

@@ -22,6 +22,9 @@ export const en = {
   'unit.ft': 'ft',
   'unit.mm': 'mm',
   'unit.in': 'inch',
+  'units.mass': 'Weight',
+  'unit.kg': 'kg',
+  'unit.lb': 'lbs',
 
   'mat.title': 'Material',
   'mat.add': '＋ New material',
@@ -65,10 +68,10 @@ export const en = {
   'bar.res.ultimate': 'Breaking load',
   'bar.chart.title': 'Capacity vs. span',
   'bar.chart.x': 'Span (m)',
-  'bar.chart.y': 'Max load (kg)',
+  'bar.chart.y': 'Max load',
   'bar.chart.load': 'your load',
   'bar.chart2.title': 'Deflection vs. load',
-  'bar.chart2.x': 'Load (kg)',
+  'bar.chart2.x': 'Load',
   'bar.chart2.y': 'Deflection',
 
   'feel.solid': 'solid',
