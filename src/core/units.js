@@ -37,3 +37,10 @@ export function fmtDeflection(si_m, lang = 'da') {
   const mm = si_m * 1000;
   return fmt(mm, mm < 10 ? 2 : 1, lang) + ' mm';
 }
+
+// Lille forskydning (nedbøjning/sving) vist i valgt tværsnitsenhed: mm eller tommer.
+export function fmtDispl(mm, unit = 'mm', lang = 'da') {
+  return unit === 'in'
+    ? fmt(mm / MM_PER_IN, 2, lang) + '″'
+    : fmt(mm, mm < 10 ? 2 : 1, lang) + ' mm';
+}

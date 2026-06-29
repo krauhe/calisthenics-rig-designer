@@ -5,7 +5,7 @@ import { field, lenInput, numInput, unitToggle } from './controls.js';
 import { materialControl } from './library.js';
 import { resolveMaterial } from '../core/model.js';
 import { beam } from '../core/mechanics.js';
-import { fmt, fmtDeflection } from '../core/units.js';
+import { fmt, fmtDispl } from '../core/units.js';
 import { capacityChart, COLORS, lineChart } from './chart.js';
 
 export const tabBar = {
@@ -50,7 +50,7 @@ export const tabBar = {
       clear(results);
       results.append(
         el('h3', {}, tt('post.res.title')),
-        resRow(`${tt('bar.res.deflection')} (${Math.round(a.load_kg)} kg)`, fmtDeflection(b.dReal, lang), 'big'),
+        resRow(`${tt('bar.res.deflection')} (${Math.round(a.load_kg)} kg)`, fmtDispl(deflMm, u.dim, lang), 'big'),
         resRow(tt('post.res.feel'), tt(feelKey)),
         resRow(tt('bar.res.yield'), `${Math.round(b.pYield)} kg`),
         resRow(tt('bar.res.ultimate'), `${Math.round(b.pUlt)} kg`));
@@ -66,11 +66,13 @@ export const tabBar = {
       // graf: nedbøjning som funktion af belastning (for det valgte materiale + spændvidde)
       const loads = [];
       for (let Lk = 0; Lk <= 200 + 1e-9; Lk += 10) loads.push(Lk);
-      const dpts = loads.map(Lk => ({ x: Lk, y: beam(a.span_m, mat, Lk, a.fixity).dReal * 1000 }));
-      const dyMax = Math.max(...dpts.map(p => p.y), 1) * 1.1;
+      const inch = u.dim === 'in';
+      const cv = v => inch ? v / 25.4 : v;
+      const dpts = loads.map(Lk => ({ x: Lk, y: cv(beam(a.span_m, mat, Lk, a.fixity).dReal * 1000) }));
+      const dyMax = Math.max(...dpts.map(p => p.y), inch ? 0.04 : 1) * 1.1;
       deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')}</div>` +
-        lineChart({ points: dpts, xMin: 0, xMax: 200, yMax: dyMax, xLabel: tt('bar.chart2.x'), yLabel: tt('bar.chart2.y'),
-          vLine: a.load_kg, hLine: deflMm, lang });
+        lineChart({ points: dpts, xMin: 0, xMax: 200, yMax: dyMax, xLabel: tt('bar.chart2.x'),
+          yLabel: tt('bar.chart2.y') + (inch ? ' (in)' : ' (mm)'), vLine: a.load_kg, hLine: cv(deflMm), lang });
     }
 
     compute();

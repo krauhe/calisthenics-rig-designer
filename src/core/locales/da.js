@@ -50,7 +50,7 @@ export const da = {
   'post.res.feel': 'Føles',
   'post.chart.title': 'Sving vs. nedgravningsdybde',
   'post.chart.x': 'Dybde (m)',
-  'post.chart.y': 'Sving (mm)',
+  'post.chart.y': 'Sving',
 
   'bar.heading': 'Bar-analyse',
   'bar.intro': 'Analysér en vandret bar mellem to støtter.',
@@ -67,7 +67,7 @@ export const da = {
   'bar.chart.load': 'din last',
   'bar.chart2.title': 'Nedbøjning vs. belastning',
   'bar.chart2.x': 'Last (kg)',
-  'bar.chart2.y': 'Nedbøjning (mm)',
+  'bar.chart2.y': 'Nedbøjning',
 
   'feel.solid': 'solidt',
   'feel.springy': 'lidt fjedrende',
