@@ -16,6 +16,22 @@ const tabPost = {
     const results = el('div', { class: 'results' });
     const chartHost = el('div', { class: 'charthost' });
 
+    // Hullets sidemål kan ikke være mindre end stolpens sidemål/diameter.
+    const matPost = resolveMaterial(design, a.materialId);
+    const postSideMm = matPost.kind === 'wood' ? matPost.side : matPost.od;
+    if (a.hole_mm < postSideMm) a.hole_mm = postSideMm;
+    const holeToMm = v => u.dim === 'in' ? v * 25.4 : v * 10;
+    const holeFromMm = mm => Math.round((u.dim === 'in' ? mm / 25.4 : mm / 10) * 100) / 100;
+    const holeInp = el('input', { type: 'number', step: u.dim === 'in' ? '0.5' : '1',
+      min: String(holeFromMm(postSideMm)), value: String(holeFromMm(a.hole_mm)) });
+    holeInp.addEventListener('input', () => {
+      const v = parseFloat(holeInp.value); if (isNaN(v)) return;
+      set(d => { d.analysis.post.hole_mm = Math.max(holeToMm(v), postSideMm); });
+    });
+    holeInp.addEventListener('change', () => {
+      holeInp.value = String(holeFromMm(Math.max(holeToMm(parseFloat(holeInp.value) || 0), postSideMm)));
+    });
+
     const inputs = el('div', { class: 'panel' },
       el('div', { class: 'unit-row' },
         unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], u.len,
@@ -26,11 +42,8 @@ const tabPost = {
         el('span', { class: 'fld-l' }, tt('mat.title')),
         materialControl(ctx, 'post')),
       field(`${tt('post.depth')} (${lenTxt})`, lenInput(a.depth_m, u.len, v => set(d => { d.analysis.post.depth_m = v; }))),
-      field(`${tt('post.hole')} (${u.dim === 'in' ? tt('unit.in') : 'cm'})`,
-        numInput(
-          Math.round((u.dim === 'in' ? a.hole_mm / 25.4 : a.hole_mm / 10) * 100) / 100,
-          u.dim === 'in' ? 0.5 : 1,
-          v => set(d => { d.analysis.post.hole_mm = u.dim === 'in' ? v * 25.4 : v * 10; }))),
+      field(`${tt('post.hole')} (${u.dim === 'in' ? tt('unit.in') : 'cm'})`, holeInp,
+        `${tt('post.holeMin')}: ${holeFromMm(postSideMm)} ${u.dim === 'in' ? tt('unit.in') : 'cm'}`),
       field(`${tt('post.height')} (${lenTxt})`, lenInput(a.height_m, u.len, v => set(d => { d.analysis.post.height_m = v; }))));
 
     function resRow(label, value, cls) {
@@ -56,19 +69,33 @@ const tabPost = {
         resRow(tt('post.res.rot'), `${Math.round(f.Ktheta / 1000)} kNm/rad`),
         resRow(tt('post.res.feel'), tt(feelKey)));
 
-      // graf: sving som funktion af nedgravningsdybde
+      // graf: sving som funktion af nedgravningsdybde — opdelt i de tre dele
       const depths = [];
       for (let dp = 0.4; dp <= 2.0 + 1e-9; dp += 0.1) depths.push(Math.round(dp * 10) / 10);
       const inch = u.dim === 'in';
       const cv = v => inch ? v / 25.4 : v;
-      const pts = depths.map(dp => ({
-        x: dp,
-        y: cv(foundation({ postSide, depth: dp, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E }).dTop * 1000),
-      }));
-      const yMax = Math.max(...pts.map(p => p.y)) * 1.1;
+      const sSum = [], sBend = [], sRot = [];
+      depths.forEach(dp => {
+        const ff = foundation({ postSide, depth: dp, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E });
+        sSum.push({ x: dp, y: cv(ff.dTop * 1000) });
+        sBend.push({ x: dp, y: cv(ff.dBend * 1000) });
+        sRot.push({ x: dp, y: cv(ff.dRot * 1000) });
+      });
+      // Fast y-akse (uafhængig af hullet), så stolpe-elasticitet-linjen IKKE
+      // ser ud til at flytte sig når man kun ændrer hullet — kun fundament-
+      // og sum-linjen reagerer på hullet. Skaleres efter et fast referencehul.
+      const yRef = foundation({ postSide, depth: 0.4, hole: 0.30, topHeight: a.height_m, Ipost, E: mat.E });
+      const yMax = Math.max(cv(yRef.dTop * 1000), ...sBend.map(p => p.y)) * 1.12;
+      const series = [
+        { points: sSum, color: COLORS[0] },   // sum (blå)
+        { points: sBend, color: COLORS[1] },  // stolpe-elasticitet (grøn)
+        { points: sRot, color: COLORS[2] },   // fundament-eftergivenhed (orange)
+      ];
+      const swatch = (c, label) => `<span class="leg-item"><span class="leg-sw" style="background:${c}"></span>${label}</span>`;
       chartHost.innerHTML = `<div class="chart-title">${tt('post.chart.title')}</div>` +
-        lineChart({ points: pts, xMin: 0.4, xMax: 2.0, yMax, xLabel: tt('post.chart.x'),
-          yLabel: tt('post.chart.y') + (inch ? ' (in)' : ' (mm)'), vLine: a.depth_m, hLine: cv(swayMm), lang });
+        lineChart({ series, xMin: 0.4, xMax: 2.0, yMax, xLabel: tt('post.chart.x'),
+          yLabel: tt('post.chart.y') + (inch ? ' (in)' : ' (mm)'), vLine: a.depth_m, hLine: cv(swayMm), lang }) +
+        `<div class="legend">${swatch(COLORS[0], tt('post.res.swaySum'))}${swatch(COLORS[1], tt('post.res.swayPost'))}${swatch(COLORS[2], tt('post.res.swayBase'))}</div>`;
     }
 
     compute();

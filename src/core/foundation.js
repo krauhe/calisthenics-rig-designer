@@ -3,7 +3,12 @@
 // To bidrag til toppens sideflytning:
 //   1) pælens EGEN bøjning som en udkraget bjælke:  δ = H·h³ / (3·E·I_pæl)
 //   2) fundamentets DREJNING i jorden:              δ = (H·h/Kθ)·h
-// hvor drejestivheden Kθ = k_jord · b · D³ / 3  (∝ bredde × dybde³).
+// hvor drejestivheden Kθ har to dele:
+//     a) passivt jordtryk på betonklodsens SIDER langs dybden: k·b·D³/3
+//        (dybden tæller mest — vokser med D³)
+//     b) lodret basetryk UNDER betonklodsen:                   k·b⁴/12
+//        (klodsens bredde tæller — vokser med b⁴; vigtig for brede/lave klodser)
+//   Kθ = k·(b·D³/3 + b⁴/12).  Bredere/dybere betonklods ⇒ stivere fundament.
 //
 // Alle længder i meter. Parametriseret, så hver enkelt stolpe kan have
 // egne mål (sidemål, dybde, hul, højde) — den gamle udgave hardcodede
@@ -22,7 +27,8 @@
 
 function foundation({ postSide, depth, hole, topHeight, Ipost,
                              E = E_WOOD, kSoil = K_SOIL, refKg = 50 }) {
-  const Ktheta = kSoil * hole * depth ** 3 / 3;      // Nm/rad
+  const Ktheta = kSoil * (hole * depth ** 3 / 3      // siderne langs dybden (∝ b·D³)
+                        + hole ** 4 / 12);           // basetryk under klodsen (∝ b⁴)
   const Href = refKg * G;                            // N
   const Iw = Ipost != null ? Ipost : postSide ** 4 / 12;  // pælens inertimoment (m⁴)
 

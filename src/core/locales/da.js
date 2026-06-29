@@ -43,6 +43,7 @@ const da = {
   'post.intro': 'Analysér én nedgravet stolpe: hvor stift står den, og hvor meget svajer toppen?',
   'post.depth': 'Nedgravningsdybde',
   'post.hole': 'Hul / beton (sidemål)',
+  'post.holeMin': 'Mindst stolpens sidemål',
   'post.height': 'Højde til top',
   'post.res.title': 'Resultat',
   'post.res.stiffness': 'Sidestivhed',

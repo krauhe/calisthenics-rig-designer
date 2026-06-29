@@ -43,6 +43,7 @@ const en = {
   'post.intro': 'Analyse a single buried post: how stiff is it, and how much does the top sway?',
   'post.depth': 'Embedment depth',
   'post.hole': 'Hole / concrete (side)',
+  'post.holeMin': 'At least the post side',
   'post.height': 'Height to top',
   'post.res.title': 'Result',
   'post.res.stiffness': 'Lateral stiffness',

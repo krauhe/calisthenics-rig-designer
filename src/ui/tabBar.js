@@ -22,6 +22,30 @@ const tabBar = {
     const chartHost = el('div', { class: 'charthost' });
     const legend = el('div', { class: 'legend' });
 
+    // Spændvidde skal være positiv (0 ⇒ division med nul i beam); indspænding 0–1.
+    const MIN_SPAN = 0.1;
+    if (!(a.span_m >= MIN_SPAN)) a.span_m = MIN_SPAN;
+    a.fixity = Math.min(1, Math.max(0, a.fixity));
+    const spanToSI = v => lenToSI(v, u.len);
+    const spanFromSI = m => round(lenFromSI(m, u.len));
+    const spanInp = el('input', { type: 'number', step: u.len === 'ft' ? '0.1' : '0.05',
+      min: String(spanFromSI(MIN_SPAN)), value: String(spanFromSI(a.span_m)) });
+    spanInp.addEventListener('input', () => {
+      const v = parseFloat(spanInp.value); if (isNaN(v)) return;
+      set(d => { d.analysis.bar.span_m = Math.max(spanToSI(v), MIN_SPAN); });
+    });
+    spanInp.addEventListener('change', () => {
+      spanInp.value = String(spanFromSI(Math.max(spanToSI(parseFloat(spanInp.value) || 0), MIN_SPAN)));
+    });
+    const fixInp = el('input', { type: 'number', step: '0.05', min: '0', max: '1', value: String(a.fixity) });
+    fixInp.addEventListener('input', () => {
+      const v = parseFloat(fixInp.value); if (isNaN(v)) return;
+      set(d => { d.analysis.bar.fixity = Math.min(1, Math.max(0, v)); });
+    });
+    fixInp.addEventListener('change', () => {
+      fixInp.value = String(Math.min(1, Math.max(0, parseFloat(fixInp.value) || 0)));
+    });
+
     const inputs = el('div', { class: 'panel' },
       el('div', { class: 'unit-row' },
         unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], u.len,
@@ -33,13 +57,12 @@ const tabBar = {
       el('div', { class: 'mat-block' },
         el('span', { class: 'fld-l' }, tt('mat.title')),
         materialControl(ctx, 'bar')),
-      field(`${tt('bar.span')} (${lenTxt})`, lenInput(a.span_m, u.len, v => set(d => { d.analysis.bar.span_m = v; }))),
+      field(`${tt('bar.span')} (${lenTxt})`, spanInp),
       field(`${tt('bar.load')} (${massTxt})`,
         numInput(Math.round(massFromSI(a.load_kg, massU)), massU === 'lb' ? 10 : 5,
           v => set(d => { d.analysis.bar.load_kg = massToSI(v, massU); })),
         tt('bar.load.hint')),
-      field(`${tt('bar.fixity')}`, numInput(a.fixity, 0.05,
-        v => set(d => { d.analysis.bar.fixity = Math.min(1, Math.max(0, v)); })), tt('bar.fixity.hint')));
+      field(`${tt('bar.fixity')}`, fixInp, tt('bar.fixity.hint')));
 
     function resRow(label, value, cls) {
       return el('div', { class: 'res' + (cls ? ' ' + cls : '') },

@@ -355,7 +355,12 @@ function beam(L, member, loadKg, fixity = FIXITY) {
 // To bidrag til toppens sideflytning:
 //   1) pælens EGEN bøjning som en udkraget bjælke:  δ = H·h³ / (3·E·I_pæl)
 //   2) fundamentets DREJNING i jorden:              δ = (H·h/Kθ)·h
-// hvor drejestivheden Kθ = k_jord · b · D³ / 3  (∝ bredde × dybde³).
+// hvor drejestivheden Kθ har to dele:
+//     a) passivt jordtryk på betonklodsens SIDER langs dybden: k·b·D³/3
+//        (dybden tæller mest — vokser med D³)
+//     b) lodret basetryk UNDER betonklodsen:                   k·b⁴/12
+//        (klodsens bredde tæller — vokser med b⁴; vigtig for brede/lave klodser)
+//   Kθ = k·(b·D³/3 + b⁴/12).  Bredere/dybere betonklods ⇒ stivere fundament.
 //
 // Alle længder i meter. Parametriseret, så hver enkelt stolpe kan have
 // egne mål (sidemål, dybde, hul, højde) — den gamle udgave hardcodede
@@ -374,7 +379,8 @@ function beam(L, member, loadKg, fixity = FIXITY) {
 
 function foundation({ postSide, depth, hole, topHeight, Ipost,
                              E = E_WOOD, kSoil = K_SOIL, refKg = 50 }) {
-  const Ktheta = kSoil * hole * depth ** 3 / 3;      // Nm/rad
+  const Ktheta = kSoil * (hole * depth ** 3 / 3      // siderne langs dybden (∝ b·D³)
+                        + hole ** 4 / 12);           // basetryk under klodsen (∝ b⁴)
   const Href = refKg * G;                            // N
   const Iw = Ipost != null ? Ipost : postSide ** 4 / 12;  // pælens inertimoment (m⁴)
 
@@ -733,6 +739,7 @@ const da = {
   'post.intro': 'Analysér én nedgravet stolpe: hvor stift står den, og hvor meget svajer toppen?',
   'post.depth': 'Nedgravningsdybde',
   'post.hole': 'Hul / beton (sidemål)',
+  'post.holeMin': 'Mindst stolpens sidemål',
   'post.height': 'Højde til top',
   'post.res.title': 'Resultat',
   'post.res.stiffness': 'Sidestivhed',
@@ -891,6 +898,7 @@ const en = {
   'post.intro': 'Analyse a single buried post: how stiff is it, and how much does the top sway?',
   'post.depth': 'Embedment depth',
   'post.hole': 'Hole / concrete (side)',
+  'post.holeMin': 'At least the post side',
   'post.height': 'Height to top',
   'post.res.title': 'Result',
   'post.res.stiffness': 'Lateral stiffness',
@@ -1347,6 +1355,22 @@ const tabPost = {
     const results = el('div', { class: 'results' });
     const chartHost = el('div', { class: 'charthost' });
 
+    // Hullets sidemål kan ikke være mindre end stolpens sidemål/diameter.
+    const matPost = resolveMaterial(design, a.materialId);
+    const postSideMm = matPost.kind === 'wood' ? matPost.side : matPost.od;
+    if (a.hole_mm < postSideMm) a.hole_mm = postSideMm;
+    const holeToMm = v => u.dim === 'in' ? v * 25.4 : v * 10;
+    const holeFromMm = mm => Math.round((u.dim === 'in' ? mm / 25.4 : mm / 10) * 100) / 100;
+    const holeInp = el('input', { type: 'number', step: u.dim === 'in' ? '0.5' : '1',
+      min: String(holeFromMm(postSideMm)), value: String(holeFromMm(a.hole_mm)) });
+    holeInp.addEventListener('input', () => {
+      const v = parseFloat(holeInp.value); if (isNaN(v)) return;
+      set(d => { d.analysis.post.hole_mm = Math.max(holeToMm(v), postSideMm); });
+    });
+    holeInp.addEventListener('change', () => {
+      holeInp.value = String(holeFromMm(Math.max(holeToMm(parseFloat(holeInp.value) || 0), postSideMm)));
+    });
+
     const inputs = el('div', { class: 'panel' },
       el('div', { class: 'unit-row' },
         unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], u.len,
@@ -1357,11 +1381,8 @@ const tabPost = {
         el('span', { class: 'fld-l' }, tt('mat.title')),
         materialControl(ctx, 'post')),
       field(`${tt('post.depth')} (${lenTxt})`, lenInput(a.depth_m, u.len, v => set(d => { d.analysis.post.depth_m = v; }))),
-      field(`${tt('post.hole')} (${u.dim === 'in' ? tt('unit.in') : 'cm'})`,
-        numInput(
-          Math.round((u.dim === 'in' ? a.hole_mm / 25.4 : a.hole_mm / 10) * 100) / 100,
-          u.dim === 'in' ? 0.5 : 1,
-          v => set(d => { d.analysis.post.hole_mm = u.dim === 'in' ? v * 25.4 : v * 10; }))),
+      field(`${tt('post.hole')} (${u.dim === 'in' ? tt('unit.in') : 'cm'})`, holeInp,
+        `${tt('post.holeMin')}: ${holeFromMm(postSideMm)} ${u.dim === 'in' ? tt('unit.in') : 'cm'}`),
       field(`${tt('post.height')} (${lenTxt})`, lenInput(a.height_m, u.len, v => set(d => { d.analysis.post.height_m = v; }))));
 
     function resRow(label, value, cls) {
@@ -1387,19 +1408,33 @@ const tabPost = {
         resRow(tt('post.res.rot'), `${Math.round(f.Ktheta / 1000)} kNm/rad`),
         resRow(tt('post.res.feel'), tt(feelKey)));
 
-      // graf: sving som funktion af nedgravningsdybde
+      // graf: sving som funktion af nedgravningsdybde — opdelt i de tre dele
       const depths = [];
       for (let dp = 0.4; dp <= 2.0 + 1e-9; dp += 0.1) depths.push(Math.round(dp * 10) / 10);
       const inch = u.dim === 'in';
       const cv = v => inch ? v / 25.4 : v;
-      const pts = depths.map(dp => ({
-        x: dp,
-        y: cv(foundation({ postSide, depth: dp, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E }).dTop * 1000),
-      }));
-      const yMax = Math.max(...pts.map(p => p.y)) * 1.1;
+      const sSum = [], sBend = [], sRot = [];
+      depths.forEach(dp => {
+        const ff = foundation({ postSide, depth: dp, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E });
+        sSum.push({ x: dp, y: cv(ff.dTop * 1000) });
+        sBend.push({ x: dp, y: cv(ff.dBend * 1000) });
+        sRot.push({ x: dp, y: cv(ff.dRot * 1000) });
+      });
+      // Fast y-akse (uafhængig af hullet), så stolpe-elasticitet-linjen IKKE
+      // ser ud til at flytte sig når man kun ændrer hullet — kun fundament-
+      // og sum-linjen reagerer på hullet. Skaleres efter et fast referencehul.
+      const yRef = foundation({ postSide, depth: 0.4, hole: 0.30, topHeight: a.height_m, Ipost, E: mat.E });
+      const yMax = Math.max(cv(yRef.dTop * 1000), ...sBend.map(p => p.y)) * 1.12;
+      const series = [
+        { points: sSum, color: COLORS[0] },   // sum (blå)
+        { points: sBend, color: COLORS[1] },  // stolpe-elasticitet (grøn)
+        { points: sRot, color: COLORS[2] },   // fundament-eftergivenhed (orange)
+      ];
+      const swatch = (c, label) => `<span class="leg-item"><span class="leg-sw" style="background:${c}"></span>${label}</span>`;
       chartHost.innerHTML = `<div class="chart-title">${tt('post.chart.title')}</div>` +
-        lineChart({ points: pts, xMin: 0.4, xMax: 2.0, yMax, xLabel: tt('post.chart.x'),
-          yLabel: tt('post.chart.y') + (inch ? ' (in)' : ' (mm)'), vLine: a.depth_m, hLine: cv(swayMm), lang });
+        lineChart({ series, xMin: 0.4, xMax: 2.0, yMax, xLabel: tt('post.chart.x'),
+          yLabel: tt('post.chart.y') + (inch ? ' (in)' : ' (mm)'), vLine: a.depth_m, hLine: cv(swayMm), lang }) +
+        `<div class="legend">${swatch(COLORS[0], tt('post.res.swaySum'))}${swatch(COLORS[1], tt('post.res.swayPost'))}${swatch(COLORS[2], tt('post.res.swayBase'))}</div>`;
     }
 
     compute();
@@ -1435,6 +1470,30 @@ const tabBar = {
     const chartHost = el('div', { class: 'charthost' });
     const legend = el('div', { class: 'legend' });
 
+    // Spændvidde skal være positiv (0 ⇒ division med nul i beam); indspænding 0–1.
+    const MIN_SPAN = 0.1;
+    if (!(a.span_m >= MIN_SPAN)) a.span_m = MIN_SPAN;
+    a.fixity = Math.min(1, Math.max(0, a.fixity));
+    const spanToSI = v => lenToSI(v, u.len);
+    const spanFromSI = m => round(lenFromSI(m, u.len));
+    const spanInp = el('input', { type: 'number', step: u.len === 'ft' ? '0.1' : '0.05',
+      min: String(spanFromSI(MIN_SPAN)), value: String(spanFromSI(a.span_m)) });
+    spanInp.addEventListener('input', () => {
+      const v = parseFloat(spanInp.value); if (isNaN(v)) return;
+      set(d => { d.analysis.bar.span_m = Math.max(spanToSI(v), MIN_SPAN); });
+    });
+    spanInp.addEventListener('change', () => {
+      spanInp.value = String(spanFromSI(Math.max(spanToSI(parseFloat(spanInp.value) || 0), MIN_SPAN)));
+    });
+    const fixInp = el('input', { type: 'number', step: '0.05', min: '0', max: '1', value: String(a.fixity) });
+    fixInp.addEventListener('input', () => {
+      const v = parseFloat(fixInp.value); if (isNaN(v)) return;
+      set(d => { d.analysis.bar.fixity = Math.min(1, Math.max(0, v)); });
+    });
+    fixInp.addEventListener('change', () => {
+      fixInp.value = String(Math.min(1, Math.max(0, parseFloat(fixInp.value) || 0)));
+    });
+
     const inputs = el('div', { class: 'panel' },
       el('div', { class: 'unit-row' },
         unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], u.len,
@@ -1446,13 +1505,12 @@ const tabBar = {
       el('div', { class: 'mat-block' },
         el('span', { class: 'fld-l' }, tt('mat.title')),
         materialControl(ctx, 'bar')),
-      field(`${tt('bar.span')} (${lenTxt})`, lenInput(a.span_m, u.len, v => set(d => { d.analysis.bar.span_m = v; }))),
+      field(`${tt('bar.span')} (${lenTxt})`, spanInp),
       field(`${tt('bar.load')} (${massTxt})`,
         numInput(Math.round(massFromSI(a.load_kg, massU)), massU === 'lb' ? 10 : 5,
           v => set(d => { d.analysis.bar.load_kg = massToSI(v, massU); })),
         tt('bar.load.hint')),
-      field(`${tt('bar.fixity')}`, numInput(a.fixity, 0.05,
-        v => set(d => { d.analysis.bar.fixity = Math.min(1, Math.max(0, v)); })), tt('bar.fixity.hint')));
+      field(`${tt('bar.fixity')}`, fixInp, tt('bar.fixity.hint')));
 
     function resRow(label, value, cls) {
       return el('div', { class: 'res' + (cls ? ' ' + cls : '') },
