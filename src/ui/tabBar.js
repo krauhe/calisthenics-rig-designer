@@ -67,7 +67,7 @@ const tabBar = {
         color: COLORS[i % COLORS.length],
         points: loads.map(Lk => ({ x: massFromSI(Lk, massU), y: cvDim(beam(a.span_m, m, Lk, a.fixity).dReal * 1000) })),
       }));
-      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')}</div>` +
+      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')} · ${fmt(lenFromSI(a.span_m, u.len), 2, lang)} ${lenTxt}</div>` +
         lineChart({ series, xMin: 0, xMax: massFromSI(200, massU), yMax: dyMax,
           xLabel: `${tt('bar.chart2.x')} (${massTxt})`, yLabel: `${tt('bar.chart2.y')} (${inch ? 'in' : 'mm'})`,
           vLine: massFromSI(a.load_kg, massU), lang });
