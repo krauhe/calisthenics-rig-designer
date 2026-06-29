@@ -13,7 +13,7 @@ const TABS = [
   tabPost,
   tabBar,
   tabSite,
-  placeholderTab('view3d', 'tab.view3d'),
+  placeholderTab('view3d', 'tab.view3d', { linkHref: 'chalestetics-3d.html', linkKey: 'view3d.classic' }),
   placeholderTab('materials', 'tab.materials'),
 ];
 

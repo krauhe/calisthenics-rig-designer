@@ -93,6 +93,7 @@ export const en = {
 
   'soon.title': 'Coming soon',
   'soon.body': 'This tab is built in a later phase of the rebuild.',
+  'view3d.classic': 'Open the classic 3D view →',
 
   'disclaimer': '⚠️ Simplified estimates for planning — no guarantee of correctness. Use at your own risk; have body-weight-bearing structures checked by a professional.',
 };

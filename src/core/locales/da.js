@@ -93,6 +93,7 @@ export const da = {
 
   'soon.title': 'Kommer snart',
   'soon.body': 'Denne fane bygges i en senere fase af ombygningen.',
+  'view3d.classic': 'Åbn den klassiske 3D-visning →',
 
   'disclaimer': '⚠️ Forenklede overslag til planlægning — ingen garanti for korrekthed. Brug på eget ansvar; kontrollér kropsbærende konstruktioner med en fagperson.',
 };
