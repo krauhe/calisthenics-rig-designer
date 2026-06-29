@@ -100,6 +100,13 @@ const da = {
   'site.help.connect': 'Forbind: klik på to stolper for at lave en forbindelse imellem dem.',
   'site.help.ladder': 'Stige: klik på en stolpe for at sætte en stige på den.',
   'site.help.delete': 'Slet: klik på en stolpe, forbindelse eller stige for at fjerne den.',
+  'site.refload': 'Designlast pr. bar',
+  'site.refload.hint': 'Husk ~2× kropsvægt (dynamik). Bruges til at markere spinkle forbindelser.',
+  'site.conn.title': 'Valgt forbindelse',
+  'site.conn.span': 'Spænd',
+  'site.conn.deflection': 'Nedbøjning ved',
+  'site.conn.critical': '⚠ Lavt dimensioneret — for spinkelt til designlasten',
+  'site.conn.none': 'Vælg en forbindelse (med Vælg/flyt) for at se styrke og ændre materiale/højde.',
 
   'soon.title': 'Kommer snart',
   'soon.body': 'Denne fane bygges i en senere fase af ombygningen.',

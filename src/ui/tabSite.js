@@ -1,17 +1,17 @@
-// Fane: Kort (top-ned) — et lille tegneprogram for stativets grundplan.
-// Værktøjspalette i venstre side, gitter med justerbar opløsning (default =
-// stolpetykkelse), snapping, pan/zoom, og placering af stolper, forbindelser
-// og stiger direkte i graf-modellen (design.posts/connections/attachments).
+// Fane: Kort (top-ned) — tegneprogram for stativets grundplan.
+// Værktøjspalette, gitter m. snapping, pan/zoom, placering af stolper,
+// forbindelser og stiger. Vælg en forbindelse for at ændre materiale/højde
+// og se styrke (brudlast, sikker arbejdslast, nedbøjning). Forbindelsens
+// tykkelse viser materialestørrelsen; spinkle (kritiske) markeres rødt.
 
+const W = 520, H = 440;
+const MIN_K = 12, MAX_K = 400;
 
-const W = 520, H = 440;                 // SVG bruger-koordinater (viewBox)
-const MIN_K = 12, MAX_K = 400;          // zoom-grænser (px pr. meter)
-
-// Vedvarende editor-tilstand på tværs af re-renders:
 let tool = 'select';
 let selectedPost = null;
+let selectedConn = null;
 let connectFrom = null;
-let view = null;                        // { k, tx, ty }
+let view = null;
 
 const TOOLS = [
   ['select', '🖱', 'tool.select'],
@@ -29,10 +29,10 @@ const tabSite = {
     const tt = k => ctx.t(k, lang);
     if (!view) view = { k: 70, tx: W / 2, ty: H * 0.6 };
 
-    const mapBox = el('div', { class: 'map' });   // container; vi indsætter et helt <svg> via innerHTML
+    const mapBox = el('div', { class: 'map' });      // container; vi indsætter et helt <svg>
+    const selPanel = el('div', { class: 'selpanel' });
     const help = el('div', { class: 'map-help' });
 
-    // ---- koordinat-transform ----
     const toScreen = (wx, wz) => [wx * view.k + view.tx, wz * view.k + view.ty];
     const toWorld = (sx, sy) => [(sx - view.tx) / view.k, (sy - view.ty) / view.k];
     const snap = w => { const g = design.site.grid_m || 0.125; return Math.round(w / g) * g; };
@@ -53,33 +53,42 @@ const tabSite = {
       const i = design.library.findIndex(m => m.id === (ref && ref.id));
       return COLORS[(i < 0 ? 0 : i) % COLORS.length];
     };
+    const byPost = () => Object.fromEntries(design.posts.map(p => [p.id, p]));
+    const spanOf = (c, byId) => { const a = byId[c.a], b = byId[c.b]; return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0; };
 
     function setHelp() { help.textContent = tt('site.help.' + tool); }
 
-    // ---- tegn scenen ----
     function redraw() {
       const g = design.site.grid_m || 0.125;
+      const refLoad = design.site.refLoad_kg || 120;
       const [minWx, minWz] = toWorld(0, 0), [maxWx, maxWz] = toWorld(W, H);
-      let step = g; while (step * view.k < 7) step *= 2;     // undgå for tætte linjer
+      let step = g; while (step * view.k < 7) step *= 2;
 
       let grid = '';
       for (let x = Math.ceil(minWx / step) * step; x <= maxWx; x += step) {
-        const [sx] = toScreen(x, 0);
-        const axis = Math.abs(x) < 1e-9;
+        const [sx] = toScreen(x, 0); const axis = Math.abs(x) < 1e-9;
         grid += `<line x1="${sx.toFixed(1)}" y1="0" x2="${sx.toFixed(1)}" y2="${H}" stroke="${axis ? '#b7c2cd' : '#e7ecf1'}" stroke-width="${axis ? 1.2 : 1}"/>`;
       }
       for (let z = Math.ceil(minWz / step) * step; z <= maxWz; z += step) {
-        const [, sy] = toScreen(0, z);
-        const axis = Math.abs(z) < 1e-9;
+        const [, sy] = toScreen(0, z); const axis = Math.abs(z) < 1e-9;
         grid += `<line x1="0" y1="${sy.toFixed(1)}" x2="${W}" y2="${sy.toFixed(1)}" stroke="${axis ? '#b7c2cd' : '#e7ecf1'}" stroke-width="${axis ? 1.2 : 1}"/>`;
       }
 
-      const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
+      const byId = byPost();
       let conns = '';
       for (const c of design.connections) {
         const a = byId[c.a], b = byId[c.b]; if (!a || !b) continue;
         const [ax, ay] = toScreen(a.x_m, a.z_m), [bx, by] = toScreen(b.x_m, b.z_m);
-        conns += `<line data-el="conn" data-id="${c.id}" x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${colorOf(c.material)}" stroke-width="4" stroke-linecap="round"/>`;
+        const mat = connMat(c.material);
+        const dimMm = mat.kind === 'wood' ? mat.side : mat.od;
+        const sw = Math.max(2, Math.min(11, dimMm / 12));          // tykkelse = materialestørrelse
+        const span = Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m);
+        const critical = span > 0 && beam(span, mat, 1, 0.25).pYield < refLoad;
+        const X1 = ax.toFixed(1), Y1 = ay.toFixed(1), X2 = bx.toFixed(1), Y2 = by.toFixed(1);
+        if (c.id === selectedConn) conns += `<line x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#0b66c3" stroke-width="${sw + 6}" stroke-linecap="round" opacity="0.35"/>`;
+        if (critical) conns += `<line x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#e11d1d" stroke-width="${sw + 5}" stroke-linecap="round" opacity="0.5"/>`;
+        conns += `<line x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="${colorOf(c.material)}" stroke-width="${sw}" stroke-linecap="round"/>`;
+        conns += `<line data-el="conn" data-id="${c.id}" x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#000" opacity="0" stroke-width="14" stroke-linecap="round" pointer-events="all"/>`;
       }
 
       const side = Math.max(7, postSideM() * view.k);
@@ -111,44 +120,57 @@ const tabSite = {
         `</svg>`;
     }
 
-    // ---- interaktion ----
-    let drag = null;   // { mode:'pan'|'move', id?, startUx, startUy, startTx, startTy, moved }
+    // ---- inspector for valgt forbindelse ----
+    function infoRow(l, v) {
+      return el('div', { class: 'res' }, el('span', { class: 'res-l' }, l), el('span', { class: 'res-v' }, v));
+    }
+    function updateSelPanel() {
+      clear(selPanel);
+      const c = design.connections.find(x => x.id === selectedConn);
+      if (!c) { selPanel.append(el('p', { class: 'sel-hint' }, tt('site.conn.none'))); return; }
+      const byId = byPost();
+      const span = spanOf(c, byId);
+      const mat = connMat(c.material);
+      const refLoad = design.site.refLoad_kg || 120;
+      const res = beam(Math.max(span, 0.05), mat, refLoad, 0.25);
+      const critical = res.pYield < refLoad;
+      selPanel.append(
+        el('h3', {}, tt('site.conn.title')),
+        el('label', { class: 'fld' }, el('span', { class: 'fld-l' }, tt('mat.title')),
+          select(design.library.map(m => [m.id, m.name]), mat.id,
+            v => { store.update(d => { d.connections.find(x => x.id === c.id).material = { source: 'library', id: v }; }); redraw(); updateSelPanel(); })),
+        el('label', { class: 'fld' }, el('span', { class: 'fld-l' }, `${tt('site.connheight')} (m)`),
+          lenInput(c.height_m, 'm', v => { store.update(d => { d.connections.find(x => x.id === c.id).height_m = v; }); })),
+        el('div', { class: 'sel-info' },
+          infoRow(tt('site.conn.span'), `${fmt(span, 2, lang)} m`),
+          infoRow(`${tt('site.conn.deflection')} ${Math.round(refLoad)} kg`, fmtDispl(res.dReal * 1000, 'mm', lang)),
+          infoRow(tt('bar.res.yield'), fmtMass(res.pYield, 'kg', lang)),
+          infoRow(tt('bar.res.ultimate'), fmtMass(res.pUlt, 'kg', lang))),
+        critical ? el('div', { class: 'crit' }, tt('site.conn.critical')) : null);
+    }
 
+    // ---- interaktion ----
+    let drag = null;
     mapBox.addEventListener('pointerdown', e => {
       const [ux, uy] = evtToUser(e);
       const t = e.target.closest('[data-el]');
       const kind = t && t.getAttribute('data-el');
       const id = t && t.getAttribute('data-id');
-      if (tool === 'select' && kind === 'post') {
-        drag = { mode: 'move', id, startUx: ux, startUy: uy, moved: false };
-        mapBox.setPointerCapture(e.pointerId);
-      } else if (tool === 'select') {
-        drag = { mode: 'pan', startUx: ux, startUy: uy, startTx: view.tx, startTy: view.ty, moved: false };
-        mapBox.setPointerCapture(e.pointerId);
-      }
+      if (tool === 'select' && kind === 'post') { drag = { mode: 'move', id, startUx: ux, startUy: uy, moved: false }; mapBox.setPointerCapture(e.pointerId); }
+      else if (tool === 'select') { drag = { mode: 'pan', startUx: ux, startUy: uy, startTx: view.tx, startTy: view.ty, moved: false }; mapBox.setPointerCapture(e.pointerId); }
     });
-
     mapBox.addEventListener('pointermove', e => {
       if (!drag) return;
       const [ux, uy] = evtToUser(e);
       if (Math.hypot(ux - drag.startUx, uy - drag.startUy) > 3) drag.moved = true;
-      if (drag.mode === 'pan') {
-        view.tx = drag.startTx + (ux - drag.startUx);
-        view.ty = drag.startTy + (uy - drag.startUy);
-        redraw();
-      } else if (drag.mode === 'move') {
-        const p = design.posts.find(x => x.id === drag.id); if (!p) return;
-        const [wx, wz] = toWorld(ux, uy);
-        p.x_m = snap(wx); p.z_m = snap(wz);
-        redraw();
-      }
+      if (drag.mode === 'pan') { view.tx = drag.startTx + (ux - drag.startUx); view.ty = drag.startTy + (uy - drag.startUy); redraw(); }
+      else if (drag.mode === 'move') { const p = design.posts.find(x => x.id === drag.id); if (!p) return; const [wx, wz] = toWorld(ux, uy); p.x_m = snap(wx); p.z_m = snap(wz); redraw(); updateSelPanel(); }
     });
-
     mapBox.addEventListener('pointerup', e => {
       const wasDrag = drag && drag.moved;
-      if (drag && drag.mode === 'move' && drag.moved) store.commit();   // gem flytning
+      if (drag && drag.mode === 'move' && drag.moved) store.commit();
       drag = null;
-      if (wasDrag) return;                 // det var et træk, ikke et klik
+      if (wasDrag) return;
       handleClick(e);
     });
 
@@ -163,18 +185,15 @@ const tabSite = {
         store.update(d => d.posts.push({ id: nextId(d.posts, 'p'), x_m: snap(wx), z_m: snap(wz), override: null }));
         redraw();
       } else if (tool === 'select') {
-        selectedPost = kind === 'post' ? id : null; redraw();
+        selectedPost = kind === 'post' ? id : null;
+        selectedConn = kind === 'conn' ? id : null;
+        redraw(); updateSelPanel();
       } else if (tool === 'connect' && kind === 'post') {
         if (!connectFrom) { connectFrom = id; }
         else if (connectFrom !== id) {
           const a = connectFrom, b = id;
           const exists = design.connections.some(c => (c.a === a && c.b === b) || (c.a === b && c.b === a));
-          if (!exists) store.update(d => d.connections.push({
-            id: nextId(d.connections, 'c'), a, b,
-            height_m: d.site.connHeight_m,
-            material: { source: 'library', id: d.site.connMaterialId },
-            onTop: false,
-          }));
+          if (!exists) store.update(d => d.connections.push({ id: nextId(d.connections, 'c'), a, b, height_m: d.site.connHeight_m, material: { source: 'library', id: d.site.connMaterialId }, onTop: false }));
           connectFrom = null;
         }
         redraw();
@@ -182,18 +201,12 @@ const tabSite = {
         store.update(d => d.attachments.push({ id: nextId(d.attachments, 'a'), type: 'ladder', postId: id, width_m: d.site.ladderWidth_m }));
         redraw();
       } else if (tool === 'delete') {
-        if (kind === 'post') store.update(d => {
-          d.posts = d.posts.filter(p => p.id !== id);
-          d.connections = d.connections.filter(c => c.a !== id && c.b !== id);
-          d.attachments = d.attachments.filter(at => at.postId !== id);
-        });
-        else if (kind === 'conn') store.update(d => {
-          d.connections = d.connections.filter(c => c.id !== id);
-          d.attachments = d.attachments.filter(at => at.connectionId !== id);
-        });
+        if (kind === 'post') store.update(d => { d.posts = d.posts.filter(p => p.id !== id); d.connections = d.connections.filter(c => c.a !== id && c.b !== id); d.attachments = d.attachments.filter(at => at.postId !== id); });
+        else if (kind === 'conn') store.update(d => { d.connections = d.connections.filter(c => c.id !== id); d.attachments = d.attachments.filter(at => at.connectionId !== id); });
         else if (kind === 'ladder') store.update(d => { d.attachments = d.attachments.filter(at => at.id !== id); });
         if (selectedPost && !design.posts.some(p => p.id === selectedPost)) selectedPost = null;
-        redraw();
+        if (selectedConn && !design.connections.some(c => c.id === selectedConn)) selectedConn = null;
+        redraw(); updateSelPanel();
       }
     }
 
@@ -203,7 +216,6 @@ const tabSite = {
       const [wx, wz] = toWorld(ux, uy);
       const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
       view.k = Math.min(MAX_K, Math.max(MIN_K, view.k * factor));
-      // hold punktet under markøren fast
       view.tx = ux - wx * view.k; view.ty = uy - wz * view.k;
       redraw();
     }, { passive: false });
@@ -218,13 +230,13 @@ const tabSite = {
       redraw();
     }
 
-    // ---- palette + indstillinger ----
+    // ---- palette ----
     const palette = el('div', { class: 'toolpalette' },
       ...TOOLS.map(([id, icon, key]) =>
         el('button', { class: 'toolbtn' + (tool === id ? ' on' : ''), type: 'button', title: tt(key), 'data-tool': id,
-          onclick: () => { tool = id; connectFrom = null; selectedPost = null; setHelp();
+          onclick: () => { tool = id; connectFrom = null; selectedPost = null; selectedConn = null; setHelp();
             palette.querySelectorAll('.toolbtn').forEach(b => b.classList.toggle('on', b.getAttribute('data-tool') === id));
-            redraw(); } },
+            redraw(); updateSelPanel(); } },
           el('span', { class: 'toolbtn-i' }, icon), el('span', { class: 'toolbtn-t' }, tt(key)))),
       el('div', { class: 'zoombar' },
         el('button', { class: 'btn-sm', type: 'button', title: 'zoom +', onclick: () => zoom(1.2) }, '＋'),
@@ -233,10 +245,10 @@ const tabSite = {
 
     function zoom(f) { view.k = Math.min(MAX_K, Math.max(MIN_K, view.k * f)); redraw(); }
 
+    // ---- indstillinger ----
     const gridCm = Math.round((design.site.grid_m || 0.125) * 1000) / 10;
     const gridInp = el('input', { type: 'number', step: '0.5', min: '1', value: String(gridCm), style: 'width:70px' });
     gridInp.addEventListener('input', () => { const v = parseFloat(gridInp.value); if (v > 0) { store.update(d => { d.site.grid_m = v / 100; }); redraw(); } });
-
     const presets = el('div', { class: 'gridpresets' },
       ...[5, 10, 12.5, 25, 50].map(cm =>
         el('button', { class: 'btn-sm', type: 'button', onclick: () => { gridInp.value = String(cm); store.update(d => { d.site.grid_m = cm / 100; }); redraw(); } }, cm + '')));
@@ -249,15 +261,18 @@ const tabSite = {
       el('label', { class: 'fld inline' }, el('span', { class: 'fld-l' }, `${tt('site.connheight')} (m)`),
         lenInput(design.site.connHeight_m, 'm', v => store.update(d => { d.site.connHeight_m = v; }))),
       el('label', { class: 'fld inline' }, el('span', { class: 'fld-l' }, `${tt('site.ladderwidth')} (m)`),
-        lenInput(design.site.ladderWidth_m, 'm', v => store.update(d => { d.site.ladderWidth_m = v; }))));
+        lenInput(design.site.ladderWidth_m, 'm', v => store.update(d => { d.site.ladderWidth_m = v; }))),
+      el('label', { class: 'fld inline', title: tt('site.refload.hint') }, el('span', { class: 'fld-l' }, `${tt('site.refload')} (kg)`),
+        numInput(design.site.refLoad_kg || 120, 5, v => { store.update(d => { d.site.refLoad_kg = v; }); redraw(); updateSelPanel(); })));
 
     setHelp();
     redraw();
+    updateSelPanel();
     container.append(
       el('h2', {}, tt('tab.site')),
       el('p', { class: 'intro' }, tt('site.intro')),
       settings,
-      el('div', { class: 'map-wrap' }, palette, mapBox),
+      el('div', { class: 'map-wrap' }, palette, mapBox, selPanel),
       help);
   },
 };

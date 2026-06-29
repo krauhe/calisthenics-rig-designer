@@ -100,6 +100,13 @@ const en = {
   'site.help.connect': 'Connect: click two posts to create a connection between them.',
   'site.help.ladder': 'Ladder: click a post to attach a ladder to it.',
   'site.help.delete': 'Delete: click a post, connection or ladder to remove it.',
+  'site.refload': 'Design load per bar',
+  'site.refload.hint': 'Remember ~2x body weight (dynamic). Used to flag under-dimensioned connections.',
+  'site.conn.title': 'Selected connection',
+  'site.conn.span': 'Span',
+  'site.conn.deflection': 'Deflection at',
+  'site.conn.critical': '⚠ Under-dimensioned — too slim for the design load',
+  'site.conn.none': 'Select a connection (with Select/move) to see its strength and change material/height.',
 
   'soon.title': 'Coming soon',
   'soon.body': 'This tab is built in a later phase of the rebuild.',

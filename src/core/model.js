@@ -34,6 +34,7 @@ function defaultDesign() {
       connMaterialId: 'pipe-1',
       connHeight_m: 2.0,
       ladderWidth_m: 0.5,
+      refLoad_kg: 120,    // designlast pr. bar (til kritisk-markering på kortet)
     },
     defaults: {
       post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 300, height_m: 3.0 },
