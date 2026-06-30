@@ -3181,19 +3181,21 @@ function build3d(THREE, host, design, ctx) {
   design.posts.forEach((p, pi) => {
     const X = p.x_m - cx, Z = p.z_m - cz;
     const above = aboveOf[p.id];
+    const dP = p.depth_m != null ? p.depth_m : DEPTH;          // egen dybde (fra Kort)
+    const hP = p.hole_mm != null ? p.hole_mm / 1000 : HOLE;    // eget hul/betonklods
     maxR = Math.max(maxR, Math.hypot(X, Z));
-    const total = above + DEPTH;
+    const total = above + dP;
     const post = new THREE.Mesh(new THREE.BoxGeometry(POST, total, POST), woodMat);
-    post.position.set(X, (above - DEPTH) / 2, Z); post.castShadow = true; post.receiveShadow = true; group.add(post);
+    post.position.set(X, (above - dP) / 2, Z); post.castShadow = true; post.receiveShadow = true; group.add(post);
 
-    const gravel = new THREE.Mesh(new THREE.BoxGeometry(HOLE, GRAVEL_H, HOLE), gravelMat);
-    gravel.position.set(X, -DEPTH + GRAVEL_H / 2, Z); group.add(gravel);
+    const gravel = new THREE.Mesh(new THREE.BoxGeometry(hP, GRAVEL_H, hP), gravelMat);
+    gravel.position.set(X, -dP + GRAVEL_H / 2, Z); group.add(gravel);
 
-    const concH = Math.max(0.01, DEPTH - GRAVEL_H);
-    const conc = new THREE.Mesh(new THREE.BoxGeometry(HOLE, concH, HOLE), concMat);
-    conc.position.set(X, -DEPTH + GRAVEL_H + concH / 2, Z); group.add(conc);
+    const concH = Math.max(0.01, dP - GRAVEL_H);
+    const conc = new THREE.Mesh(new THREE.BoxGeometry(hP, concH, hP), concMat);
+    conc.position.set(X, -dP + GRAVEL_H + concH / 2, Z); group.add(conc);
 
-    const tarBot = Math.max(TAR_BOTTOM, -DEPTH), tarH = TAR_TOP - tarBot;
+    const tarBot = Math.max(TAR_BOTTOM, -dP), tarH = TAR_TOP - tarBot;
     const tar = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.06, tarH, POST * 1.06), tarMat);
     tar.position.set(X, (tarBot + TAR_TOP) / 2, Z); group.add(tar);
     const tarTop = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.02, 0.02, POST * 1.02), tarMat);
