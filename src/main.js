@@ -1,7 +1,7 @@
 // App-bootstrap: bygger header (sprog), fanebjælke, indhold og footer.
 
 // Saml store-funktionerne i ét objekt (virker både som ES-modul og i enkelt-fil-bundlen).
-const store = { getDesign, subscribe, commit, update, replace, addMaterial, removeMaterial };
+const store = { getDesign, subscribe, commit, update, replace, addMaterial, removeMaterial, undo, redo, canUndo, canRedo };
 
 const TABS = [
   tabPost,

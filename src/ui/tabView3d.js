@@ -71,11 +71,20 @@ function build3d(THREE, host, design, ctx) {
   const cx = design.posts.reduce((s, p) => s + p.x_m, 0) / design.posts.length;
   const cz = design.posts.reduce((s, p) => s + p.z_m, 0) / design.posts.length;
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
+  const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
+  const connLabel = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
   const pm = resolveMaterial(design, design.defaults.post.materialId);
   const POST = ((pm && (pm.side || pm.od)) || 125) / 1000;
   const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
-  const maxConnH = design.connections.reduce((m, c) => Math.max(m, c.height_m), 0) || (design.site.connHeight_m || 2.2);
-  const POST_ABOVE = Math.max(maxConnH + 0.15, 2.0);   // ensartet stolpehøjde over jord
+  const siteDefH = design.site.postHeight_m || 3.0;
+  // pr. stolpe: over-jord-højde = stolpens egen højde, dog mindst højeste bar + margin
+  const aboveOf = {};
+  design.posts.forEach(p => { aboveOf[p.id] = (p.height_m != null ? p.height_m : siteDefH); });
+  design.connections.forEach(c => {
+    if (aboveOf[c.a] != null) aboveOf[c.a] = Math.max(aboveOf[c.a], c.height_m + 0.12);
+    if (aboveOf[c.b] != null) aboveOf[c.b] = Math.max(aboveOf[c.b], c.height_m + 0.12);
+  });
+  const maxAbove = Math.max(2.0, ...design.posts.map(p => aboveOf[p.id]));
 
   // ---- scene + renderer ----
   const scene = new THREE.Scene();
@@ -132,16 +141,17 @@ function build3d(THREE, host, design, ctx) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.5, r * 1.5, 0.05, 16), galvMat);
     m.castShadow = true; return m;
   }
-  // fast flad label på jorden (ligger fladt, følger IKKE kameraet)
-  function makeFlatLabel(text) {
+  // fast flad label på jorden (ligger fladt, følger IKKE kameraet).
+  // ring/txt = farve; orange = stolper, blå = forbindelser (som på Kort).
+  function makeFlatLabel(text, ring, txt) {
     const c = document.createElement('canvas'), g = c.getContext('2d');
     c.width = 128; c.height = 128;
-    g.fillStyle = 'rgba(255,255,255,0.92)';
+    g.fillStyle = 'rgba(255,255,255,0.94)';
     g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.fill();
-    g.lineWidth = 7; g.strokeStyle = '#0b66c3'; g.stroke();
-    g.fillStyle = '#0b3a66'; g.font = 'bold 76px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 7; g.strokeStyle = ring; g.stroke();
+    g.fillStyle = txt; g.font = `bold ${text.length > 2 ? 50 : 76}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText(text, 64, 70);
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4),
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42),
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
     plane.rotation.x = -Math.PI / 2;
     const grp = new THREE.Group(); grp.add(plane); return grp;
@@ -165,12 +175,13 @@ function build3d(THREE, host, design, ctx) {
   let maxR = 1;
 
   // ---- stolper + fundament ----
-  for (const p of design.posts) {
+  design.posts.forEach((p, pi) => {
     const X = p.x_m - cx, Z = p.z_m - cz;
+    const above = aboveOf[p.id];
     maxR = Math.max(maxR, Math.hypot(X, Z));
-    const total = POST_ABOVE + DEPTH;
+    const total = above + DEPTH;
     const post = new THREE.Mesh(new THREE.BoxGeometry(POST, total, POST), woodMat);
-    post.position.set(X, (POST_ABOVE - DEPTH) / 2, Z); post.castShadow = true; post.receiveShadow = true; group.add(post);
+    post.position.set(X, (above - DEPTH) / 2, Z); post.castShadow = true; post.receiveShadow = true; group.add(post);
 
     const gravel = new THREE.Mesh(new THREE.BoxGeometry(HOLE, GRAVEL_H, HOLE), gravelMat);
     gravel.position.set(X, -DEPTH + GRAVEL_H / 2, Z); group.add(gravel);
@@ -183,8 +194,16 @@ function build3d(THREE, host, design, ctx) {
     const tar = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.06, tarH, POST * 1.06), tarMat);
     tar.position.set(X, (tarBot + TAR_TOP) / 2, Z); group.add(tar);
     const tarTop = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.02, 0.02, POST * 1.02), tarMat);
-    tarTop.position.set(X, POST_ABOVE + 0.01, Z); tarTop.castShadow = true; group.add(tarTop);
-  }
+    tarTop.position.set(X, above + 0.01, Z); tarTop.castShadow = true; group.add(tarTop);
+
+    // fast stolpe-label på jorden (orange, bogstav — som på Kort)
+    let ox = X, oz = Z; const dl = Math.hypot(X, Z);
+    if (dl > 1e-3) { ox = X + (X / dl) * 0.34; oz = Z + (Z / dl) * 0.34; } else { oz = Z + 0.34; }
+    const pl = makeFlatLabel(letterFor(pi), '#d98324', '#9a3412');
+    pl.position.set(ox, 0.03, oz);
+    pl.rotation.y = Math.atan2(ox, oz);
+    group.add(pl);
+  });
 
   // ---- forbindelser (bars) + beslag ----
   design.connections.forEach((c, idx) => {
@@ -193,7 +212,8 @@ function build3d(THREE, host, design, ctx) {
     const B = V3(b.x_m - cx, c.height_m, b.z_m - cz);
     const span = Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m);
     const mat = connMat(c.material);
-    const crit = span > 0 && beam(span, mat, 1, 0.25).pYield < refLoad;
+    const eff = effSpan(c, span);   // stige aflaster baren (ekstra støttepunkt)
+    const crit = eff > 0 && beam(eff, mat, 1, 0.25).pYield < refLoad;
     const baseMat = crit ? critMat : (mat.kind === 'wood' ? woodMat : pipeMat);
     if (mat.kind === 'wood') {
       const sd = (mat.side || 100) / 1000;
@@ -220,8 +240,8 @@ function build3d(THREE, host, design, ctx) {
     const hl = makeLabel(fmtH(c.height_m));
     hl.position.set((A.x + B.x) / 2 + out.x * 0.3, c.height_m + 0.16, (A.z + B.z) / 2 + out.z * 0.3);
     group.add(hl);
-    // fast bogstav-label på jorden (som i den oprindelige version)
-    const fl = makeFlatLabel(letterFor(idx));
+    // fast forbindelses-label på jorden (blå, par-navn — som på Kort)
+    const fl = makeFlatLabel(connLabel(c), '#0b66c3', '#0b3a66');
     fl.position.set((A.x + B.x) / 2, 0.02, (A.z + B.z) / 2);
     fl.rotation.y = Math.atan2(out.x, out.z);
     group.add(fl);
@@ -236,7 +256,17 @@ function build3d(THREE, host, design, ctx) {
     if (at.angle_rad == null) { for (const c of conns) if (c.height_m > best.height_m) best = c; }
     else { let bd = Infinity; for (const c of conns) { const d = dirTo(c); const diff = Math.abs(((d - at.angle_rad + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI); if (diff < bd) { bd = diff; best = c; } } }
     const ang = dirTo(best);
-    return { height: best.height_m, dx: Math.cos(ang), dz: Math.sin(ang) };
+    return { conn: best, height: best.height_m, dx: Math.cos(ang), dz: Math.sin(ang) };
+  }
+  // Effektiv spændvidde med stige-aflastning (samme som Kort).
+  function effSpan(c, span) {
+    let relief = 0;
+    for (const at of design.attachments) {
+      if (at.type !== 'ladder') continue;
+      const bar = ladderBar(at);
+      if (bar && bar.conn && bar.conn.id === c.id) relief = Math.max(relief, at.width_m || 0.5);
+    }
+    return relief > 0 ? Math.max(0.05, Math.max(relief, span - relief)) : span;
   }
 
   for (const at of design.attachments) {
@@ -272,6 +302,34 @@ function build3d(THREE, host, design, ctx) {
     }
   }
 
+  // ---- avatarer: person med STRAKTE arme (skala = personhøjde) ----
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xd9a679, roughness: 0.8 });
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x5b6b8c, roughness: 0.75 });
+  for (const at of design.attachments) {
+    if (at.type !== 'avatar') continue;
+    const X = at.x_m - cx, Z = at.z_m - cz;
+    const Hh = Math.max(0.3, at.height_m || 1.8);   // standhøjde til issen
+    const limb = Hh * 0.045, sw = Hh * 0.11;        // lem-radius + halv skulderbredde
+    const av = new THREE.Group();
+    // ben
+    [-1, 1].forEach(s => { av.add(cylBetween(V3(s * sw * 0.55, 0, 0), V3(s * sw * 0.5, Hh * 0.47, 0), limb * 1.05, bodyMat)); });
+    // krop
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(sw * 0.78, sw * 0.62, Hh * 0.33, 14), bodyMat);
+    torso.position.set(0, Hh * 0.635, 0); torso.castShadow = true; av.add(torso);
+    // hoved
+    const head = new THREE.Mesh(new THREE.SphereGeometry(Hh * 0.07, 16, 12), skinMat);
+    head.position.set(0, Hh * 0.93, 0); head.castShadow = true; av.add(head);
+    // arme STRAKT op fra skuldrene
+    const shY = Hh * 0.80, tipY = Hh * 1.25;        // rækkehøjde ≈ 1,25 × person
+    [-1, 1].forEach(s => {
+      av.add(cylBetween(V3(s * sw, shY, 0), V3(s * sw * 0.7, tipY, 0), limb, skinMat));
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(limb * 1.3, 10, 8), skinMat);
+      hand.position.set(s * sw * 0.7, tipY, 0); av.add(hand);
+    });
+    av.position.set(X, 0, Z);
+    group.add(av);
+  }
+
   // ---- halvgennemsigtig jord + gitter (så fundamentet ses) ----
   const gsize = Math.max(8, maxR * 2.8);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(gsize, gsize),
@@ -281,8 +339,8 @@ function build3d(THREE, host, design, ctx) {
   grid.position.y = 0.001; scene.add(grid);
 
   // ---- bane-styret kamera (rotér / zoom / panorér) ----
-  const target = V3(0, POST_ABOVE * 0.45, 0);
-  const orbit = { r: Math.max(maxR * 2.4, POST_ABOVE * 1.9, 4), theta: Math.PI * 0.25, phi: Math.PI * 0.36 };
+  const target = V3(0, maxAbove * 0.45, 0);
+  const orbit = { r: Math.max(maxR * 2.4, maxAbove * 1.9, 4), theta: Math.PI * 0.25, phi: Math.PI * 0.36 };
   function applyCam() {
     const sp = Math.sin(orbit.phi);
     camera.position.set(

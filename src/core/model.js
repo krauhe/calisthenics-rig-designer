@@ -33,6 +33,8 @@ function defaultDesign() {
       grid_m: 0.125,          // gitter-opløsning (default = stolpetykkelse 12,5 cm)
       connMaterialId: 'pipe-1',
       connHeight_m: 2.0,
+      postHeight_m: 3.0,  // standard stolpehøjde over jord (for nye stolper)
+      avatarHeight_m: 1.80,  // standard personhøjde (for nye avatarer)
       ladderWidth_m: 0.5,
       refLoad_kg: 120,    // designlast pr. bar (til kritisk-markering på kortet)
     },

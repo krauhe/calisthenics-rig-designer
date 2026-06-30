@@ -8,6 +8,11 @@ let design = loadDesign();
 const subs = new Set();
 let saveTimer = null;
 
+// Fortryd/gentag: stak af serialiserede tilstande (én pr. commit).
+const HISTORY_MAX = 80;
+let undoStack = [JSON.stringify(design)];
+let redoStack = [];
+
 function getDesign() { return design; }
 
 function subscribe(fn) { subs.add(fn); return () => subs.delete(fn); }
@@ -15,9 +20,35 @@ function subscribe(fn) { subs.add(fn); return () => subs.delete(fn); }
 // Kald efter en ændring i design: notificér + gem (debounced).
 function commit() {
   design.meta.modified = Date.now();
+  undoStack.push(JSON.stringify(design));
+  if (undoStack.length > HISTORY_MAX) undoStack.shift();
+  redoStack = [];
   subs.forEach(fn => fn(design));
   scheduleSave();
 }
+
+// Gendan forrige tilstand (commit-niveau). Returnerer true hvis der skete noget.
+function undo() {
+  if (undoStack.length < 2) return false;
+  redoStack.push(undoStack.pop());                       // nuværende → gentag
+  design = JSON.parse(undoStack[undoStack.length - 1]);  // forrige tilstand
+  subs.forEach(fn => fn(design));
+  scheduleSave();
+  return true;
+}
+
+function redo() {
+  if (!redoStack.length) return false;
+  const s = redoStack.pop();
+  undoStack.push(s);
+  design = JSON.parse(s);
+  subs.forEach(fn => fn(design));
+  scheduleSave();
+  return true;
+}
+
+function canUndo() { return undoStack.length >= 2; }
+function canRedo() { return redoStack.length > 0; }
 
 // Bekvem helper: muter design og commit i ét.
 function update(mutator) { mutator(design); commit(); }

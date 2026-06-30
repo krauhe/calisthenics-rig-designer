@@ -21,3 +21,22 @@ const CATALOG = [
 function findMaterial(id, library = CATALOG) {
   return library.find(m => m.id === id) || null;
 }
+
+// Fornuftig sortering: rør først (efter ydre-Ø), derefter træ (efter sidemål) — stigende.
+function sortLibrary(lib) {
+  const dim = m => (m.kind === 'wood' ? m.side : m.od) || 0;
+  return lib.slice().sort((a, b) => (a.kind === b.kind ? dim(a) - dim(b) : (a.kind === 'pipe' ? -1 : 1)));
+}
+
+// Semantisk farve: rør = blå, træ = brun (tykkelse viser dimension, rød = kritisk).
+function materialColor(m) {
+  return m && m.kind === 'wood' ? '#a06a32' : '#0b66c3';
+}
+
+// Nuancer af materialefarven til at adskille nabostykker i skærelisten —
+// holder sig på samme kulør (blå rør / brun træ) i stedet for regnbue.
+function segShades(m) {
+  return m && m.kind === 'wood'
+    ? ['#a06a32', '#c2924f', '#7d5125', '#b5803f', '#8a5b28']
+    : ['#0b66c3', '#2f8fde', '#094f99', '#4aa3e8', '#1d7ad1'];
+}
