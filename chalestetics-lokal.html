@@ -7,24 +7,28 @@
 <title>Calisthenics Rig Designer</title>
 <style>
 :root {
-  --bg: #0f141b;
-  --card: #1a212c;
-  --surface-2: #232d3a;
-  --hover: #2d3846;
-  --ink: #eef2f7;
-  --muted: #aab4c1;
-  --line: #34404e;
-  --line-2: #47545f;
-  --accent: #4f9bff;
-  --accent-d: #8bbcfd;
-  --accent-soft: rgba(79,155,255,.15);
-  --accent-soft-line: rgba(79,155,255,.36);
+  --bg: #10110f;
+  --card: #191d1b;
+  --surface-2: #232924;
+  --hover: #2d352f;
+  --ink: #f3f0e8;
+  --muted: #aeb8b0;
+  --line: #343d37;
+  --line-2: #4b574f;
+  --accent: #66c8bc;
+  --accent-d: #a6e0d8;
+  --accent-soft: rgba(102,200,188,.14);
+  --accent-soft-line: rgba(102,200,188,.38);
+  --wood: #d2a15f;
+  --steel: #83b7d9;
+  --earth: #91a36a;
+  --warn: #e0a84f;
   --danger: #ff6f66;
   --danger-soft: rgba(255,111,102,.15);
   --danger-line: rgba(255,111,102,.38);
   --good: #4cc568;
   --radius: 14px;
-  --shadow: 0 8px 30px rgba(0,0,0,.45);
+  --shadow: 0 18px 58px rgba(0,0,0,.38);
   color-scheme: dark;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
@@ -32,7 +36,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); }
 /* Blød baggrund bag den centrerede app-kolonne */
-body { background: radial-gradient(1200px 600px at 50% -8%, #18222f 0%, var(--bg) 60%); }
+body { background: linear-gradient(180deg, #1b1d18 0%, #111310 44%, #0c0d0c 100%); }
 
 /* Diskrete mørke scrollbars */
 * { scrollbar-width: thin; scrollbar-color: #39424f transparent; }
@@ -40,7 +44,7 @@ body { background: radial-gradient(1200px 600px at 50% -8%, #18222f 0%, var(--bg
 *::-webkit-scrollbar-thumb { background: #39424f; border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
 *::-webkit-scrollbar-thumb:hover { background: #4a5563; background-clip: content-box; }
 
-#app { display: flex; flex-direction: column; min-height: 100vh; width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 18px 8px; }
+#app { display: flex; flex-direction: column; min-height: 100vh; width: 100%; max-width: 1440px; margin: 0 auto; padding: 0 18px 8px; }
 
 /* ---- Header ---- */
 #hd {
@@ -183,12 +187,15 @@ body { background: radial-gradient(1200px 600px at 50% -8%, #18222f 0%, var(--bg
 .conntab.full.dense { font-size: 11.5px; }
 .conntab.full.dense th { font-size: 10px; padding: 2px 5px; }
 .conntab.full.dense td { padding: 1px 5px; }
+.conntab.full.dense td.conn-name { width: 46px; min-width: 46px; white-space: nowrap; line-height: 1; }
+.conntab.full.dense .conn-name-text { display: inline-block; vertical-align: middle; white-space: nowrap; }
+.conntab.full.dense .conn-name .cdot { margin-right: 4px; }
 .conntab.full.dense .editc { padding: 1px 3px; }
 .conntab.full.dense select, .conntab.full.dense input[type=number] { font-size: 11.5px; padding: 2px 3px; border-radius: 5px; }
 .conntab.full.dense input[type=number] { width: 56px; min-width: 0; max-width: 64px; }
 .conntab.full.dense select { width: 100%; min-width: 98px; max-width: 130px; }
 .posts-h { margin-top: 12px !important; }
-.posts-tab { max-width: 220px; }
+.posts-tab { max-width: 380px; }
 .pdot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #b6986a; border: 1px solid #6b4f2a; vertical-align: middle; margin-right: 4px; }
 .adot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #8fa3c9; vertical-align: middle; margin-right: 4px; }
 .persons-tab { max-width: 320px; }
@@ -244,6 +251,358 @@ body { background: radial-gradient(1200px 600px at 50% -8%, #18222f 0%, var(--bg
 .soon-badge { display: inline-block; padding: 4px 12px; background: rgba(212,165,72,.14); border: 1px solid rgba(212,165,72,.36); color: #e3b558; border-radius: 999px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
 .classic-link { color: var(--accent); font-weight: 600; text-decoration: none; }
 .classic-link:hover { text-decoration: underline; }
+
+/* ---- Refreshed layout pass ---- */
+#hd {
+  margin: 14px 20px 0;
+  border: 1px solid rgba(166,224,216,.16);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(32,37,32,.94), rgba(21,26,24,.96));
+  box-shadow: 0 12px 44px rgba(0,0,0,.28);
+}
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 220px; }
+.brand strong { font-size: 18px; letter-spacing: 0; }
+.brand .sub { margin-left: 0; color: var(--wood); font-weight: 600; }
+.filebar { margin-left: auto; padding: 3px; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.06); border-radius: 12px; }
+.name-inp { width: 170px; border-radius: 10px; background: rgba(16,17,15,.72); }
+.lang { padding: 3px; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.06); border-radius: 12px; }
+.lang-l { padding-left: 4px; }
+.lang-b, .tab, .utog-b, .btn-sm { border-color: rgba(166,224,216,.16); }
+.lang-b.on, .utog-b.on, .btn-sm.primary {
+  background: linear-gradient(180deg, #76d6ca, #42b8aa);
+  color: #08100f;
+  border-color: rgba(166,224,216,.72);
+  font-weight: 700;
+}
+
+#tabbar {
+  gap: 4px;
+  margin: 12px 20px 0;
+  padding: 5px;
+  width: auto;
+  background: rgba(10,12,11,.48);
+  border: 1px solid rgba(166,224,216,.11);
+  border-radius: 14px;
+}
+/* Hver gruppe = en lille søjle: sektions-overskrift ØVERST, fane-række under */
+.tab-group {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+.tab-row { display: inline-flex; align-items: center; gap: 4px; }
+.tab-group-labeled {
+  margin-left: 10px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(166,224,216,.14);
+}
+/* Første gruppe: ingen indledende skillelinje */
+.tab-group-labeled:first-child { margin-left: 0; padding-left: 0; border-left: none; }
+/* Overskriften skal IKKE ligne en fane: lille, dæmpet, ikke-klikbar caption */
+.tab-group-label {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  white-space: nowrap;
+  opacity: .75;
+  pointer-events: none;
+  user-select: none;
+}
+.tab {
+  border: 1px solid rgba(166,224,216,.18);
+  border-radius: 10px;
+  background: rgba(255,255,255,.05);
+  color: var(--muted);
+  padding: 7px 15px;
+  font-weight: 600;
+}
+.tab:hover { background: rgba(255,255,255,.1); color: var(--ink); border-color: rgba(166,224,216,.34); }
+.tab.on {
+  background: linear-gradient(180deg, rgba(102,200,188,.26), rgba(102,200,188,.13));
+  color: var(--accent-d);
+  border-color: rgba(166,224,216,.45);
+  box-shadow: inset 0 0 0 1px rgba(166,224,216,.22), 0 1px 4px rgba(0,0,0,.25);
+}
+
+#content {
+  margin: 10px 20px 18px;
+  padding: 22px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(25,29,27,.98), rgba(18,22,20,.98));
+  border-color: rgba(166,224,216,.14);
+}
+#content h2 { font-size: 22px; letter-spacing: 0; }
+#content h3 { color: var(--accent-d); }
+.intro { color: #c7cec7; line-height: 1.45; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 14px; }
+.page-head .intro { margin-bottom: 0; }
+
+.twocol.analysis-layout { grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+.panel {
+  padding: 15px;
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+}
+.fld input, .panel select, .selpanel select, .selpanel input[type=number] {
+  background: rgba(16,17,15,.70);
+  border-color: rgba(174,184,176,.25);
+}
+.unit-row { gap: 12px; border-bottom-color: rgba(166,224,216,.14); }
+
+.analysis-output { display: grid; grid-template-columns: repeat(2, minmax(320px, 1fr)); gap: 16px; align-items: stretch; min-width: 0; }
+.analysis-output-bar { display: grid; grid-template-columns: 1fr; }
+.analysis-top { display: grid; grid-template-columns: repeat(2, minmax(320px, 1fr)); gap: 16px; align-items: stretch; }
+.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(300px, 1fr)); gap: 16px; align-items: stretch; }
+.analysis-card { height: 100%; min-height: 292px; }
+.analysis-output .charthost {
+  min-width: 0;
+  margin-top: 0;
+  padding: 12px;
+  background: rgba(255,255,255,.028);
+  border: 1px solid rgba(255,255,255,.065);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+}
+.analysis-output .chart { max-width: none; background: #111713; border-color: rgba(166,224,216,.13); flex: 1 1 auto; }
+.analysis-output-bar > .legend {
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(255,255,255,.026);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px;
+}
+
+.results {
+  position: relative;
+  overflow: hidden;
+  max-width: none;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(102,200,188,.13), rgba(255,255,255,.035));
+  border-color: rgba(166,224,216,.28);
+}
+.results::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--accent); }
+.result-ok::before { background: var(--good); }
+.result-warn::before { background: var(--warn); }
+.result-bad::before { background: var(--danger); }
+.result-ok .res.big .res-v { color: var(--good); }
+.result-warn .res.big .res-v { color: var(--warn); }
+.result-bad .res.big .res-v { color: var(--danger); }
+.res { border-bottom-color: rgba(255,255,255,.08); }
+.res-v { color: var(--ink); }
+
+#content.view-site { padding: 18px; }
+.site-summary { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.summary-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(210,161,95,.12);
+  border: 1px solid rgba(210,161,95,.26);
+  color: #efd1a4;
+  font-size: 12px;
+  font-weight: 700;
+}
+.site-shell { display: grid; gap: 14px; }
+.site-settings {
+  margin-bottom: 0;
+  padding: 10px;
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+}
+.map-wrap {
+  display: grid;
+  grid-template-columns: 108px minmax(440px, 1fr) minmax(320px, 430px);
+  gap: 14px;
+  align-items: start;
+}
+.toolpalette {
+  display: grid;
+  gap: 8px;
+  flex: initial;
+  position: sticky;
+  top: 12px;
+}
+.toolbtn {
+  min-height: 40px;
+  border-radius: 11px;
+  background: rgba(255,255,255,.045);
+}
+.toolbtn.on {
+  background: linear-gradient(180deg, rgba(102,200,188,.95), rgba(65,180,168,.95));
+  color: #07100f;
+  border-color: rgba(166,224,216,.72);
+  font-weight: 800;
+}
+.toolbtn.on svg * { stroke: currentColor; }
+.zoombar { margin-top: 0; }
+.map {
+  width: 100%;
+  max-width: none;
+  border-radius: 16px;
+  background: #111713;
+  border-color: rgba(166,224,216,.16);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 18px 45px rgba(0,0,0,.20);
+}
+.map-help {
+  margin-top: 0;
+  background: rgba(255,255,255,.035);
+  border-color: rgba(255,255,255,.07);
+}
+.conntable-area.side {
+  flex: initial;
+  width: auto;
+  max-height: calc(100vh - 270px);
+  padding: 12px;
+  background: rgba(255,255,255,.035);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+}
+.conntab th { color: #c5cfc8; }
+.crow:hover { background: rgba(102,200,188,.08); }
+.crow.on { background: rgba(102,200,188,.14); }
+
+.empty-state {
+  min-height: 340px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.018)),
+    repeating-linear-gradient(90deg, rgba(166,224,216,.035) 0 1px, transparent 1px 34px);
+  border: 1px dashed rgba(166,224,216,.25);
+  border-radius: 18px;
+}
+.empty-state p { margin: 0; max-width: 46ch; line-height: 1.45; }
+.rig-ghost {
+  position: relative;
+  width: min(440px, 86vw);
+  height: 190px;
+  transform: perspective(680px) rotateX(54deg) rotateZ(-13deg);
+}
+.rig-ghost::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 10%;
+  bottom: 18px;
+  height: 18px;
+  background: rgba(145,163,106,.22);
+  border-radius: 999px;
+  filter: blur(.2px);
+}
+.ghost-post, .ghost-bar, .ghost-ladder { position: absolute; display: block; border-radius: 999px; }
+.ghost-post {
+  bottom: 34px;
+  width: 12px;
+  height: 122px;
+  background: linear-gradient(180deg, #d4ac73, #8a6035);
+  box-shadow: 0 0 0 2px rgba(43,30,18,.38);
+}
+.ghost-post-a { left: 20%; }
+.ghost-post-b { left: 76%; height: 132px; }
+.ghost-post-c { left: 34%; bottom: 18px; height: 110px; opacity: .78; }
+.ghost-post-d { left: 88%; bottom: 20px; height: 116px; opacity: .78; }
+.ghost-bar {
+  height: 10px;
+  background: linear-gradient(90deg, #b8c8d1, #536d78);
+  box-shadow: 0 2px 0 rgba(0,0,0,.22);
+}
+.ghost-bar-top { left: 20%; right: 12%; top: 42px; }
+.ghost-bar-mid { left: 34%; right: 5%; top: 78px; opacity: .72; }
+.ghost-ladder {
+  right: 20%;
+  top: 68px;
+  width: 52px;
+  height: 70px;
+  border-left: 7px solid var(--steel);
+  border-right: 7px solid var(--steel);
+  background: repeating-linear-gradient(180deg, transparent 0 13px, rgba(131,183,217,.92) 13px 18px);
+  opacity: .85;
+}
+.material-ghost {
+  position: relative;
+  width: min(420px, 86vw);
+  height: 170px;
+}
+.mat-stack, .mat-bag, .mat-crate { position: absolute; display: block; }
+.mat-stack {
+  left: 16%;
+  right: 18%;
+  height: 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #b7c6cf, #526b78);
+  box-shadow: 0 12px 30px rgba(0,0,0,.22);
+}
+.mat-stack-a { top: 52px; transform: rotate(-3deg); }
+.mat-stack-b { top: 82px; background: linear-gradient(90deg, #d5aa6a, #8e5d2f); transform: rotate(2deg); }
+.mat-stack-c { top: 112px; left: 22%; right: 12%; transform: rotate(-1deg); }
+.mat-bag {
+  right: 22%;
+  top: 32px;
+  width: 58px;
+  height: 78px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #b8b19e, #777061);
+  transform: rotate(8deg);
+}
+.mat-crate {
+  left: 16%;
+  bottom: 28px;
+  width: 58px;
+  height: 40px;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #b9975e, #755331);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.10);
+}
+
+@media (max-width: 980px) {
+  .analysis-output, .analysis-top, .chart-grid { grid-template-columns: 1fr; }
+  .analysis-card { min-height: 0; }
+  .map-wrap { grid-template-columns: 96px minmax(0, 1fr); }
+  .conntable-area.side { grid-column: 1 / -1; max-height: none; }
+}
+
+@media (max-width: 720px) {
+  #app { padding: 0 10px 8px; }
+  #hd { margin: 8px 0 0; padding: 12px; display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .brand { min-width: 0; display: block; }
+  .brand .sub { display: block; margin-top: 2px; }
+  .filebar { width: 100%; display: grid; grid-template-columns: 1fr auto auto auto; }
+  .name-inp { width: 100%; min-width: 0; }
+  .lang { justify-content: flex-start; width: 100%; }
+  #tabbar { margin: 10px 0 0; overflow-x: auto; flex-wrap: nowrap; }
+  .tab-group { flex: 0 0 auto; }
+  .tab-group-labeled { margin-left: 4px; padding-left: 8px; }
+  .tab-group-label { font-size: 10px; padding: 0 4px; }
+  .tab { white-space: nowrap; flex: 0 0 auto; }
+  #content { margin: 8px 0 12px; padding: 14px; border-radius: 16px; }
+  .page-head { display: grid; gap: 10px; }
+  .site-summary { justify-content: flex-start; }
+  .twocol.analysis-layout, .twocol { grid-template-columns: 1fr; }
+  .site-settings { display: grid; grid-template-columns: 1fr; align-items: stretch; gap: 10px; }
+  .fld.inline { justify-content: space-between; }
+  .map-wrap { grid-template-columns: 1fr; }
+  .toolpalette { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .zoombar { grid-column: span 2; }
+  .map { aspect-ratio: 1 / 1; }
+  .empty-state { min-height: 300px; padding: 22px; }
+  .rig-ghost { width: min(300px, 70vw); height: 160px; transform: perspective(560px) rotateX(54deg) rotateZ(-10deg); }
+  .material-ghost { width: min(300px, 70vw); }
+}
 
 /* ---- Footer ---- */
 #ft { padding: 10px 20px 16px; color: #c08a82; font-size: 11px; line-height: 1.4; }
@@ -537,7 +896,7 @@ function defaultDesign() {
     library: CATALOG.map(m => ({ ...m, builtin: true })),
     // Selvstændige analyse-faner:
     analysis: {
-      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 300, height_m: 2.7 },
+      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 200, height_m: 2.7 },
       bar:  { materialId: 'pipe-1', span_m: 2.4, load_kg: 120, fixity: 0.25 },
     },
     // Sted-model (kort-editoren):
@@ -554,9 +913,10 @@ function defaultDesign() {
       avatarHeight_m: 1.80,  // standard personhøjde (for nye avatarer)
       ladderWidth_m: 0.5,
       refLoad_kg: 120,    // designlast pr. bar (til kritisk-markering på kortet)
+      pipeWall_mm: 3.2,   // antaget rør-godstykkelse for ALLE rør (alm. galv. vandrør, EN10255 medium)
     },
     defaults: {
-      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 300, height_m: 3.0 },
+      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 200, height_m: 3.0 },
       soil: {},
       load: { centerKg: 120, fixity: 0.25 },
     },
@@ -579,6 +939,7 @@ const LEGACY_KEY = 'chalestetics-3d';
 const LEGACY_SIZE_IDS = ['pipe-3-4', 'pipe-1', 'pipe-1-4', 'wood-10'];
 
 const num = (v, dflt) => (typeof v === 'number' && isFinite(v)) ? v : dflt;
+const atLeast = (v, min, dflt) => Math.max(min, num(v, dflt));
 
 function serialize(design) {
   return JSON.stringify(design, null, 2);
@@ -632,10 +993,42 @@ function fill(d) {
     connections: Array.isArray(d.connections) ? d.connections : base.connections,
     attachments: Array.isArray(d.attachments) ? d.attachments : base.attachments,
     stock: d.stock || base.stock,
-    defaults: d.defaults || base.defaults,
+    defaults: {
+      ...base.defaults, ...(d.defaults || {}),
+      post: { ...base.defaults.post, ...((d.defaults || {}).post || {}) },
+    },
     site: { ...base.site, ...(d.site || {}) },
   };
+  // Opgradér den gamle hul-standard (30 cm) til den nye (20 cm). Feltet sættes
+  // aldrig manuelt i UI'et (hul redigeres pr. stolpe), så det er sikkert at hæve.
+  if (merged.defaults.post.hole_mm === 300) merged.defaults.post.hole_mm = base.defaults.post.hole_mm;
   merged.library = mergeCatalog(merged.library);
+  merged.analysis.post.depth_m = atLeast(merged.analysis.post.depth_m, 0, base.analysis.post.depth_m);
+  merged.analysis.post.hole_mm = atLeast(merged.analysis.post.hole_mm, 0, base.analysis.post.hole_mm);
+  merged.analysis.post.height_m = atLeast(merged.analysis.post.height_m, 0, base.analysis.post.height_m);
+  merged.analysis.bar.span_m = atLeast(merged.analysis.bar.span_m, 0.1, base.analysis.bar.span_m);
+  merged.analysis.bar.load_kg = atLeast(merged.analysis.bar.load_kg, 0, base.analysis.bar.load_kg);
+  merged.analysis.bar.fixity = Math.min(1, atLeast(merged.analysis.bar.fixity, 0, base.analysis.bar.fixity));
+  merged.site.grid_m = atLeast(merged.site.grid_m, 0.01, base.site.grid_m);
+  merged.site.connHeight_m = atLeast(merged.site.connHeight_m, 0, base.site.connHeight_m);
+  merged.site.postHeight_m = atLeast(merged.site.postHeight_m, 0.1, base.site.postHeight_m);
+  merged.site.avatarHeight_m = atLeast(merged.site.avatarHeight_m, 0.3, base.site.avatarHeight_m);
+  merged.site.ladderWidth_m = atLeast(merged.site.ladderWidth_m, 0.05, base.site.ladderWidth_m);
+  merged.site.refLoad_kg = atLeast(merged.site.refLoad_kg, 0, base.site.refLoad_kg);
+  // global rør-godstykkelse: anvendes på ALLE rør-materialer (én antagelse)
+  merged.site.pipeWall_mm = atLeast(merged.site.pipeWall_mm, 0.5, base.site.pipeWall_mm);
+  merged.library.forEach(m => { if (m.kind === 'pipe') m.wall = merged.site.pipeWall_mm; });
+  merged.posts.forEach(p => {
+    if (p.height_m != null) p.height_m = atLeast(p.height_m, 0.1, merged.site.postHeight_m);
+    if (p.depth_m != null) p.depth_m = atLeast(p.depth_m, 0.1, merged.defaults.post.depth_m);
+    if (p.hole_mm != null) p.hole_mm = atLeast(p.hole_mm, 0, merged.defaults.post.hole_mm);
+  });
+  merged.connections.forEach(c => { c.height_m = atLeast(c.height_m, 0, merged.site.connHeight_m); });
+  merged.attachments.forEach(a => {
+    if (a.type === 'ladder') a.width_m = atLeast(a.width_m, 0.05, merged.site.ladderWidth_m);
+    if (a.type === 'avatar') a.height_m = atLeast(a.height_m, 0.3, merged.site.avatarHeight_m);
+  });
+  Object.keys(merged.stock || {}).forEach(id => { merged.stock[id] = atLeast(merged.stock[id], 0.5, 0.5); });
   return merged;
 }
 
@@ -662,7 +1055,7 @@ function validate(d) {
 // Konvertér den oprindelige apps gemte data (fast firkant) til den nye graf-model.
 function fromLegacy(o) {
   const d = defaultDesign();
-  const lenLong = num(o.lenLong, 2.4), lenShort = num(o.lenShort, 1.2);
+  const lenLong = atLeast(o.lenLong, 0.1, 2.4), lenShort = atLeast(o.lenShort, 0.1, 1.2);
   const hL = (lenLong + POST) / 2, hS = (lenShort + POST) / 2;
   const corners = [{ x: -hL, z: -hS }, { x: hL, z: -hS }, { x: hL, z: hS }, { x: -hL, z: hS }];
   d.posts = corners.map((c, i) => ({ id: 'p' + (i + 1), x_m: c.x, z_m: c.z, override: null }));
@@ -673,18 +1066,18 @@ function fromLegacy(o) {
   d.connections = sides.map((s, i) => ({
     id: 'c' + (i + 1),
     a: 'p' + (s[0] + 1), b: 'p' + (s[1] + 1),
-    height_m: num(heights[i], 1.5),
+    height_m: atLeast(heights[i], 0, 1.5),
     material: { source: 'library', id: LEGACY_SIZE_IDS[sizeIdx[i]] || 'pipe-1' },
-    onTop: num(heights[i], 0) >= POST_ABOVE,
+    onTop: atLeast(heights[i], 0, 0) >= POST_ABOVE,
   }));
 
-  d.attachments = [{ id: 'a1', type: 'ladder', postId: 'p1', connectionId: 'c1', width_m: num(o.ladderWidth, 0.5) }];
+  d.attachments = [{ id: 'a1', type: 'ladder', postId: 'p1', connectionId: 'c1', width_m: atLeast(o.ladderWidth, 0.05, 0.5) }];
   d.defaults = {
-    post: { materialId: 'wood-125', depth_m: num(o.depth, 1.2), hole_mm: num(o.hole, 0.3) * 1000, height_m: POST_ABOVE },
+    post: { materialId: 'wood-125', depth_m: atLeast(o.depth, 0, 1.2), hole_mm: atLeast(o.hole, 0, 0.3) * 1000, height_m: POST_ABOVE },
     soil: {},
-    load: { centerKg: num(o.load, 120), fixity: 0.25 },
+    load: { centerKg: atLeast(o.load, 0, 120), fixity: 0.25 },
   };
-  d.analysis.bar.load_kg = num(o.load, 120);
+  d.analysis.bar.load_kg = atLeast(o.load, 0, 120);
   d.meta.name = 'Importeret rig';
   return d;
 }
@@ -795,13 +1188,15 @@ function removeMaterial(id) {
 // ===== src/core/locales/da.js =====
 const da = {
   'app.title': 'Calisthenics Rig Designer',
-  'app.subtitle': 'Stativ-designer',
+  'app.subtitle': 'Planlæg dit calisthenics-stativ',
 
   'tab.post': 'Stolpe',
   'tab.bar': 'Bar',
   'tab.site': 'Kort',
   'tab.view3d': '3D',
   'tab.materials': 'Materialer',
+  'nav.project': 'Projekt',
+  'nav.analysis': 'Analyse',
 
   'lang.label': 'Sprog',
   'file.name': 'Tegningens navn',
@@ -890,6 +1285,9 @@ const da = {
   'site.connmat': 'Forbindelsens materiale',
   'site.connheight': 'Forbindelsens højde',
   'site.postheight': 'Stolpehøjde',
+  'site.postdepth': 'Dybde',
+  'site.posthole': 'Hul',
+  'site.postsoft': 'Blød (lav fundamentstivhed — øg dybde eller hul)',
   'site.postheight.hint': 'Standardhøjde over jord for nye stolper. Vælg en stolpe for at ændre den enkeltvis.',
   'site.post.title': 'Stolpe',
   'site.posts.title': 'Stolper',
@@ -903,15 +1301,21 @@ const da = {
   'site.help.select': 'Vælg/flyt: træk en stolpe for at flytte den (snapper til gitter). Træk en stige for at dreje/flytte den. Træk på tom flade for at panorere. Rul for at zoome.',
   'site.help.post': 'Stolpe: klik på fladen for at sætte en stolpe (snapper til gitter).',
   'site.help.connect': 'Forbind: klik på to stolper for at lave en forbindelse imellem dem.',
-  'site.help.ladder': 'Stige: hold knappen nede og træk stigen rundt — den klikker fast langs nærmeste bar; slip for at placere den.',
+  'site.help.ladder': 'Stige: hold knappen nede og træk stigen rundt — den klikker fast langs nærmeste bar; slip for at placere den. Rød = pladsen er optaget (kan ikke placeres oven på en anden stige).',
   'site.help.avatar': 'Person: klik på fladen for at sætte en person ind (justér højden ved at vælge den). Vises i 3D med strakte arme.',
   'site.help.delete': 'Slet: klik på en stolpe, forbindelse, stige eller person for at fjerne den.',
   'site.avatar.title': 'Valgt person',
   'site.persons.title': 'Personer',
+  'site.summary.ladder.one': 'Stige',
+  'site.summary.ladder.many': 'Stiger',
+  'site.summary.person.one': 'Person',
+  'site.summary.person.many': 'Personer',
   'site.avatarheight': 'Personhøjde',
   'site.avatar.reach': 'Rækkehøjde (strakte arme)',
   'site.refload': 'Designlast pr. bar',
   'site.refload.hint': 'Husk ~2× kropsvægt (dynamik). Bruges til at markere spinkle forbindelser.',
+  'site.pipewall': 'Rør-gods',
+  'site.pipewall.hint': 'Antaget godstykkelse for ALLE rør. Default 3,2 mm = alm. galvaniseret vandrør (EN10255 medium). Påvirker styrke/nedbøjning.',
   'site.conn.title': 'Valgt forbindelse',
   'site.conn.span': 'Spænd',
   'site.conn.deflection': 'Nedbøjning ved',
@@ -972,13 +1376,15 @@ const da = {
 // ===== src/core/locales/en.js =====
 const en = {
   'app.title': 'Calisthenics Rig Designer',
-  'app.subtitle': 'Rig designer',
+  'app.subtitle': 'Plan your calisthenics rig',
 
   'tab.post': 'Post',
   'tab.bar': 'Bar',
   'tab.site': 'Map',
   'tab.view3d': '3D',
   'tab.materials': 'Materials',
+  'nav.project': 'Project',
+  'nav.analysis': 'Analysis',
 
   'lang.label': 'Language',
   'file.name': 'Design name',
@@ -1067,6 +1473,9 @@ const en = {
   'site.connmat': 'Connection material',
   'site.connheight': 'Connection height',
   'site.postheight': 'Post height',
+  'site.postdepth': 'Depth',
+  'site.posthole': 'Hole',
+  'site.postsoft': 'Soft (low foundation stiffness — increase depth or hole)',
   'site.postheight.hint': 'Default above-ground height for new posts. Select a post to change it individually.',
   'site.post.title': 'Post',
   'site.posts.title': 'Posts',
@@ -1080,15 +1489,21 @@ const en = {
   'site.help.select': 'Select/move: drag a post to move it (snaps to grid). Drag a ladder to rotate/move it. Drag empty space to pan. Scroll to zoom.',
   'site.help.post': 'Post: click the canvas to place a post (snaps to grid).',
   'site.help.connect': 'Connect: click two posts to create a connection between them.',
-  'site.help.ladder': 'Ladder: hold the button and drag the ladder around — it snaps along the nearest bar; release to place it.',
+  'site.help.ladder': 'Ladder: hold the button and drag the ladder around — it snaps along the nearest bar; release to place it. Red = spot taken (can\'t stack on another ladder).',
   'site.help.avatar': 'Person: click the canvas to place a person (select it to set the height). Shown in 3D with arms raised.',
   'site.help.delete': 'Delete: click a post, connection, ladder or person to remove it.',
   'site.avatar.title': 'Selected person',
   'site.persons.title': 'Persons',
+  'site.summary.ladder.one': 'Ladder',
+  'site.summary.ladder.many': 'Ladders',
+  'site.summary.person.one': 'Person',
+  'site.summary.person.many': 'Persons',
   'site.avatarheight': 'Person height',
   'site.avatar.reach': 'Reach (arms raised)',
   'site.refload': 'Design load per bar',
   'site.refload.hint': 'Remember ~2x body weight (dynamic). Used to flag under-dimensioned connections.',
+  'site.pipewall': 'Pipe wall',
+  'site.pipewall.hint': 'Assumed wall thickness for ALL pipes. Default 3.2 mm = standard galvanised water pipe (EN10255 medium). Affects strength/deflection.',
   'site.conn.title': 'Selected connection',
   'site.conn.span': 'Span',
   'site.conn.deflection': 'Deflection at',
@@ -1201,19 +1616,35 @@ function field(labelText, control, hint) {
 }
 
 // Rå talinput.
-function numInput(value, step, onValue) {
-  const inp = el('input', { type: 'number', step: String(step), value: String(value) });
+function numInput(value, step, onValue, opts = {}) {
+  const attrs = { type: 'number', step: String(step), value: String(value) };
+  if (opts.min != null) attrs.min = String(opts.min);
+  if (opts.max != null) attrs.max = String(opts.max);
+  const clamp = v => {
+    let out = v;
+    if (opts.min != null) out = Math.max(Number(opts.min), out);
+    if (opts.max != null) out = Math.min(Number(opts.max), out);
+    return out;
+  };
+  const inp = el('input', attrs);
   inp.addEventListener('input', () => {
     const v = parseFloat(inp.value);
-    if (!isNaN(v)) onValue(v);
+    if (!isNaN(v)) onValue(clamp(v));
+  });
+  inp.addEventListener('change', () => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v)) inp.value = String(round(clamp(v)));
   });
   return inp;
 }
 
 // Længde-input: gemmer SI (m), viser i 'm' | 'ft'.
-function lenInput(si, unit, onSI) {
+function lenInput(si, unit, onSI, opts = {}) {
+  const inputOpts = {};
+  if (opts.minSI != null) inputOpts.min = round(lenFromSI(opts.minSI, unit));
+  if (opts.maxSI != null) inputOpts.max = round(lenFromSI(opts.maxSI, unit));
   return numInput(round(lenFromSI(si, unit)), unit === 'ft' ? 0.1 : 0.05,
-    v => onSI(lenToSI(v, unit)));
+    v => onSI(lenToSI(v, unit)), inputOpts);
 }
 
 // Tværsnits-input: gemmer mm, viser i 'mm' | 'in'.
@@ -1304,9 +1735,10 @@ function lineChart({ points, series, xMin, xMax, yMax, xLabel, yLabel, color = '
   const X = x => x0 + (x - xMin) / (xMax - xMin) * (x1 - x0);
   const Y = y => y0 - Math.max(y, 0) / yMax * (y0 - y1);  // ingen øvre klemning — linjer klippes i toppen
   const frac = [0, 0.25, 0.5, 0.75, 1];
+  const yFmtDigits = yMax < 0.1 ? 3 : yMax < 1 ? 2 : yMax < 10 ? 1 : 0;
   const yGrid = frac.map(f => f * yMax).map(v =>
     `<line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" stroke="rgba(255,255,255,.07)"/>` +
-    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#9aa6b3">${fmt(v, v < 10 ? 1 : 0, lang)}</text>`).join('');
+    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#9aa6b3">${fmt(v, yFmtDigits, lang)}</text>`).join('');
   const xGrid = frac.map(f => xMin + f * (xMax - xMin)).map(v =>
     `<line x1="${X(v)}" y1="${y0}" x2="${X(v)}" y2="${y1}" stroke="rgba(255,255,255,.045)"/>` +
     `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#9aa6b3">${fmt(v, (xMax - xMin) <= 10 ? 1 : 0, lang)}</text>`).join('');
@@ -1454,7 +1886,7 @@ const tabPost = {
       holeInp.value = String(holeFromMm(Math.max(holeToMm(parseFloat(holeInp.value) || 0), postSideMm)));
     });
 
-    const inputs = el('div', { class: 'panel' },
+    const inputs = el('div', { class: 'panel analysis-card' },
       el('div', { class: 'unit-row' },
         unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], u.len,
           v => { store.update(d => { d.units.post.len = v; }); rerender(); }),
@@ -1463,10 +1895,10 @@ const tabPost = {
       el('div', { class: 'mat-block' },
         el('span', { class: 'fld-l' }, tt('mat.title')),
         materialControl(ctx, 'post')),
-      field(`${tt('post.depth')} (${lenTxt})`, lenInput(a.depth_m, u.len, v => set(d => { d.analysis.post.depth_m = v; }))),
+      field(`${tt('post.depth')} (${lenTxt})`, lenInput(a.depth_m, u.len, v => set(d => { d.analysis.post.depth_m = Math.max(v, 0); }), { minSI: 0 })),
       field(`${tt('post.hole')} (${u.dim === 'in' ? tt('unit.in') : 'cm'})`, holeInp,
         `${tt('post.holeMin')}: ${holeFromMm(postSideMm)} ${u.dim === 'in' ? tt('unit.in') : 'cm'}`),
-      field(`${tt('post.height')} (${lenTxt})`, lenInput(a.height_m, u.len, v => set(d => { d.analysis.post.height_m = v; }))));
+      field(`${tt('post.height')} (${lenTxt})`, lenInput(a.height_m, u.len, v => set(d => { d.analysis.post.height_m = Math.max(v, 0); }), { minSI: 0 })));
 
     function resRow(label, value, cls) {
       return el('div', { class: 'res' + (cls ? ' ' + cls : '') },
@@ -1480,6 +1912,7 @@ const tabPost = {
       const f = foundation({ postSide, depth: a.depth_m, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E });
       const swayMm = f.dTop * 1000;
       const feelKey = swayMm < 10 ? 'feel.solid' : swayMm < 20 ? 'feel.springy' : 'feel.soft';
+      results.className = 'results analysis-card result-' + (swayMm < 10 ? 'ok' : swayMm < 20 ? 'warn' : 'bad');
       clear(results);
       results.append(
         el('h3', {}, tt('post.res.title')),
@@ -1524,13 +1957,15 @@ const tabPost = {
     container.append(
       el('h2', {}, tt('post.heading')),
       el('p', { class: 'intro' }, tt('post.intro')),
-      el('div', { class: 'twocol' }, inputs, el('div', {}, results, chartHost)));
+      el('div', { class: 'twocol analysis-layout' },
+        inputs,
+        el('div', { class: 'analysis-output analysis-output-post' }, results, chartHost)));
   },
 };
 
 // ===== src/ui/tabBar.js =====
-// Fane: Bar-analyse. Bruger beam() fra kernen + to grafer.
-
+// Tab: bar analysis. Uses beam() from the core and keeps all charts tied to
+// the selected material, span, load and end fixity.
 
 const tabBar = {
   id: 'bar',
@@ -1544,7 +1979,7 @@ const tabBar = {
     const massU = u.mass || 'kg';
     const massTxt = massU === 'lb' ? 'lbs' : 'kg';
     const inch = u.dim === 'in';
-    const cvDim = v => inch ? v / 25.4 : v;          // mm → visningsenhed
+    const cvDim = v => inch ? v / 25.4 : v;
 
     const set = mut => { store.update(mut); compute(); };
     const results = el('div', { class: 'results' });
@@ -1553,14 +1988,17 @@ const tabBar = {
     const chartHost = el('div', { class: 'charthost' });
     const legend = el('div', { class: 'legend' });
 
-    // Spændvidde skal være positiv (0 ⇒ division med nul i beam); indspænding 0–1.
     const MIN_SPAN = 0.1;
     if (!(a.span_m >= MIN_SPAN)) a.span_m = MIN_SPAN;
     a.fixity = Math.min(1, Math.max(0, a.fixity));
     const spanToSI = v => lenToSI(v, u.len);
     const spanFromSI = m => round(lenFromSI(m, u.len));
-    const spanInp = el('input', { type: 'number', step: u.len === 'ft' ? '0.1' : '0.05',
-      min: String(spanFromSI(MIN_SPAN)), value: String(spanFromSI(a.span_m)) });
+    const spanInp = el('input', {
+      type: 'number',
+      step: u.len === 'ft' ? '0.1' : '0.05',
+      min: String(spanFromSI(MIN_SPAN)),
+      value: String(spanFromSI(a.span_m)),
+    });
     spanInp.addEventListener('input', () => {
       const v = parseFloat(spanInp.value); if (isNaN(v)) return;
       set(d => { d.analysis.bar.span_m = Math.max(spanToSI(v), MIN_SPAN); });
@@ -1568,6 +2006,7 @@ const tabBar = {
     spanInp.addEventListener('change', () => {
       spanInp.value = String(spanFromSI(Math.max(spanToSI(parseFloat(spanInp.value) || 0), MIN_SPAN)));
     });
+
     const fixInp = el('input', { type: 'number', step: '0.05', min: '0', max: '1', value: String(a.fixity) });
     fixInp.addEventListener('input', () => {
       const v = parseFloat(fixInp.value); if (isNaN(v)) return;
@@ -1577,7 +2016,7 @@ const tabBar = {
       fixInp.value = String(Math.min(1, Math.max(0, parseFloat(fixInp.value) || 0)));
     });
 
-    const inputs = el('div', { class: 'panel' },
+    const inputs = el('div', { class: 'panel analysis-card' },
       el('div', { class: 'unit-row' },
         unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], u.len,
           v => { store.update(d => { d.units.bar.len = v; }); rerender(); }),
@@ -1591,13 +2030,14 @@ const tabBar = {
       field(`${tt('bar.span')} (${lenTxt})`, spanInp),
       field(`${tt('bar.load')} (${massTxt})`,
         numInput(Math.round(massFromSI(a.load_kg, massU)), massU === 'lb' ? 10 : 5,
-          v => set(d => { d.analysis.bar.load_kg = massToSI(v, massU); })),
+          v => set(d => { d.analysis.bar.load_kg = Math.max(massToSI(v, massU), 0); }), { min: 0 }),
         tt('bar.load.hint')),
       field(`${tt('bar.fixity')}`, fixInp, tt('bar.fixity.hint')));
 
     function resRow(label, value, cls) {
       return el('div', { class: 'res' + (cls ? ' ' + cls : '') },
-        el('span', { class: 'res-l' }, label), el('span', { class: 'res-v' }, value));
+        el('span', { class: 'res-l' }, label),
+        el('span', { class: 'res-v' }, value));
     }
 
     function compute() {
@@ -1605,6 +2045,7 @@ const tabBar = {
       const b = beam(a.span_m, mat, a.load_kg, a.fixity);
       const deflMm = b.dReal * 1000;
       const feelKey = deflMm < 7 ? 'feel.solid' : deflMm < 12 ? 'feel.springy' : 'feel.soft';
+      results.className = 'results analysis-card result-' + (b.pYield >= a.load_kg * 1.2 ? 'ok' : b.pYield >= a.load_kg ? 'warn' : 'bad');
       clear(results);
       results.append(
         el('h3', {}, tt('post.res.title')),
@@ -1614,43 +2055,84 @@ const tabBar = {
         resRow(tt('bar.res.ultimate'), fmtMass(b.pUlt, massU, lang)),
         el('div', { class: 'res-note' }, tt('bar.res.note')));
 
-      // graf 1: nedbøjning vs. belastning — alle materialer, samme farvekode
+      const maxLoadKg = Math.max(200, a.load_kg * 1.15);
       const loads = [];
-      for (let Lk = 0; Lk <= 200 + 1e-9; Lk += 10) loads.push(Lk);
-      let maxMm = 0;
-      design.library.forEach(m => { maxMm = Math.max(maxMm, beam(a.span_m, m, 200, a.fixity).dReal * 1000); });
-      const dyMax = cvDim(Math.min(maxMm * 1.1, 80) || 1);
-      const series = design.library.map((m, i) => ({
-        color: COLORS[i % COLORS.length],
-        points: loads.map(Lk => ({ x: massFromSI(Lk, massU), y: cvDim(beam(a.span_m, m, Lk, a.fixity).dReal * 1000) })),
+      for (let i = 0; i <= 20; i++) loads.push(maxLoadKg * i / 20);
+      const deflPoints = loads.map(Lk => ({
+        x: massFromSI(Lk, massU),
+        y: cvDim(beam(a.span_m, mat, Lk, a.fixity).dReal * 1000),
       }));
-      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')} · ${fmt(lenFromSI(a.span_m, u.len), 2, lang)} ${lenTxt}</div>` +
-        lineChart({ series, xMin: 0, xMax: massFromSI(200, massU), yMax: dyMax,
-          xLabel: `${tt('bar.chart2.x')} (${massTxt})`, yLabel: `${tt('bar.chart2.y')} (${inch ? 'in' : 'mm'})`,
-          vLine: massFromSI(a.load_kg, massU), lang });
+      const deflYMax = Math.max(cvDim(deflMm), ...deflPoints.map(p => p.y), 0.01) * 1.18;
+      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')} - ${mat.name}</div>` +
+        lineChart({
+          points: deflPoints,
+          xMin: 0,
+          xMax: massFromSI(maxLoadKg, massU),
+          yMax: deflYMax,
+          xLabel: `${tt('bar.chart2.x')} (${massTxt})`,
+          yLabel: `${tt('bar.chart2.y')} (${inch ? 'in' : 'mm'})`,
+          vLine: massFromSI(a.load_kg, massU),
+          hLine: cvDim(deflMm),
+          lang,
+        });
 
-      // delt farve-legende (mellem graferne)
       clear(legend);
-      design.library.forEach((m, i) => legend.append(
-        el('span', { class: 'leg-item' },
-          el('span', { class: 'leg-sw', style: `background:${COLORS[i % COLORS.length]}` }),
-          m.name)));
+      legend.append(
+        el('span', { class: 'leg-item' }, el('span', { class: 'leg-sw', style: `background:${COLORS[0]}` }), mat.name),
+        el('span', { class: 'leg-item' }, el('span', { class: 'leg-sw', style: 'background:#ff6f66' }), fmtMass(a.load_kg, massU, lang)));
 
-      // graf 2: sikker arbejdslast vs. spændvidde
-      workHost.innerHTML = `<div class="chart-title">${tt('bar.chart.titleWork')}</div>` +
-        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, metric: 'yield', yLabelKey: 'bar.chart.yWork', t: ctx.t, lang });
-      // graf 3: brudlast vs. spændvidde
-      chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')}</div>` +
-        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, metric: 'ult', yLabelKey: 'bar.chart.y', t: ctx.t, lang });
+      const spanMin = Math.max(MIN_SPAN, Math.min(0.5, a.span_m * 0.6));
+      const spanMax = Math.max(3.0, a.span_m * 1.5, spanMin + 0.8);
+      const spans = [];
+      for (let i = 0; i <= 30; i++) spans.push(spanMin + (spanMax - spanMin) * i / 30);
+      const safePoints = spans.map(s => ({
+        x: lenFromSI(s, u.len),
+        y: massFromSI(beam(s, mat, 1, a.fixity).pYield, massU),
+      }));
+      const ultPoints = spans.map(s => ({
+        x: lenFromSI(s, u.len),
+        y: massFromSI(beam(s, mat, 1, a.fixity).pUlt, massU),
+      }));
+      const currentX = lenFromSI(a.span_m, u.len);
+      const currentLoad = massFromSI(a.load_kg, massU);
+      const capYMax = pts => Math.max(currentLoad, ...pts.map(p => p.y), 1) * 1.12;
+
+      workHost.innerHTML = `<div class="chart-title">${tt('bar.chart.titleWork')} - ${mat.name}</div>` +
+        lineChart({
+          points: safePoints,
+          xMin: lenFromSI(spanMin, u.len),
+          xMax: lenFromSI(spanMax, u.len),
+          yMax: capYMax(safePoints),
+          xLabel: `${tt('bar.span')} (${lenTxt})`,
+          yLabel: `${tt('bar.chart.yWork')} (${massTxt})`,
+          vLine: currentX,
+          hLine: currentLoad,
+          lang,
+        });
+      chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')} - ${mat.name}</div>` +
+        lineChart({
+          points: ultPoints,
+          xMin: lenFromSI(spanMin, u.len),
+          xMax: lenFromSI(spanMax, u.len),
+          yMax: capYMax(ultPoints),
+          xLabel: `${tt('bar.span')} (${lenTxt})`,
+          yLabel: `${tt('bar.chart.y')} (${massTxt})`,
+          vLine: currentX,
+          hLine: currentLoad,
+          lang,
+        });
     }
 
     compute();
     container.append(
       el('h2', {}, tt('bar.heading')),
       el('p', { class: 'intro' }, tt('bar.intro')),
-      el('div', { class: 'twocol' },
+      el('div', { class: 'twocol analysis-layout' },
         inputs,
-        el('div', {}, results, deflHost, legend, workHost, chartHost)));
+        el('div', { class: 'analysis-output analysis-output-bar' },
+          el('div', { class: 'analysis-top' }, results, deflHost),
+          legend,
+          el('div', { class: 'chart-grid' }, workHost, chartHost))));
   },
 };
 
@@ -1662,6 +2144,10 @@ const tabBar = {
 
 const W = 520, H = 440;
 const MIN_K = 12, MAX_K = 400;
+const MIN_SITE_GRID_M = 0.01;
+const MIN_LADDER_WIDTH_M = 0.05;
+const MIN_POST_HEIGHT_M = 0.1;
+const MIN_AVATAR_HEIGHT_M = 0.3;
 
 let tool = 'select';
 let selectedPost = null;
@@ -1681,6 +2167,35 @@ const TOOLS = [
 ];
 
 function letterFor(i) { return i < 26 ? String.fromCharCode(65 + i) : '#' + (i + 1); }
+
+function nonNegativeNumber(v, fallback = 0) {
+  return typeof v === 'number' && isFinite(v) ? Math.max(0, v) : fallback;
+}
+
+function sanitizeSiteDesign(design) {
+  design.site.grid_m = Math.max(nonNegativeNumber(design.site.grid_m, 0.125), MIN_SITE_GRID_M);
+  design.site.connHeight_m = nonNegativeNumber(design.site.connHeight_m, 2.0);
+  design.site.postHeight_m = Math.max(nonNegativeNumber(design.site.postHeight_m, 3.0), MIN_POST_HEIGHT_M);
+  design.site.avatarHeight_m = Math.max(nonNegativeNumber(design.site.avatarHeight_m, 1.8), MIN_AVATAR_HEIGHT_M);
+  design.site.ladderWidth_m = Math.max(nonNegativeNumber(design.site.ladderWidth_m, 0.5), MIN_LADDER_WIDTH_M);
+  design.site.refLoad_kg = nonNegativeNumber(design.site.refLoad_kg, 120);
+  design.site.pipeWall_mm = Math.max(nonNegativeNumber(design.site.pipeWall_mm, 3.2), 0.5);
+  design.library.forEach(m => { if (m.kind === 'pipe') m.wall = design.site.pipeWall_mm; });
+  const pmS = resolveMaterial(design, design.defaults.post.materialId);
+  const postSideMmS = pmS ? (pmS.kind === 'wood' ? pmS.side : pmS.od) : 125;
+  design.posts.forEach(p => {
+    if (p.height_m != null) p.height_m = Math.max(nonNegativeNumber(p.height_m, design.site.postHeight_m), MIN_POST_HEIGHT_M);
+    if (p.depth_m != null) p.depth_m = Math.max(nonNegativeNumber(p.depth_m, design.defaults.post.depth_m), 0.1);
+    if (p.hole_mm != null) p.hole_mm = Math.max(nonNegativeNumber(p.hole_mm, design.defaults.post.hole_mm), postSideMmS);
+  });
+  design.connections.forEach(c => {
+    c.height_m = nonNegativeNumber(c.height_m, design.site.connHeight_m);
+  });
+  design.attachments.forEach(a => {
+    if (a.type === 'ladder') a.width_m = Math.max(nonNegativeNumber(a.width_m, design.site.ladderWidth_m), MIN_LADDER_WIDTH_M);
+    if (a.type === 'avatar') a.height_m = Math.max(nonNegativeNumber(a.height_m, design.site.avatarHeight_m), MIN_AVATAR_HEIGHT_M);
+  });
+}
 
 // Knap-ikon der matcher musecursoren for hvert værktøj (lille inline-SVG).
 function toolIcon(t) {
@@ -1712,9 +2227,16 @@ const tabSite = {
   render(container, ctx) {
     const { design, store, lang } = ctx;
     const tt = k => ctx.t(k, lang);
-    if (!view) view = { k: 70, tx: W / 2, ty: H * 0.6 };
+    // Gem/genskab zoom+pan, så kortet ikke zoomer ud ved hver refresh.
+    const VIEW_KEY = 'crd-site-view';
+    const saveView = () => { try { localStorage.setItem(VIEW_KEY, JSON.stringify(view)); } catch (_) {} };
+    if (!view) {
+      try { const v = JSON.parse(localStorage.getItem(VIEW_KEY)); if (v && isFinite(v.k) && isFinite(v.tx) && isFinite(v.ty)) view = { k: Math.min(MAX_K, Math.max(MIN_K, v.k)), tx: v.tx, ty: v.ty }; } catch (_) {}
+      if (!view) view = { k: 70, tx: W / 2, ty: H * 0.6 };
+    }
     const su = (design.units.site && design.units.site.len) || 'm';
     const suTxt = su === 'ft' ? tt('unit.ft') : tt('unit.m');
+    sanitizeSiteDesign(design);
 
     const mapBox = el('div', { class: 'map' });
     const selPanel = el('div', { class: 'conntable-area side' });
@@ -1734,6 +2256,33 @@ const tabSite = {
     const byPost = () => Object.fromEntries(design.posts.map(p => [p.id, p]));
     const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
     const connLabel = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
+    const readableDeg = deg => {
+      let a = ((deg + 180) % 360 + 360) % 360 - 180;
+      if (a > 90) a -= 180;
+      if (a < -90) a += 180;
+      return a;
+    };
+    const postLabelDir = (p, idx) => {
+      const posts = design.posts || [];
+      const nearest = posts
+        .slice()
+        .sort((a, b) => Math.hypot(a.x_m - p.x_m, a.z_m - p.z_m) - Math.hypot(b.x_m - p.x_m, b.z_m - p.z_m))
+        .slice(0, Math.min(4, posts.length));
+      const centroid = pts => pts.reduce((s, q) => ({ x: s.x + q.x_m, z: s.z + q.z_m }), { x: 0, z: 0 });
+      let c = nearest.length ? centroid(nearest) : { x: 0, z: 0 };
+      if (nearest.length) { c.x /= nearest.length; c.z /= nearest.length; }
+      let dx = p.x_m - c.x, dz = p.z_m - c.z;
+      if (Math.hypot(dx, dz) < 1e-6 && posts.length > 1) {
+        c = centroid(posts); c.x /= posts.length; c.z /= posts.length;
+        dx = p.x_m - c.x; dz = p.z_m - c.z;
+      }
+      if (Math.hypot(dx, dz) < 1e-6) {
+        const a = (idx / Math.max(1, posts.length)) * Math.PI * 2 - Math.PI / 2;
+        dx = Math.cos(a); dz = Math.sin(a);
+      }
+      const d = Math.hypot(dx, dz) || 1;
+      return { x: dx / d, z: dz / d };
+    };
     const spanOf = (c, byId) => { const a = byId[c.a], b = byId[c.b]; return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0; };
     const nearestPost = (wx, wz) => { let best = null, bd = Infinity; for (const p of design.posts) { const d = Math.hypot(p.x_m - wx, p.z_m - wz); if (d < bd) { bd = d; best = p; } } return best; };
     // Find det bedste sted at sætte en stige: nærmeste stolpe, og vinklen
@@ -1782,6 +2331,18 @@ const tabSite = {
       const a = dirTo(best);
       return { conn: best, dx: Math.cos(a), dy: Math.sin(a) };
     };
+    // En stige "optager" en plads = stolpe + den bar den binder til. To stiger på
+    // samme plads ville ligge oven på hinanden → ugyldig dobbelt-placering.
+    const ladderSlot = spot => {
+      if (!spot) return null;
+      const bar = ladderBar({ postId: spot.postId, angle_rad: spot.angle_rad }, byPost());
+      return spot.postId + ':' + (bar && bar.conn ? bar.conn.id : 'none');
+    };
+    const ladderSlotTaken = (spot, excludeId) => {
+      const slot = ladderSlot(spot); if (!slot) return false;
+      return design.attachments.some(a => a.type === 'ladder' && a.id !== excludeId
+        && ladderSlot({ postId: a.postId, angle_rad: a.angle_rad }) === slot);
+    };
     // Effektiv (bærende) spændvidde: en stige der binder til baren, virker som
     // et ekstra støttepunkt og aflaster den (som i den oprindelige version) —
     // det længste ustøttede stykke bliver styrende for styrke/nedbøjning.
@@ -1791,7 +2352,7 @@ const tabSite = {
       for (const at of design.attachments) {
         if (at.type !== 'ladder') continue;
         const bar = ladderBar(at, byId);
-        if (bar && bar.conn && bar.conn.id === c.id) relief = Math.max(relief, at.width_m || 0.5);
+        if (bar && bar.conn && bar.conn.id === c.id) relief = Math.max(relief, Math.max(MIN_LADDER_WIDTH_M, at.width_m || 0.5));
       }
       return relief > 0 ? Math.max(0.05, Math.max(relief, span - relief)) : span;
     };
@@ -1802,6 +2363,7 @@ const tabSite = {
     // {postId, angle_rad, width_m}. mode: 'normal' | 'ghost' | 'ghostDown'.
     function ladderMarkup(at, byId, mode) {
       const p = byId[at.postId]; if (!p) return '';
+      at = { ...at, width_m: Math.max(MIN_LADDER_WIDTH_M, at.width_m || 0.5) };
       const side = Math.max(7, postSideM() * view.k);
       const cxw = design.posts.reduce((s, q) => s + q.x_m, 0) / (design.posts.length || 1);
       const czw = design.posts.reduce((s, q) => s + q.z_m, 0) / (design.posts.length || 1);
@@ -1817,8 +2379,9 @@ const tabSite = {
       const ex = ox + dx * L, ey = oy + dy * L;                 // det lodrette rør (pole)
       const r1x = ox + ppx * wHalf, r1y = oy + ppy * wHalf, r1ex = ex + ppx * wHalf, r1ey = ey + ppy * wHalf;
       const r2x = ox - ppx * wHalf, r2y = oy - ppy * wHalf, r2ex = ex - ppx * wHalf, r2ey = ey - ppy * wHalf;
-      const ghost = mode === 'ghost' || mode === 'ghostDown';
-      const col = ghost ? '#4f9bff' : '#0e7490';
+      const ghost = mode === 'ghost' || mode === 'ghostDown' || mode === 'ghostBad';
+      const bad = mode === 'ghostBad';
+      const col = bad ? '#e11d1d' : (ghost ? '#4f9bff' : '#0e7490');
       let rungs = '';
       const nR = Math.max(2, Math.round(L / 12));
       for (let j = 0; j <= nR; j++) { const t = j / nR; rungs += `<line x1="${(r1x + (r1ex - r1x) * t).toFixed(1)}" y1="${(r1y + (r1ey - r1y) * t).toFixed(1)}" x2="${(r2x + (r2ex - r2x) * t).toFixed(1)}" y2="${(r2y + (r2ey - r2y) * t).toFixed(1)}" stroke="${col}" stroke-width="1.4"/>`; }
@@ -1844,6 +2407,25 @@ const tabSite = {
       if (su === 'ft') return { meters: 3 * 0.3048, label: `3 ${tt('unit.ft')}` };
       return { meters: 1, label: `1 ${tt('unit.m')}` };
     }
+
+    // ---- stolpe-blødhed: genbruger fundament-modellen fra Stolpe-fanen.
+    // Alle stolper deler post-materialet (defaults.post); dybde/hul/højde er
+    // pr. stolpe. "Blød" = top-sving ≥ 20 mm (samme tærskel som Stolpe-fanen).
+    const SOFT_SWAY_MM = 20;
+    const postMatObj = () => resolveMaterial(design, design.defaults.post.materialId);
+    const postHeightOf = p => p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0);
+    const postDepthOf = p => p.depth_m != null ? p.depth_m : ((design.defaults.post && design.defaults.post.depth_m) || 1.2);
+    const postHoleOf = p => p.hole_mm != null ? p.hole_mm : ((design.defaults.post && design.defaults.post.hole_mm) || 300);
+    const maxBarHOf = pid => { let h = 0, found = false; for (const c of design.connections) { if (c.a === pid || c.b === pid) { found = true; h = Math.max(h, c.height_m || 0); } } return found ? h : null; };
+    const postSwayMm = p => {
+      const pm = postMatObj();
+      const postSide = (pm.kind === 'wood' ? pm.side : pm.od) / 1000;
+      const arm = maxBarHOf(p.id);
+      const topHeight = Math.max(0.3, arm != null ? arm : postHeightOf(p));
+      const f = foundation({ postSide, depth: Math.max(postDepthOf(p), 0.05), hole: postHoleOf(p) / 1000, topHeight, Ipost: sectionProps(pm).I, E: pm.E });
+      return f.dTop * 1000;
+    };
+    const postSoft = p => postSwayMm(p) >= SOFT_SWAY_MM;
 
     function redraw(live) {
       const g = design.site.grid_m || 0.125;
@@ -1874,12 +2456,16 @@ const tabSite = {
         const span = Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m);
         const critical = span > 0 && beam(effSpanOf(c, byId), mat, 1, 0.25).pYield < refLoad;
         const X1 = ax.toFixed(1), Y1 = ay.toFixed(1), X2 = bx.toFixed(1), Y2 = by.toFixed(1);
-        const mx = ((ax + bx) / 2).toFixed(1), my = ((ay + by) / 2).toFixed(1);
+        const mx = (ax + bx) / 2, my = (ay + by) / 2;
         if (c.id === selectedConn) conns += `<line x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#4f9bff" stroke-width="${sw + 6}" stroke-linecap="round" opacity="0.45"/>`;
         if (critical) conns += `<line x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#e11d1d" stroke-width="${sw + 5}" stroke-linecap="round" opacity="0.5"/>`;
         conns += `<line x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="${colorOf(c.material)}" stroke-width="${sw}" stroke-linecap="round"/>`;
         conns += `<line data-el="conn" data-id="${c.id}" x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#000" opacity="0" stroke-width="14" stroke-linecap="round" pointer-events="all"/>`;
-        if (!live) { const lbl = connLabel(c); conns += `<g pointer-events="none"><ellipse cx="${mx}" cy="${my}" rx="${(6 + lbl.length * 2.6).toFixed(1)}" ry="8.5" fill="#1a212c" stroke="#4f9bff"/><text x="${mx}" y="${(+my + 3).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#8bbcfd">${lbl}</text></g>`; }
+        if (!live) {
+          const lbl = connLabel(c);
+          const aDeg = readableDeg(Math.atan2(by - ay, bx - ax) * 180 / Math.PI);
+          conns += `<g pointer-events="none" transform="translate(${mx.toFixed(1)} ${my.toFixed(1)}) rotate(${aDeg.toFixed(1)})"><ellipse cx="0" cy="0" rx="${(7 + lbl.length * 2.8).toFixed(1)}" ry="8.5" fill="#1a212c" stroke="#4f9bff"/><text x="0" y="3.2" text-anchor="middle" font-size="10" font-weight="700" fill="#8bbcfd">${lbl}</text></g>`;
+        }
       });
 
       // ---- stiger: lodret stige der binder sig til en vandret bar (som i 3D).
@@ -1891,7 +2477,7 @@ const tabSite = {
       }
       // spøgelses-stige (forhåndsvisning ved placering med stige-værktøjet)
       let ghostLad = '';
-      if (ghostLadder) ghostLad = ladderMarkup(ghostLadder, byId, ghostLadder.down ? 'ghostDown' : 'ghost');
+      if (ghostLadder) ghostLad = ladderMarkup(ghostLadder, byId, ghostLadder.invalid ? 'ghostBad' : (ghostLadder.down ? 'ghostDown' : 'ghost'));
 
       // ---- avatarer (person set oppefra: hoved + skuldre) ----
       let avatars = '';
@@ -1910,8 +2496,14 @@ const tabSite = {
       design.posts.forEach((p, i) => {
         const [sx, sy] = toScreen(p.x_m, p.z_m);
         const sel = p.id === selectedPost || p.id === connectFrom;
+        if (postSoft(p)) posts += `<rect x="${(sx - side / 2 - 4).toFixed(1)}" y="${(sy - side / 2 - 4).toFixed(1)}" width="${(side + 8).toFixed(1)}" height="${(side + 8).toFixed(1)}" rx="3" fill="#e11d1d" opacity="0.5"/>`;
         posts += `<rect data-el="post" data-id="${p.id}" x="${(sx - side / 2).toFixed(1)}" y="${(sy - side / 2).toFixed(1)}" width="${side.toFixed(1)}" height="${side.toFixed(1)}" rx="2" fill="#b6986a" stroke="${sel ? '#4f9bff' : '#7a5d35'}" stroke-width="${sel ? 2.5 : 1.2}"/>`;
-        if (!live) posts += `<text x="${(sx + side / 2 + 3).toFixed(1)}" y="${(sy - side / 2 - 2).toFixed(1)}" font-size="11" font-weight="700" fill="#fb923c" paint-order="stroke" stroke="#0e141c" stroke-width="2.6" pointer-events="none">${letterFor(i)}</text>`;
+        if (!live) {
+          const d = postLabelDir(p, i);
+          const gap = Math.max(13, side / 2 + 11);
+          const lx = sx + d.x * gap, ly = sy + d.z * gap;
+          posts += `<g pointer-events="none" transform="translate(${lx.toFixed(1)} ${ly.toFixed(1)})"><circle r="8.5" fill="#1a212c" stroke="#fb923c" stroke-width="1.5"/><text x="0" y="3.6" text-anchor="middle" font-size="11" font-weight="800" fill="#fb923c">${letterFor(i)}</text></g>`;
+        }
       });
 
       const empty = design.posts.length === 0
@@ -1955,8 +2547,12 @@ const tabSite = {
       });
     }
     const stopProp = e => e.stopPropagation();
+    // Sat af renderPanel: opdaterer forbindelses-skemaet (L + last/nedbøjning)
+    // live mens man trækker en stolpe, så man kan slippe på rette afstand.
+    let liveConnUpdate = null;
     function renderPanel() {
       clear(selPanel);
+      liveConnUpdate = null;
       const refLoad = design.site.refLoad_kg || 120;
       const byId = byPost();
       const postH = id => { const p = byId[id]; return p ? (p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0)) : (design.site.postHeight_m || 3.0); };
@@ -1964,13 +2560,22 @@ const tabSite = {
       // håndhæv invarianter: bar-højde i [0, laveste stolpe]
       design.connections.forEach(c => { const mh = maxBarH(c); if (c.height_m > mh) c.height_m = mh; else if (c.height_m < 0) c.height_m = 0; });
 
-      // ---- Stolper (navn + højde) — øverst, jf. fane-rækkefølgen ----
+      // ---- Stolper (navn + højde + dybde + hul; rød hvis blød) ----
       if (design.posts.length) {
         selPanel.append(el('h3', {}, tt('site.posts.title')));
-        const phead = el('tr', {}, el('th', {}, '#'), el('th', {}, `${tt('site.postheight')} (${suTxt})`));
+        const holeUnitTxt = su === 'ft' ? tt('unit.in') : 'cm';
+        const postSideMm = postSideM() * 1000;
+        const holeToMm = v => su === 'ft' ? v * 25.4 : v * 10;
+        const holeFromMm = mm => Math.round((su === 'ft' ? mm / 25.4 : mm / 10) * 100) / 100;
+        const phead = el('tr', {}, el('th', {}, '#'),
+          el('th', {}, `${tt('site.postheight')} (${suTxt})`),
+          el('th', {}, `${tt('site.postdepth')} (${suTxt})`),
+          el('th', {}, `${tt('site.posthole')} (${holeUnitTxt})`));
         const prows = design.posts.map((p, i) => {
-          const h = p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0);
-          const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))), value: String(round(lenFromSI(h, su))) });
+          const tr = el('tr', {});
+          const paintRow = () => { const soft = postSoft(p); tr.className = 'crow' + (p.id === selectedPost ? ' on' : '') + (soft ? ' crit' : ''); tr.title = soft ? tt('site.postsoft') : ''; };
+          // højde (klamper også bar-højder på stolpen)
+          const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))), value: String(round(lenFromSI(postHeightOf(p), su))) });
           const clampPost = (v, commit) => {
             const m = Math.max(lenToSI(v, su), 0.1);
             store.update(d => {
@@ -1978,15 +2583,39 @@ const tabSite = {
               const ph = id => { const pp = d.posts.find(x => x.id === id); return pp ? (pp.height_m != null ? pp.height_m : (d.site.postHeight_m || 3.0)) : (d.site.postHeight_m || 3.0); };
               d.connections.forEach(cc => { if (cc.a === p.id || cc.b === p.id) { const mx = Math.min(ph(cc.a), ph(cc.b)); if (cc.height_m > mx) cc.height_m = mx; } });
             });
-            redraw();
+            redraw(); paintRow();
             if (commit) renderPanel();   // opdater bar-højder i tabellen efter klamp
           };
           hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (!isNaN(v)) clampPost(v, false); });
           hInp.addEventListener('change', () => { hInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(hInp.value) || 0, su), 0.1), su))); clampPost(parseFloat(hInp.value), true); });
-          hInp.addEventListener('pointerdown', stopProp);
-          const tr = el('tr', { class: 'crow' + (p.id === selectedPost ? ' on' : '') },
+          // dybde (nedgravning) — pr. stolpe
+          const dInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))), value: String(round(lenFromSI(postDepthOf(p), su))) });
+          const setDepth = (v, commit) => {
+            const m = Math.max(lenToSI(v, su), 0.1);
+            store.update(d => { const q = d.posts.find(x => x.id === p.id); if (q) q.depth_m = m; });
+            redraw(); paintRow();
+            if (commit) renderPanel();
+          };
+          dInp.addEventListener('input', () => { const v = parseFloat(dInp.value); if (!isNaN(v)) setDepth(v, false); });
+          dInp.addEventListener('change', () => { dInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(dInp.value) || 0, su), 0.1), su))); setDepth(parseFloat(dInp.value), true); });
+          // hul/betonklods — mindst stolpens sidemål
+          const holeInp = el('input', { type: 'number', step: su === 'ft' ? '0.5' : '1', min: String(holeFromMm(postSideMm)),
+            value: String(holeFromMm(postHoleOf(p))), title: `${tt('post.holeMin')}: ${holeFromMm(postSideMm)} ${holeUnitTxt}` });
+          const setHole = (v, commit) => {
+            const mm = Math.max(holeToMm(v), postSideMm);
+            store.update(d => { const q = d.posts.find(x => x.id === p.id); if (q) q.hole_mm = mm; });
+            redraw(); paintRow();
+            if (commit) renderPanel();
+          };
+          holeInp.addEventListener('input', () => { const v = parseFloat(holeInp.value); if (!isNaN(v)) setHole(v, false); });
+          holeInp.addEventListener('change', () => { holeInp.value = String(holeFromMm(Math.max(holeToMm(parseFloat(holeInp.value) || 0), postSideMm))); setHole(parseFloat(holeInp.value), true); });
+          [hInp, dInp, holeInp].forEach(x => x.addEventListener('pointerdown', stopProp));
+          paintRow();
+          tr.append(
             el('td', {}, el('span', { class: 'pdot' }), letterFor(i)),
-            el('td', { class: 'editc' }, hInp));
+            el('td', { class: 'editc' }, hInp),
+            el('td', { class: 'editc' }, dInp),
+            el('td', { class: 'editc' }, holeInp));
           tr.addEventListener('click', e => { if (e.target.closest('input,select')) return; selectedPost = p.id; selectedConn = null; selectedLadder = null; redraw(); renderPanel(); });
           return tr;
         });
@@ -2006,6 +2635,7 @@ const tabSite = {
           el('th', {}, `${tt('site.conn.th.load')} (kg)`),
           el('th', {}, `${tt('bar.res.ultimate')} (kg)`),
           el('th', {}, `↓ ${Math.round(refLoad)}kg`));
+        const rowRefs = [];
         const rows = design.connections.map(c => {
           const mat = connMat(c.material), span = spanOf(c, byId);
           const res = () => beam(Math.max(effSpanOf(c, byPost()), 0.05), connMat(c.material), refLoad, 0.25);
@@ -2036,15 +2666,21 @@ const tabSite = {
           [matSel, hInp, lInp].forEach(x => x.addEventListener('pointerdown', stopProp));
           tr.addEventListener('click', e => { if (e.target.closest('select,input')) return; selectedConn = c.id; selectedPost = null; selectedLadder = null; redraw(); renderPanel(); });
           tr.append(
-            el('td', {}, el('span', { class: 'cdot', style: `background:${colorOf(c.material)}` }), connLabel(c)),
+            el('td', { class: 'conn-name' }, el('span', { class: 'cdot', style: `background:${colorOf(c.material)}` }), el('span', { class: 'conn-name-text' }, connLabel(c))),
             el('td', { class: 'editc' }, matSel),
             el('td', { class: 'editc' }, hInp),
             el('td', { class: 'editc' }, lInp),
             safeCell, ultCell, deflCell);
           paint();
+          rowRefs.push({ c, lInp, paint });
           return tr;
         });
         selPanel.append(el('table', { class: 'conntab full dense' }, el('thead', {}, head), el('tbody', {}, ...rows)));
+        // live-opdatering af L + last/nedbøjning mens en stolpe trækkes
+        liveConnUpdate = () => rowRefs.forEach(({ c, lInp, paint }) => {
+          if (document.activeElement !== lInp) lInp.value = String(round(lenFromSI(spanOf(c, byPost()), su)));
+          paint();
+        });
       }
       const sw = (col, label, h) => el('span', { class: 'leg-item' }, el('span', { class: 'leg-sw', style: `background:${col}${h ? `;height:${h}px` : ''}` }), label);
       selPanel.append(el('div', { class: 'legend' },
@@ -2089,7 +2725,7 @@ const tabSite = {
         // start placering: stigen snapper fast og følges med (placeres ved slip)
         const [wx, wz] = toWorld(ux, uy);
         const sp = ladderSnap(wx, wz);
-        ghostLadder = sp ? { ...sp, width_m: design.site.ladderWidth_m, down: true } : null;
+        ghostLadder = sp ? { ...sp, width_m: Math.max(design.site.ladderWidth_m, MIN_LADDER_WIDTH_M), down: true, invalid: ladderSlotTaken(sp, null) } : null;
         drag = { mode: 'place-ladder', sux: ux, suy: uy, moved: false };
         try { mapBox.setPointerCapture(e.pointerId); } catch (_) {}
         redraw();
@@ -2108,7 +2744,7 @@ const tabSite = {
           // spøgelses-stige følger musen og snapper til mulige steder
           const [wx, wz] = toWorld(ux, uy);
           const sp = ladderSnap(wx, wz);
-          ghostLadder = sp ? { ...sp, width_m: design.site.ladderWidth_m, down: false } : null;
+          ghostLadder = sp ? { ...sp, width_m: Math.max(design.site.ladderWidth_m, MIN_LADDER_WIDTH_M), down: false, invalid: ladderSlotTaken(sp, null) } : null;
           redraw();
         } else if (guides || ghostLadder) { guides = null; ghostLadder = null; redraw(); }
         return;
@@ -2124,18 +2760,20 @@ const tabSite = {
         p.z_m = al.z != null ? al.z : snap(wz);
         guides = { x: al.x, z: al.z, ghost: null };
         redraw(true);
+        if (liveConnUpdate) liveConnUpdate();   // opdatér L + last i skemaet live
       }
       else if (drag.mode === 'place-ladder') {
         const [wx, wz] = toWorld(ux, uy);
         const sp = ladderSnap(wx, wz);
-        ghostLadder = sp ? { ...sp, width_m: design.site.ladderWidth_m, down: true } : null;
+        ghostLadder = sp ? { ...sp, width_m: Math.max(design.site.ladderWidth_m, MIN_LADDER_WIDTH_M), down: true, invalid: ladderSlotTaken(sp, null) } : null;
         redraw(true);
       }
       else if (drag.mode === 'ladder') {
         const at = design.attachments.find(a => a.id === drag.id); if (!at) return;
         const [wx, wz] = toWorld(ux, uy);
         const sp = ladderSnap(wx, wz);
-        if (sp) { at.postId = sp.postId; at.angle_rad = sp.angle_rad; }
+        // følg kun med til pladser der ikke allerede er optaget af en anden stige
+        if (sp && !ladderSlotTaken(sp, at.id)) { at.postId = sp.postId; at.angle_rad = sp.angle_rad; }
         redraw(true);
       }
       else if (drag.mode === 'avatar') {
@@ -2150,12 +2788,14 @@ const tabSite = {
       // stige-værktøj: placér endeligt der hvor spøgelset snappede fast
       if (mode === 'place-ladder') {
         const sp = ghostLadder;
-        if (sp) store.update(d => d.attachments.push({ id: nextId(d.attachments, 'a'), type: 'ladder', postId: sp.postId, width_m: d.site.ladderWidth_m, angle_rad: sp.angle_rad }));
+        // placér KUN hvis pladsen er ledig (ingen dobbelt-stige oven på hinanden)
+        if (sp && !sp.invalid) store.update(d => d.attachments.push({ id: nextId(d.attachments, 'a'), type: 'ladder', postId: sp.postId, width_m: Math.max(d.site.ladderWidth_m, MIN_LADDER_WIDTH_M), angle_rad: sp.angle_rad }));
         drag = null; down = null; ghostLadder = null;
         redraw(); renderPanel();
         return;
       }
       const wasDrag = drag && drag.moved;
+      if (mode === 'pan') saveView();   // husk pan på tværs af refresh
       if (wasDrag && (mode === 'move' || mode === 'ladder' || mode === 'avatar')) store.commit();
       drag = null; guides = null;
       if (wasDrag) redraw();                              // gentegn med bogstav-labels igen
@@ -2209,17 +2849,17 @@ const tabSite = {
       const [wx, wz] = toWorld(ux, uy);
       view.k = Math.min(MAX_K, Math.max(MIN_K, view.k * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
       view.tx = ux - wx * view.k; view.ty = uy - wz * view.k;
-      redraw();
+      redraw(); saveView();
     }, { passive: false });
 
     function fit() {
-      if (!design.posts.length) { view = { k: 70, tx: W / 2, ty: H * 0.6 }; redraw(); return; }
+      if (!design.posts.length) { view = { k: 70, tx: W / 2, ty: H * 0.6 }; redraw(); saveView(); return; }
       const xs = design.posts.map(p => p.x_m), zs = design.posts.map(p => p.z_m);
       const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
       const pad = 0.6;
       const k = Math.min(MAX_K, Math.max(MIN_K, Math.min(W / (maxX - minX + 2 * pad || 1), H / (maxZ - minZ + 2 * pad || 1))));
       view = { k, tx: W / 2 - (minX + maxX) / 2 * k, ty: H / 2 - (minZ + maxZ) / 2 * k };
-      redraw();
+      redraw(); saveView();
     }
 
     const palette = el('div', { class: 'toolpalette' },
@@ -2237,20 +2877,32 @@ const tabSite = {
         el('button', { class: 'btn-sm', type: 'button', title: tt('site.undo') + ' (Ctrl+Z)', onclick: () => { if (store.undo()) ctx.rerender(); } }, '↶'),
         el('button', { class: 'btn-sm', type: 'button', title: tt('site.redo') + ' (Ctrl+Y)', onclick: () => { if (store.redo()) ctx.rerender(); } }, '↷')));
 
-    function zoom(f) { view.k = Math.min(MAX_K, Math.max(MIN_K, view.k * f)); redraw(); }
+    function zoom(f) { view.k = Math.min(MAX_K, Math.max(MIN_K, view.k * f)); redraw(); saveView(); }
 
     const gridCm = Math.round((design.site.grid_m || 0.125) * 1000) / 10;
     const gridInp = el('input', { type: 'number', step: '0.5', min: '1', value: String(gridCm), style: 'width:70px' });
-    gridInp.addEventListener('input', () => { const v = parseFloat(gridInp.value); if (v > 0) { store.update(d => { d.site.grid_m = v / 100; }); redraw(); } });
+    gridInp.addEventListener('input', () => { const v = parseFloat(gridInp.value); if (!isNaN(v)) { store.update(d => { d.site.grid_m = Math.max(v / 100, MIN_SITE_GRID_M); }); redraw(); } });
+    gridInp.addEventListener('change', () => { gridInp.value = String(Math.max(parseFloat(gridInp.value) || 0, MIN_SITE_GRID_M * 100)); });
+
+    // Global rør-godstykkelse (antagelse) — anvendes på ALLE rør-materialer.
+    const wallInp = el('input', { type: 'number', step: '0.1', min: '0.5', value: String(design.site.pipeWall_mm || 3.2), style: 'width:70px' });
+    wallInp.addEventListener('input', () => {
+      const v = parseFloat(wallInp.value); if (isNaN(v)) return;
+      const w = Math.max(v, 0.5);
+      store.update(d => { d.site.pipeWall_mm = w; d.library.forEach(m => { if (m.kind === 'pipe') m.wall = w; }); });
+      redraw(); renderPanel();
+    });
+    wallInp.addEventListener('change', () => { wallInp.value = String(Math.max(parseFloat(wallInp.value) || 0, 0.5)); });
 
     const settings = el('div', { class: 'site-settings' },
       unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], su,
         v => { store.update(d => { d.units.site.len = v; }); ctx.rerender(); }),
       el('label', { class: 'fld inline' }, el('span', { class: 'fld-l' }, `${tt('site.grid')} (cm)`), gridInp),
       el('label', { class: 'fld inline' }, el('span', { class: 'fld-l' }, `${tt('site.ladderwidth')} (${suTxt})`),
-        lenInput(design.site.ladderWidth_m, su, v => { store.update(d => { d.site.ladderWidth_m = v; }); redraw(); })),
+        lenInput(design.site.ladderWidth_m, su, v => { store.update(d => { d.site.ladderWidth_m = Math.max(v, MIN_LADDER_WIDTH_M); }); redraw(); }, { minSI: MIN_LADDER_WIDTH_M })),
+      el('label', { class: 'fld inline', title: tt('site.pipewall.hint') }, el('span', { class: 'fld-l' }, `${tt('site.pipewall')} (mm)`), wallInp),
       el('label', { class: 'fld inline', title: tt('site.refload.hint') }, el('span', { class: 'fld-l' }, `${tt('site.refload')} (kg)`),
-        numInput(design.site.refLoad_kg || 120, 5, v => { store.update(d => { d.site.refLoad_kg = v; }); redraw(); renderPanel(); })));
+        numInput(design.site.refLoad_kg || 120, 5, v => { store.update(d => { d.site.refLoad_kg = Math.max(v, 0); }); redraw(); renderPanel(); }, { min: 0 })));
 
     // Ctrl+Z / Ctrl+Y (eller Ctrl+Shift+Z) — kun aktiv mens kortet er fremme.
     if (tabSite._keyHandler) document.removeEventListener('keydown', tabSite._keyHandler);
@@ -2267,12 +2919,24 @@ const tabSite = {
     setHelp();
     redraw();
     renderPanel();
+    const ladderCount = design.attachments.filter(a => a.type === 'ladder').length;
+    const avatarCount = design.attachments.filter(a => a.type === 'avatar').length;
+    const countLabel = (n, oneKey, manyKey) => `${n} ${tt(n === 1 ? oneKey : manyKey)}`;
+    const summary = el('div', { class: 'site-summary' },
+      el('span', { class: 'summary-pill' }, `${design.posts.length} ${tt('site.posts.title')}`),
+      el('span', { class: 'summary-pill' }, `${design.connections.length} ${tt('site.conn.tableTitle')}`),
+      ...(ladderCount ? [el('span', { class: 'summary-pill' }, countLabel(ladderCount, 'site.summary.ladder.one', 'site.summary.ladder.many'))] : []),
+      ...(avatarCount ? [el('span', { class: 'summary-pill' }, countLabel(avatarCount, 'site.summary.person.one', 'site.summary.person.many'))] : []));
     container.append(
-      el('h2', {}, tt('tab.site')),
-      el('p', { class: 'intro' }, tt('site.intro')),
-      settings,
-      el('div', { class: 'map-wrap' }, palette, mapBox, selPanel),
-      help);
+      el('div', { class: 'page-head site-head' },
+        el('div', {},
+          el('h2', {}, tt('tab.site')),
+          el('p', { class: 'intro' }, tt('site.intro'))),
+        summary),
+      el('div', { class: 'site-shell' },
+        settings,
+        el('div', { class: 'map-wrap' }, palette, mapBox, selPanel),
+        help));
   },
 };
 
@@ -2320,7 +2984,17 @@ const tabView3d = {
     container.append(el('h2', {}, tt('tab.view3d')), el('p', { class: 'intro' }, tt('view3d.intro')));
 
     if (!design.posts.length) {
-      container.append(el('div', { class: 'soon' }, el('p', {}, tt('view3d.empty'))));
+      container.append(el('div', { class: 'empty-state empty-3d' },
+        el('div', { class: 'rig-ghost', 'aria-hidden': 'true' },
+          el('span', { class: 'ghost-post ghost-post-a' }),
+          el('span', { class: 'ghost-post ghost-post-b' }),
+          el('span', { class: 'ghost-post ghost-post-c' }),
+          el('span', { class: 'ghost-post ghost-post-d' }),
+          el('span', { class: 'ghost-bar ghost-bar-top' }),
+          el('span', { class: 'ghost-bar ghost-bar-mid' }),
+          el('span', { class: 'ghost-ladder' })),
+        el('p', {}, tt('view3d.empty')),
+        el('button', { class: 'btn-sm primary', type: 'button', onclick: () => ctx.openTab && ctx.openTab('site') }, tt('tab.site'))));
       return;
     }
 
@@ -2358,16 +3032,42 @@ function build3d(THREE, host, design, ctx) {
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
   const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
   const connLabel = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
+  // Stolpe-label ligger fladt på jorden uden for stolpen og er STATISK.
+  // Teksten vender UDAD (væk fra centrum), så den læses fra kameraet, der
+  // altid ser riggen udefra. (dx,dz) = udadgående retning fra centrum.
+  const outwardLabelYawFor = (dx, dz) => Math.atan2(dx, dz);
+  const postLabelDir = (p, idx) => {
+    const posts = design.posts || [];
+    const nearest = posts
+      .slice()
+      .sort((a, b) => Math.hypot(a.x_m - p.x_m, a.z_m - p.z_m) - Math.hypot(b.x_m - p.x_m, b.z_m - p.z_m))
+      .slice(0, Math.min(4, posts.length));
+    const centroid = pts => pts.reduce((s, q) => ({ x: s.x + q.x_m, z: s.z + q.z_m }), { x: 0, z: 0 });
+    let c = nearest.length ? centroid(nearest) : { x: 0, z: 0 };
+    if (nearest.length) { c.x /= nearest.length; c.z /= nearest.length; }
+    let dx = p.x_m - c.x, dz = p.z_m - c.z;
+    if (Math.hypot(dx, dz) < 1e-6 && posts.length > 1) {
+      c = centroid(posts); c.x /= posts.length; c.z /= posts.length;
+      dx = p.x_m - c.x; dz = p.z_m - c.z;
+    }
+    if (Math.hypot(dx, dz) < 1e-6) {
+      const a = (idx / Math.max(1, posts.length)) * Math.PI * 2 - Math.PI / 2;
+      dx = Math.cos(a); dz = Math.sin(a);
+    }
+    const d = Math.hypot(dx, dz) || 1;
+    return { x: dx / d, z: dz / d };
+  };
   const pm = resolveMaterial(design, design.defaults.post.materialId);
   const POST = ((pm && (pm.side || pm.od)) || 125) / 1000;
   const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
   const siteDefH = design.site.postHeight_m || 3.0;
-  // pr. stolpe: over-jord-højde = stolpens egen højde, dog mindst højeste bar + margin
+  // pr. stolpe: over-jord-højde = stolpens egen højde (dog mindst en bars
+  // overkant, så bjælken ikke svæver over toppen — bar ≤ stolpe via Kort-klamp).
   const aboveOf = {};
   design.posts.forEach(p => { aboveOf[p.id] = (p.height_m != null ? p.height_m : siteDefH); });
   design.connections.forEach(c => {
-    if (aboveOf[c.a] != null) aboveOf[c.a] = Math.max(aboveOf[c.a], c.height_m + 0.12);
-    if (aboveOf[c.b] != null) aboveOf[c.b] = Math.max(aboveOf[c.b], c.height_m + 0.12);
+    if (aboveOf[c.a] != null) aboveOf[c.a] = Math.max(aboveOf[c.a], c.height_m);
+    if (aboveOf[c.b] != null) aboveOf[c.b] = Math.max(aboveOf[c.b], c.height_m);
   });
   const maxAbove = Math.max(2.0, ...design.posts.map(p => aboveOf[p.id]));
 
@@ -2428,15 +3128,33 @@ function build3d(THREE, host, design, ctx) {
   }
   // fast flad label på jorden (ligger fladt, følger IKKE kameraet).
   // ring/txt = farve; orange = stolper, blå = forbindelser (som på Kort).
-  function makeFlatLabel(text, ring, txt) {
+  function makeFlatLabel(text, ring, txt, opts = {}) {
+    const pill = opts.shape === 'pill';
     const c = document.createElement('canvas'), g = c.getContext('2d');
-    c.width = 128; c.height = 128;
+    c.width = pill ? 256 : 128; c.height = 128;
     g.fillStyle = 'rgba(255,255,255,0.94)';
-    g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.fill();
-    g.lineWidth = 7; g.strokeStyle = ring; g.stroke();
-    g.fillStyle = txt; g.font = `bold ${text.length > 2 ? 50 : 76}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(text, 64, 70);
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42),
+    if (pill) {
+      const x = 14, y = 30, w = 228, h = 68, r = 24;
+      g.beginPath();
+      g.moveTo(x + r, y);
+      g.arcTo(x + w, y, x + w, y + h, r);
+      g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r);
+      g.arcTo(x, y, x + w, y, r);
+      g.closePath();
+      g.fill();
+      g.lineWidth = 7; g.strokeStyle = ring; g.stroke();
+      g.fillStyle = txt; g.font = 'bold 48px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(text, 128, 66);
+    } else {
+      g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.fill();
+      g.lineWidth = 7; g.strokeStyle = ring; g.stroke();
+      g.fillStyle = txt; g.font = `bold ${text.length > 2 ? 50 : 76}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(text, 64, 70);
+    }
+    const wM = pill ? Math.max(0.62, Math.min(0.9, 0.32 + text.length * 0.1)) : 0.42;
+    const hM = pill ? 0.28 : 0.42;
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(wM, hM),
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
     plane.rotation.x = -Math.PI / 2;
     const grp = new THREE.Group(); grp.add(plane); return grp;
@@ -2481,22 +3199,26 @@ function build3d(THREE, host, design, ctx) {
     const tarTop = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.02, 0.02, POST * 1.02), tarMat);
     tarTop.position.set(X, above + 0.01, Z); tarTop.castShadow = true; group.add(tarTop);
 
-    // fast stolpe-label på jorden (orange, bogstav — som på Kort)
-    let ox = X, oz = Z; const dl = Math.hypot(X, Z);
-    if (dl > 1e-3) { ox = X + (X / dl) * 0.34; oz = Z + (Z / dl) * 0.34; } else { oz = Z + 0.34; }
+    // Stolpe-label: fast gulvmarkering uden for stolpegruppen, med toppen vendt udad.
+    const ld = postLabelDir(p, pi);
+    const labelGap = Math.max(0.42, POST * 2.8 + 0.16);
+    const ox = X + ld.x * labelGap, oz = Z + ld.z * labelGap;
     const pl = makeFlatLabel(letterFor(pi), '#d98324', '#9a3412');
-    pl.position.set(ox, 0.03, oz);
-    pl.rotation.y = Math.atan2(ox, oz);
+    pl.position.set(ox, 0.035, oz);
+    pl.rotation.y = outwardLabelYawFor(ld.x, ld.z);
     group.add(pl);
   });
 
   // ---- forbindelser (bars) + beslag ----
   design.connections.forEach((c, idx) => {
     const a = byId[c.a], b = byId[c.b]; if (!a || !b) return;
-    const A = V3(a.x_m - cx, c.height_m, a.z_m - cz);
-    const B = V3(b.x_m - cx, c.height_m, b.z_m - cz);
     const span = Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m);
     const mat = connMat(c.material);
+    // c.height_m = barens ØVERSTE kant → centrum ligger en halv tykkelse lavere
+    const barHalf = (mat.kind === 'wood' ? (mat.side || 100) : (mat.od || 33)) / 2000;
+    const yBar = c.height_m - barHalf;
+    const A = V3(a.x_m - cx, yBar, a.z_m - cz);
+    const B = V3(b.x_m - cx, yBar, b.z_m - cz);
     const eff = effSpan(c, span);   // stige aflaster baren (ekstra støttepunkt)
     const crit = eff > 0 && beam(eff, mat, 1, 0.25).pYield < refLoad;
     const baseMat = crit ? critMat : (mat.kind === 'wood' ? woodMat : pipeMat);
@@ -2514,7 +3236,7 @@ function build3d(THREE, host, design, ctx) {
       [[A, B], [B, A]].forEach(([end, other]) => {
         const f = makeFitting(r);
         const toMid = new THREE.Vector3().subVectors(other, end).setY(0).normalize();
-        f.position.set(end.x + toMid.x * POST / 2, c.height_m, end.z + toMid.z * POST / 2);
+        f.position.set(end.x + toMid.x * POST / 2, yBar, end.z + toMid.z * POST / 2);
         f.quaternion.setFromUnitVectors(V3(1, 0, 0), toMid);
         group.add(f);
       });
@@ -2525,10 +3247,11 @@ function build3d(THREE, host, design, ctx) {
     const hl = makeLabel(fmtH(c.height_m));
     hl.position.set((A.x + B.x) / 2 + out.x * 0.3, c.height_m + 0.16, (A.z + B.z) / 2 + out.z * 0.3);
     group.add(hl);
-    // fast forbindelses-label på jorden (blå, par-navn — som på Kort)
-    const fl = makeFlatLabel(connLabel(c), '#0b66c3', '#0b3a66');
+    // fast forbindelses-label på jorden (blå, par-navn). Statisk og vendt
+    // UDAD som stolpe-labels (samme helper), så den læses fra kameraet.
+    const fl = makeFlatLabel(connLabel(c), '#0b66c3', '#0b3a66', { shape: 'pill' });
     fl.position.set((A.x + B.x) / 2, 0.02, (A.z + B.z) / 2);
-    fl.rotation.y = Math.atan2(out.x, out.z);
+    fl.rotation.y = outwardLabelYawFor(out.x, out.z);
     group.add(fl);
   });
 
@@ -2549,7 +3272,7 @@ function build3d(THREE, host, design, ctx) {
     for (const at of design.attachments) {
       if (at.type !== 'ladder') continue;
       const bar = ladderBar(at);
-      if (bar && bar.conn && bar.conn.id === c.id) relief = Math.max(relief, at.width_m || 0.5);
+      if (bar && bar.conn && bar.conn.id === c.id) relief = Math.max(relief, Math.max(0.05, at.width_m || 0.5));
     }
     return relief > 0 ? Math.max(0.05, Math.max(relief, span - relief)) : span;
   }
@@ -2561,7 +3284,7 @@ function build3d(THREE, host, design, ctx) {
     const bar = ladderBar(at);
     const dx = bar ? bar.dx : 0, dz = bar ? bar.dz : 1;
     const barY = bar ? bar.height : (design.site.connHeight_m || 2.2);
-    const inset = at.width_m || 0.5;           // afstand stolpe → lodret rør
+    const inset = Math.max(0.05, at.width_m || 0.5);           // afstand stolpe → lodret rør
     const rLad = (33.7 / 1000) / 2;            // 1" stigerør
     const vBot = -0.5;                         // nedstøbt ½ m
     const vx = X + dx * inset, vz = Z + dz * inset;
@@ -2698,6 +3421,10 @@ function computeMaterials(design) {
   const depth = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
   const hole = ((design.defaults.post && design.defaults.post.hole_mm) || 300) / 1000;
   const siteDefH = design.site.postHeight_m || 3.0;
+  // pr. stolpe-mål (som på Kort) — falder tilbage til standarderne
+  const postHeightOf = p => p.height_m != null ? p.height_m : siteDefH;
+  const postDepthOf = p => p.depth_m != null ? p.depth_m : depth;
+  const postHoleM = p => p.hole_mm != null ? p.hole_mm / 1000 : hole;
   const postMat = resolveMaterial(design, design.defaults.post.materialId);
   const postSide = (postMat.side || postMat.od || 125) / 1000;
   const postCount = design.posts.length;
@@ -2716,9 +3443,9 @@ function computeMaterials(design) {
   // skære-stykker pr. materiale: stolper + barer/overliggere (rør OG træ) + stige-rør
   const cut = {};         // id -> { mat, pieces:[{len,label}] }
   const addCut = (mat, len, label) => { if (!mat || len <= 0) return; (cut[mat.id] = cut[mat.id] || { mat, pieces: [] }).pieces.push({ len, label }); };
-  // stolper (lodrette) — hver: over jord + nedgravning
-  let postTotalLen = 0;
-  design.posts.forEach((p, i) => { const lenP = (p.height_m != null ? p.height_m : siteDefH) + depth; postTotalLen += lenP; addCut(postMat, lenP, letterFor(i)); });
+  // stolper (lodrette) — hver: egen højde over jord + egen nedgravning (fra Kort)
+  let postTotalLen = 0, buriedTotal = 0;
+  design.posts.forEach((p, i) => { const lenP = postHeightOf(p) + postDepthOf(p); postTotalLen += lenP; buriedTotal += postDepthOf(p); addCut(postMat, lenP, letterFor(i)); });
   // barer / overliggere
   design.connections.forEach(c => addCut(connMat(c.material), spanOf(c), connLbl(c)));
 
@@ -2735,8 +3462,8 @@ function computeMaterials(design) {
     if (at.type !== 'ladder') return;
     ladderCount++;
     const bar = ladderBar(at);
-    const barY = bar ? bar.height_m : (design.site.connHeight_m || 2.2);
-    const width = at.width_m || 0.5;
+    const barY = Math.max(0, bar ? bar.height_m : (design.site.connHeight_m || 2.2));
+    const width = Math.max(0.05, at.width_m || 0.5);
     const vert = barY + 0.5;
     const rc = Math.max(0, Math.floor((barY - 0.25) / 0.40));
     ladVert += vert; ladRungCount += rc; ladRungLen += rc * width; ladKee += 1 + rc * 2;
@@ -2744,22 +3471,26 @@ function computeMaterials(design) {
     for (let k = 0; k < rc; k++) addCut(ladderMat, width, 't' + (k + 1));
   });
 
-  // fundament
-  const concVolEach = (hole * hole - postSide * postSide) * Math.max(0, depth - GRAVEL_H);
+  // fundament — pr. stolpe (egen dybde + hul fra Kort)
   const footVol = 0.22 * 0.22 * 0.5;
-  const concVol = concVolEach * postCount + footVol * ladderCount;
-  const gravelVol = hole * hole * GRAVEL_H * postCount + 0.22 * 0.22 * GRAVEL_H * ladderCount;
+  let concVol = 0, gravelVol = 0, tarArea = 0;
+  design.posts.forEach(p => {
+    const dP = postDepthOf(p), hP = postHoleM(p);
+    concVol += (hP * hP - postSide * postSide) * Math.max(0, dP - GRAVEL_H);
+    gravelVol += hP * hP * GRAVEL_H;
+    tarArea += 4 * postSide * (TAR_TOP - Math.max(TAR_BOTTOM, -dP)) + postSide * postSide;
+  });
+  concVol += footVol * ladderCount;
+  gravelVol += 0.22 * 0.22 * GRAVEL_H * ladderCount;
   const bags25 = Math.ceil(concVol / 0.0125);
-  const tarZoneH = TAR_TOP - Math.max(TAR_BOTTOM, -depth);
-  const tarArea = (4 * postSide * tarZoneH + postSide * postSide) * postCount;
   const tarLitre = tarArea * 0.35;
   const pipeConnCount = design.connections.filter(c => connMat(c.material).kind === 'pipe').length;
 
   return {
-    postMat, postCount, postTotalLen, depth, postSide, hole,
+    postMat, postCount, postTotalLen, buriedTotal, depth, postSide, hole,
     barGroups, cut, pipeConnCount,
     ladderCount, ladVert, ladRungLen, ladRungCount, ladKee,
-    concVol, concVolEach, gravelVol, bags25, tarLitre,
+    concVol, gravelVol, bags25, tarLitre,
   };
 }
 
@@ -2773,14 +3504,25 @@ const tabMaterials = {
     const fm = v => fmt(v, 2, lang) + ' m';
 
     container.append(el('h2', {}, tt('tab.materials')), el('p', { class: 'intro' }, tt('mats.intro')));
-    if (!design.posts.length) { container.append(el('div', { class: 'soon' }, el('p', {}, tt('mats.empty')))); return; }
+    if (!design.posts.length) {
+      container.append(el('div', { class: 'empty-state empty-mats' },
+        el('div', { class: 'material-ghost', 'aria-hidden': 'true' },
+          el('span', { class: 'mat-stack mat-stack-a' }),
+          el('span', { class: 'mat-stack mat-stack-b' }),
+          el('span', { class: 'mat-stack mat-stack-c' }),
+          el('span', { class: 'mat-bag' }),
+          el('span', { class: 'mat-crate' })),
+        el('p', {}, tt('mats.empty')),
+        el('button', { class: 'btn-sm primary', type: 'button', onclick: () => ctx.openTab && ctx.openTab('site') }, tt('tab.site'))));
+      return;
+    }
 
     const M = computeMaterials(design);
 
     // ---- materialeliste (tabel) ----
     const rows = [];
     rows.push({ l: `${M.postMat.name} (${tt('mats.posts')})`, q: `${M.postCount} ${tt('mats.pcs')} · ${fm(M.postTotalLen)} ${tt('mats.total')}`, c: materialColor(M.postMat) });
-    rows.push({ l: `${tt('mats.incl')} ${fm(M.depth)} ${tt('mats.buried')}`, q: '', sub: true });
+    rows.push({ l: `${tt('mats.incl')} ${fm(M.buriedTotal)} ${tt('mats.buried')}`, q: '', sub: true });
     for (const id of Object.keys(M.barGroups)) {
       const g = M.barGroups[id];
       const kind = g.mat.kind === 'wood' ? tt('mat.kind.wood') : tt('mat.kind.pipe');
@@ -2859,8 +3601,9 @@ const tabMaterials = {
       };
       stockInp.addEventListener('input', () => {
         const v = parseFloat(stockInp.value);
-        if (v > 0) { store.update(d => { d.stock = d.stock || {}; d.stock[id] = v; }); refresh(); }
+        if (!isNaN(v)) { store.update(d => { d.stock = d.stock || {}; d.stock[id] = Math.max(v, 0.5); }); refresh(); }
       });
+      stockInp.addEventListener('change', () => { stockInp.value = String(Math.max(parseFloat(stockInp.value) || 0, 0.5)); });
       refresh();
       cutHost.append(grpEl);
     }
@@ -2898,28 +3641,31 @@ function placeholderTab(id, labelKey, opts = {}) {
 const store = { getDesign, subscribe, commit, update, replace, addMaterial, removeMaterial, undo, redo, canUndo, canRedo };
 
 const TABS = [
-  tabPost,
-  tabBar,
   tabSite,
   tabView3d,
   tabMaterials,
+  tabPost,
+  tabBar,
+];
+const TAB_GROUPS = [
+  { labelKey: 'nav.project', tabs: [tabSite, tabView3d, tabMaterials] },
+  { labelKey: 'nav.analysis', tabs: [tabPost, tabBar] },
 ];
 
 const ACTIVE_KEY = 'crd-active-tab';
 let active = (() => {
   try { const s = localStorage.getItem(ACTIVE_KEY); if (s && TABS.some(t => t.id === s)) return s; } catch (_) {}
-  return 'post';
+  return 'site';
 })();
 
 const lang = () => store.getDesign().settings.lang;
-const ctx = () => ({ design: store.getDesign(), store, t, lang: lang(), rerender: renderActive, rerenderAll: renderAll });
+const ctx = () => ({ design: store.getDesign(), store, t, lang: lang(), rerender: renderActive, rerenderAll: renderAll, openTab: setActive });
 
 function renderHeader() {
   const hd = clear(document.getElementById('hd'));
   hd.append(
     el('div', { class: 'brand' },
-      el('strong', {}, t('app.title', lang())),
-      el('span', { class: 'sub' }, t('app.subtitle', lang()))),
+      el('strong', {}, t('app.title', lang()))),
     fileBar(ctx()),
     el('div', { class: 'lang' },
       el('span', { class: 'lang-l' }, t('lang.label', lang())),
@@ -2933,17 +3679,25 @@ function renderHeader() {
 
 function renderTabbar() {
   const nav = clear(document.getElementById('tabbar'));
-  TABS.forEach(tab => nav.append(
-    el('button', {
-      class: 'tab' + (tab.id === active ? ' on' : ''),
-      type: 'button',
-      onclick: () => setActive(tab.id),
-    }, t(tab.labelKey, lang()))));
+  TAB_GROUPS.forEach(group => {
+    const wrap = el('div', { class: 'tab-group' + (group.labelKey ? ' tab-group-labeled' : '') });
+    if (group.labelKey) wrap.append(el('span', { class: 'tab-group-label' }, t(group.labelKey, lang())));
+    const rowTabs = el('div', { class: 'tab-row' });
+    group.tabs.forEach(tab => rowTabs.append(
+      el('button', {
+        class: 'tab' + (tab.id === active ? ' on' : ''),
+        type: 'button',
+        onclick: () => setActive(tab.id),
+      }, t(tab.labelKey, lang()))));
+    wrap.append(rowTabs);
+    nav.append(wrap);
+  });
 }
 
 function renderActive() {
   const c = clear(document.getElementById('content'));
   const tab = TABS.find(x => x.id === active);
+  c.className = 'view-' + tab.id;
   tab.render(c, ctx());
 }
 

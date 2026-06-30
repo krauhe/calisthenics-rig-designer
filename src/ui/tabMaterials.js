@@ -10,6 +10,10 @@ function computeMaterials(design) {
   const depth = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
   const hole = ((design.defaults.post && design.defaults.post.hole_mm) || 300) / 1000;
   const siteDefH = design.site.postHeight_m || 3.0;
+  // pr. stolpe-mål (som på Kort) — falder tilbage til standarderne
+  const postHeightOf = p => p.height_m != null ? p.height_m : siteDefH;
+  const postDepthOf = p => p.depth_m != null ? p.depth_m : depth;
+  const postHoleM = p => p.hole_mm != null ? p.hole_mm / 1000 : hole;
   const postMat = resolveMaterial(design, design.defaults.post.materialId);
   const postSide = (postMat.side || postMat.od || 125) / 1000;
   const postCount = design.posts.length;
@@ -28,9 +32,9 @@ function computeMaterials(design) {
   // skære-stykker pr. materiale: stolper + barer/overliggere (rør OG træ) + stige-rør
   const cut = {};         // id -> { mat, pieces:[{len,label}] }
   const addCut = (mat, len, label) => { if (!mat || len <= 0) return; (cut[mat.id] = cut[mat.id] || { mat, pieces: [] }).pieces.push({ len, label }); };
-  // stolper (lodrette) — hver: over jord + nedgravning
-  let postTotalLen = 0;
-  design.posts.forEach((p, i) => { const lenP = (p.height_m != null ? p.height_m : siteDefH) + depth; postTotalLen += lenP; addCut(postMat, lenP, letterFor(i)); });
+  // stolper (lodrette) — hver: egen højde over jord + egen nedgravning (fra Kort)
+  let postTotalLen = 0, buriedTotal = 0;
+  design.posts.forEach((p, i) => { const lenP = postHeightOf(p) + postDepthOf(p); postTotalLen += lenP; buriedTotal += postDepthOf(p); addCut(postMat, lenP, letterFor(i)); });
   // barer / overliggere
   design.connections.forEach(c => addCut(connMat(c.material), spanOf(c), connLbl(c)));
 
@@ -47,8 +51,8 @@ function computeMaterials(design) {
     if (at.type !== 'ladder') return;
     ladderCount++;
     const bar = ladderBar(at);
-    const barY = bar ? bar.height_m : (design.site.connHeight_m || 2.2);
-    const width = at.width_m || 0.5;
+    const barY = Math.max(0, bar ? bar.height_m : (design.site.connHeight_m || 2.2));
+    const width = Math.max(0.05, at.width_m || 0.5);
     const vert = barY + 0.5;
     const rc = Math.max(0, Math.floor((barY - 0.25) / 0.40));
     ladVert += vert; ladRungCount += rc; ladRungLen += rc * width; ladKee += 1 + rc * 2;
@@ -56,22 +60,26 @@ function computeMaterials(design) {
     for (let k = 0; k < rc; k++) addCut(ladderMat, width, 't' + (k + 1));
   });
 
-  // fundament
-  const concVolEach = (hole * hole - postSide * postSide) * Math.max(0, depth - GRAVEL_H);
+  // fundament — pr. stolpe (egen dybde + hul fra Kort)
   const footVol = 0.22 * 0.22 * 0.5;
-  const concVol = concVolEach * postCount + footVol * ladderCount;
-  const gravelVol = hole * hole * GRAVEL_H * postCount + 0.22 * 0.22 * GRAVEL_H * ladderCount;
+  let concVol = 0, gravelVol = 0, tarArea = 0;
+  design.posts.forEach(p => {
+    const dP = postDepthOf(p), hP = postHoleM(p);
+    concVol += (hP * hP - postSide * postSide) * Math.max(0, dP - GRAVEL_H);
+    gravelVol += hP * hP * GRAVEL_H;
+    tarArea += 4 * postSide * (TAR_TOP - Math.max(TAR_BOTTOM, -dP)) + postSide * postSide;
+  });
+  concVol += footVol * ladderCount;
+  gravelVol += 0.22 * 0.22 * GRAVEL_H * ladderCount;
   const bags25 = Math.ceil(concVol / 0.0125);
-  const tarZoneH = TAR_TOP - Math.max(TAR_BOTTOM, -depth);
-  const tarArea = (4 * postSide * tarZoneH + postSide * postSide) * postCount;
   const tarLitre = tarArea * 0.35;
   const pipeConnCount = design.connections.filter(c => connMat(c.material).kind === 'pipe').length;
 
   return {
-    postMat, postCount, postTotalLen, depth, postSide, hole,
+    postMat, postCount, postTotalLen, buriedTotal, depth, postSide, hole,
     barGroups, cut, pipeConnCount,
     ladderCount, ladVert, ladRungLen, ladRungCount, ladKee,
-    concVol, concVolEach, gravelVol, bags25, tarLitre,
+    concVol, gravelVol, bags25, tarLitre,
   };
 }
 
@@ -85,14 +93,25 @@ const tabMaterials = {
     const fm = v => fmt(v, 2, lang) + ' m';
 
     container.append(el('h2', {}, tt('tab.materials')), el('p', { class: 'intro' }, tt('mats.intro')));
-    if (!design.posts.length) { container.append(el('div', { class: 'soon' }, el('p', {}, tt('mats.empty')))); return; }
+    if (!design.posts.length) {
+      container.append(el('div', { class: 'empty-state empty-mats' },
+        el('div', { class: 'material-ghost', 'aria-hidden': 'true' },
+          el('span', { class: 'mat-stack mat-stack-a' }),
+          el('span', { class: 'mat-stack mat-stack-b' }),
+          el('span', { class: 'mat-stack mat-stack-c' }),
+          el('span', { class: 'mat-bag' }),
+          el('span', { class: 'mat-crate' })),
+        el('p', {}, tt('mats.empty')),
+        el('button', { class: 'btn-sm primary', type: 'button', onclick: () => ctx.openTab && ctx.openTab('site') }, tt('tab.site'))));
+      return;
+    }
 
     const M = computeMaterials(design);
 
     // ---- materialeliste (tabel) ----
     const rows = [];
     rows.push({ l: `${M.postMat.name} (${tt('mats.posts')})`, q: `${M.postCount} ${tt('mats.pcs')} · ${fm(M.postTotalLen)} ${tt('mats.total')}`, c: materialColor(M.postMat) });
-    rows.push({ l: `${tt('mats.incl')} ${fm(M.depth)} ${tt('mats.buried')}`, q: '', sub: true });
+    rows.push({ l: `${tt('mats.incl')} ${fm(M.buriedTotal)} ${tt('mats.buried')}`, q: '', sub: true });
     for (const id of Object.keys(M.barGroups)) {
       const g = M.barGroups[id];
       const kind = g.mat.kind === 'wood' ? tt('mat.kind.wood') : tt('mat.kind.pipe');
@@ -171,8 +190,9 @@ const tabMaterials = {
       };
       stockInp.addEventListener('input', () => {
         const v = parseFloat(stockInp.value);
-        if (v > 0) { store.update(d => { d.stock = d.stock || {}; d.stock[id] = v; }); refresh(); }
+        if (!isNaN(v)) { store.update(d => { d.stock = d.stock || {}; d.stock[id] = Math.max(v, 0.5); }); refresh(); }
       });
+      stockInp.addEventListener('change', () => { stockInp.value = String(Math.max(parseFloat(stockInp.value) || 0, 0.5)); });
       refresh();
       cutHost.append(grpEl);
     }

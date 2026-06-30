@@ -14,19 +14,35 @@ function field(labelText, control, hint) {
 }
 
 // Rå talinput.
-function numInput(value, step, onValue) {
-  const inp = el('input', { type: 'number', step: String(step), value: String(value) });
+function numInput(value, step, onValue, opts = {}) {
+  const attrs = { type: 'number', step: String(step), value: String(value) };
+  if (opts.min != null) attrs.min = String(opts.min);
+  if (opts.max != null) attrs.max = String(opts.max);
+  const clamp = v => {
+    let out = v;
+    if (opts.min != null) out = Math.max(Number(opts.min), out);
+    if (opts.max != null) out = Math.min(Number(opts.max), out);
+    return out;
+  };
+  const inp = el('input', attrs);
   inp.addEventListener('input', () => {
     const v = parseFloat(inp.value);
-    if (!isNaN(v)) onValue(v);
+    if (!isNaN(v)) onValue(clamp(v));
+  });
+  inp.addEventListener('change', () => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v)) inp.value = String(round(clamp(v)));
   });
   return inp;
 }
 
 // Længde-input: gemmer SI (m), viser i 'm' | 'ft'.
-function lenInput(si, unit, onSI) {
+function lenInput(si, unit, onSI, opts = {}) {
+  const inputOpts = {};
+  if (opts.minSI != null) inputOpts.min = round(lenFromSI(opts.minSI, unit));
+  if (opts.maxSI != null) inputOpts.max = round(lenFromSI(opts.maxSI, unit));
   return numInput(round(lenFromSI(si, unit)), unit === 'ft' ? 0.1 : 0.05,
-    v => onSI(lenToSI(v, unit)));
+    v => onSI(lenToSI(v, unit)), inputOpts);
 }
 
 // Tværsnits-input: gemmer mm, viser i 'mm' | 'in'.

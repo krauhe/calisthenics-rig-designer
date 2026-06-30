@@ -32,7 +32,7 @@ const tabPost = {
       holeInp.value = String(holeFromMm(Math.max(holeToMm(parseFloat(holeInp.value) || 0), postSideMm)));
     });
 
-    const inputs = el('div', { class: 'panel' },
+    const inputs = el('div', { class: 'panel analysis-card' },
       el('div', { class: 'unit-row' },
         unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], u.len,
           v => { store.update(d => { d.units.post.len = v; }); rerender(); }),
@@ -41,10 +41,10 @@ const tabPost = {
       el('div', { class: 'mat-block' },
         el('span', { class: 'fld-l' }, tt('mat.title')),
         materialControl(ctx, 'post')),
-      field(`${tt('post.depth')} (${lenTxt})`, lenInput(a.depth_m, u.len, v => set(d => { d.analysis.post.depth_m = v; }))),
+      field(`${tt('post.depth')} (${lenTxt})`, lenInput(a.depth_m, u.len, v => set(d => { d.analysis.post.depth_m = Math.max(v, 0); }), { minSI: 0 })),
       field(`${tt('post.hole')} (${u.dim === 'in' ? tt('unit.in') : 'cm'})`, holeInp,
         `${tt('post.holeMin')}: ${holeFromMm(postSideMm)} ${u.dim === 'in' ? tt('unit.in') : 'cm'}`),
-      field(`${tt('post.height')} (${lenTxt})`, lenInput(a.height_m, u.len, v => set(d => { d.analysis.post.height_m = v; }))));
+      field(`${tt('post.height')} (${lenTxt})`, lenInput(a.height_m, u.len, v => set(d => { d.analysis.post.height_m = Math.max(v, 0); }), { minSI: 0 })));
 
     function resRow(label, value, cls) {
       return el('div', { class: 'res' + (cls ? ' ' + cls : '') },
@@ -58,6 +58,7 @@ const tabPost = {
       const f = foundation({ postSide, depth: a.depth_m, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E });
       const swayMm = f.dTop * 1000;
       const feelKey = swayMm < 10 ? 'feel.solid' : swayMm < 20 ? 'feel.springy' : 'feel.soft';
+      results.className = 'results analysis-card result-' + (swayMm < 10 ? 'ok' : swayMm < 20 ? 'warn' : 'bad');
       clear(results);
       results.append(
         el('h3', {}, tt('post.res.title')),
@@ -102,6 +103,8 @@ const tabPost = {
     container.append(
       el('h2', {}, tt('post.heading')),
       el('p', { class: 'intro' }, tt('post.intro')),
-      el('div', { class: 'twocol' }, inputs, el('div', {}, results, chartHost)));
+      el('div', { class: 'twocol analysis-layout' },
+        inputs,
+        el('div', { class: 'analysis-output analysis-output-post' }, results, chartHost)));
   },
 };

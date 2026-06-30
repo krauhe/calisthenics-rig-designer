@@ -55,9 +55,10 @@ function lineChart({ points, series, xMin, xMax, yMax, xLabel, yLabel, color = '
   const X = x => x0 + (x - xMin) / (xMax - xMin) * (x1 - x0);
   const Y = y => y0 - Math.max(y, 0) / yMax * (y0 - y1);  // ingen øvre klemning — linjer klippes i toppen
   const frac = [0, 0.25, 0.5, 0.75, 1];
+  const yFmtDigits = yMax < 0.1 ? 3 : yMax < 1 ? 2 : yMax < 10 ? 1 : 0;
   const yGrid = frac.map(f => f * yMax).map(v =>
     `<line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" stroke="rgba(255,255,255,.07)"/>` +
-    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#9aa6b3">${fmt(v, v < 10 ? 1 : 0, lang)}</text>`).join('');
+    `<text x="${x0 - 6}" y="${Y(v) + 3}" text-anchor="end" font-size="9" fill="#9aa6b3">${fmt(v, yFmtDigits, lang)}</text>`).join('');
   const xGrid = frac.map(f => xMin + f * (xMax - xMin)).map(v =>
     `<line x1="${X(v)}" y1="${y0}" x2="${X(v)}" y2="${y1}" stroke="rgba(255,255,255,.045)"/>` +
     `<text x="${X(v)}" y="${y0 + 14}" text-anchor="middle" font-size="9" fill="#9aa6b3">${fmt(v, (xMax - xMin) <= 10 ? 1 : 0, lang)}</text>`).join('');

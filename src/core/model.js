@@ -20,7 +20,7 @@ function defaultDesign() {
     library: CATALOG.map(m => ({ ...m, builtin: true })),
     // Selvstændige analyse-faner:
     analysis: {
-      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 300, height_m: 2.7 },
+      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 200, height_m: 2.7 },
       bar:  { materialId: 'pipe-1', span_m: 2.4, load_kg: 120, fixity: 0.25 },
     },
     // Sted-model (kort-editoren):
@@ -37,9 +37,10 @@ function defaultDesign() {
       avatarHeight_m: 1.80,  // standard personhøjde (for nye avatarer)
       ladderWidth_m: 0.5,
       refLoad_kg: 120,    // designlast pr. bar (til kritisk-markering på kortet)
+      pipeWall_mm: 3.2,   // antaget rør-godstykkelse for ALLE rør (alm. galv. vandrør, EN10255 medium)
     },
     defaults: {
-      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 300, height_m: 3.0 },
+      post: { materialId: 'wood-125', depth_m: 1.2, hole_mm: 200, height_m: 3.0 },
       soil: {},
       load: { centerKg: 120, fixity: 0.25 },
     },

@@ -1,5 +1,5 @@
-// Fane: Bar-analyse. Bruger beam() fra kernen + to grafer.
-
+// Tab: bar analysis. Uses beam() from the core and keeps all charts tied to
+// the selected material, span, load and end fixity.
 
 const tabBar = {
   id: 'bar',
@@ -13,7 +13,7 @@ const tabBar = {
     const massU = u.mass || 'kg';
     const massTxt = massU === 'lb' ? 'lbs' : 'kg';
     const inch = u.dim === 'in';
-    const cvDim = v => inch ? v / 25.4 : v;          // mm → visningsenhed
+    const cvDim = v => inch ? v / 25.4 : v;
 
     const set = mut => { store.update(mut); compute(); };
     const results = el('div', { class: 'results' });
@@ -22,14 +22,17 @@ const tabBar = {
     const chartHost = el('div', { class: 'charthost' });
     const legend = el('div', { class: 'legend' });
 
-    // Spændvidde skal være positiv (0 ⇒ division med nul i beam); indspænding 0–1.
     const MIN_SPAN = 0.1;
     if (!(a.span_m >= MIN_SPAN)) a.span_m = MIN_SPAN;
     a.fixity = Math.min(1, Math.max(0, a.fixity));
     const spanToSI = v => lenToSI(v, u.len);
     const spanFromSI = m => round(lenFromSI(m, u.len));
-    const spanInp = el('input', { type: 'number', step: u.len === 'ft' ? '0.1' : '0.05',
-      min: String(spanFromSI(MIN_SPAN)), value: String(spanFromSI(a.span_m)) });
+    const spanInp = el('input', {
+      type: 'number',
+      step: u.len === 'ft' ? '0.1' : '0.05',
+      min: String(spanFromSI(MIN_SPAN)),
+      value: String(spanFromSI(a.span_m)),
+    });
     spanInp.addEventListener('input', () => {
       const v = parseFloat(spanInp.value); if (isNaN(v)) return;
       set(d => { d.analysis.bar.span_m = Math.max(spanToSI(v), MIN_SPAN); });
@@ -37,6 +40,7 @@ const tabBar = {
     spanInp.addEventListener('change', () => {
       spanInp.value = String(spanFromSI(Math.max(spanToSI(parseFloat(spanInp.value) || 0), MIN_SPAN)));
     });
+
     const fixInp = el('input', { type: 'number', step: '0.05', min: '0', max: '1', value: String(a.fixity) });
     fixInp.addEventListener('input', () => {
       const v = parseFloat(fixInp.value); if (isNaN(v)) return;
@@ -46,7 +50,7 @@ const tabBar = {
       fixInp.value = String(Math.min(1, Math.max(0, parseFloat(fixInp.value) || 0)));
     });
 
-    const inputs = el('div', { class: 'panel' },
+    const inputs = el('div', { class: 'panel analysis-card' },
       el('div', { class: 'unit-row' },
         unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], u.len,
           v => { store.update(d => { d.units.bar.len = v; }); rerender(); }),
@@ -60,13 +64,14 @@ const tabBar = {
       field(`${tt('bar.span')} (${lenTxt})`, spanInp),
       field(`${tt('bar.load')} (${massTxt})`,
         numInput(Math.round(massFromSI(a.load_kg, massU)), massU === 'lb' ? 10 : 5,
-          v => set(d => { d.analysis.bar.load_kg = massToSI(v, massU); })),
+          v => set(d => { d.analysis.bar.load_kg = Math.max(massToSI(v, massU), 0); }), { min: 0 }),
         tt('bar.load.hint')),
       field(`${tt('bar.fixity')}`, fixInp, tt('bar.fixity.hint')));
 
     function resRow(label, value, cls) {
       return el('div', { class: 'res' + (cls ? ' ' + cls : '') },
-        el('span', { class: 'res-l' }, label), el('span', { class: 'res-v' }, value));
+        el('span', { class: 'res-l' }, label),
+        el('span', { class: 'res-v' }, value));
     }
 
     function compute() {
@@ -74,6 +79,7 @@ const tabBar = {
       const b = beam(a.span_m, mat, a.load_kg, a.fixity);
       const deflMm = b.dReal * 1000;
       const feelKey = deflMm < 7 ? 'feel.solid' : deflMm < 12 ? 'feel.springy' : 'feel.soft';
+      results.className = 'results analysis-card result-' + (b.pYield >= a.load_kg * 1.2 ? 'ok' : b.pYield >= a.load_kg ? 'warn' : 'bad');
       clear(results);
       results.append(
         el('h3', {}, tt('post.res.title')),
@@ -83,42 +89,83 @@ const tabBar = {
         resRow(tt('bar.res.ultimate'), fmtMass(b.pUlt, massU, lang)),
         el('div', { class: 'res-note' }, tt('bar.res.note')));
 
-      // graf 1: nedbøjning vs. belastning — alle materialer, samme farvekode
+      const maxLoadKg = Math.max(200, a.load_kg * 1.15);
       const loads = [];
-      for (let Lk = 0; Lk <= 200 + 1e-9; Lk += 10) loads.push(Lk);
-      let maxMm = 0;
-      design.library.forEach(m => { maxMm = Math.max(maxMm, beam(a.span_m, m, 200, a.fixity).dReal * 1000); });
-      const dyMax = cvDim(Math.min(maxMm * 1.1, 80) || 1);
-      const series = design.library.map((m, i) => ({
-        color: COLORS[i % COLORS.length],
-        points: loads.map(Lk => ({ x: massFromSI(Lk, massU), y: cvDim(beam(a.span_m, m, Lk, a.fixity).dReal * 1000) })),
+      for (let i = 0; i <= 20; i++) loads.push(maxLoadKg * i / 20);
+      const deflPoints = loads.map(Lk => ({
+        x: massFromSI(Lk, massU),
+        y: cvDim(beam(a.span_m, mat, Lk, a.fixity).dReal * 1000),
       }));
-      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')} · ${fmt(lenFromSI(a.span_m, u.len), 2, lang)} ${lenTxt}</div>` +
-        lineChart({ series, xMin: 0, xMax: massFromSI(200, massU), yMax: dyMax,
-          xLabel: `${tt('bar.chart2.x')} (${massTxt})`, yLabel: `${tt('bar.chart2.y')} (${inch ? 'in' : 'mm'})`,
-          vLine: massFromSI(a.load_kg, massU), lang });
+      const deflYMax = Math.max(cvDim(deflMm), ...deflPoints.map(p => p.y), 0.01) * 1.18;
+      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')} - ${mat.name}</div>` +
+        lineChart({
+          points: deflPoints,
+          xMin: 0,
+          xMax: massFromSI(maxLoadKg, massU),
+          yMax: deflYMax,
+          xLabel: `${tt('bar.chart2.x')} (${massTxt})`,
+          yLabel: `${tt('bar.chart2.y')} (${inch ? 'in' : 'mm'})`,
+          vLine: massFromSI(a.load_kg, massU),
+          hLine: cvDim(deflMm),
+          lang,
+        });
 
-      // delt farve-legende (mellem graferne)
       clear(legend);
-      design.library.forEach((m, i) => legend.append(
-        el('span', { class: 'leg-item' },
-          el('span', { class: 'leg-sw', style: `background:${COLORS[i % COLORS.length]}` }),
-          m.name)));
+      legend.append(
+        el('span', { class: 'leg-item' }, el('span', { class: 'leg-sw', style: `background:${COLORS[0]}` }), mat.name),
+        el('span', { class: 'leg-item' }, el('span', { class: 'leg-sw', style: 'background:#ff6f66' }), fmtMass(a.load_kg, massU, lang)));
 
-      // graf 2: sikker arbejdslast vs. spændvidde
-      workHost.innerHTML = `<div class="chart-title">${tt('bar.chart.titleWork')}</div>` +
-        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, metric: 'yield', yLabelKey: 'bar.chart.yWork', t: ctx.t, lang });
-      // graf 3: brudlast vs. spændvidde
-      chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')}</div>` +
-        capacityChart({ library: design.library, fixity: a.fixity, currentSpan: a.span_m, load: a.load_kg, massU, metric: 'ult', yLabelKey: 'bar.chart.y', t: ctx.t, lang });
+      const spanMin = Math.max(MIN_SPAN, Math.min(0.5, a.span_m * 0.6));
+      const spanMax = Math.max(3.0, a.span_m * 1.5, spanMin + 0.8);
+      const spans = [];
+      for (let i = 0; i <= 30; i++) spans.push(spanMin + (spanMax - spanMin) * i / 30);
+      const safePoints = spans.map(s => ({
+        x: lenFromSI(s, u.len),
+        y: massFromSI(beam(s, mat, 1, a.fixity).pYield, massU),
+      }));
+      const ultPoints = spans.map(s => ({
+        x: lenFromSI(s, u.len),
+        y: massFromSI(beam(s, mat, 1, a.fixity).pUlt, massU),
+      }));
+      const currentX = lenFromSI(a.span_m, u.len);
+      const currentLoad = massFromSI(a.load_kg, massU);
+      const capYMax = pts => Math.max(currentLoad, ...pts.map(p => p.y), 1) * 1.12;
+
+      workHost.innerHTML = `<div class="chart-title">${tt('bar.chart.titleWork')} - ${mat.name}</div>` +
+        lineChart({
+          points: safePoints,
+          xMin: lenFromSI(spanMin, u.len),
+          xMax: lenFromSI(spanMax, u.len),
+          yMax: capYMax(safePoints),
+          xLabel: `${tt('bar.span')} (${lenTxt})`,
+          yLabel: `${tt('bar.chart.yWork')} (${massTxt})`,
+          vLine: currentX,
+          hLine: currentLoad,
+          lang,
+        });
+      chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')} - ${mat.name}</div>` +
+        lineChart({
+          points: ultPoints,
+          xMin: lenFromSI(spanMin, u.len),
+          xMax: lenFromSI(spanMax, u.len),
+          yMax: capYMax(ultPoints),
+          xLabel: `${tt('bar.span')} (${lenTxt})`,
+          yLabel: `${tt('bar.chart.y')} (${massTxt})`,
+          vLine: currentX,
+          hLine: currentLoad,
+          lang,
+        });
     }
 
     compute();
     container.append(
       el('h2', {}, tt('bar.heading')),
       el('p', { class: 'intro' }, tt('bar.intro')),
-      el('div', { class: 'twocol' },
+      el('div', { class: 'twocol analysis-layout' },
         inputs,
-        el('div', {}, results, deflHost, legend, workHost, chartHost)));
+        el('div', { class: 'analysis-output analysis-output-bar' },
+          el('div', { class: 'analysis-top' }, results, deflHost),
+          legend,
+          el('div', { class: 'chart-grid' }, workHost, chartHost))));
   },
 };

@@ -8,6 +8,7 @@ const LEGACY_KEY = 'chalestetics-3d';
 const LEGACY_SIZE_IDS = ['pipe-3-4', 'pipe-1', 'pipe-1-4', 'wood-10'];
 
 const num = (v, dflt) => (typeof v === 'number' && isFinite(v)) ? v : dflt;
+const atLeast = (v, min, dflt) => Math.max(min, num(v, dflt));
 
 function serialize(design) {
   return JSON.stringify(design, null, 2);
@@ -61,10 +62,42 @@ function fill(d) {
     connections: Array.isArray(d.connections) ? d.connections : base.connections,
     attachments: Array.isArray(d.attachments) ? d.attachments : base.attachments,
     stock: d.stock || base.stock,
-    defaults: d.defaults || base.defaults,
+    defaults: {
+      ...base.defaults, ...(d.defaults || {}),
+      post: { ...base.defaults.post, ...((d.defaults || {}).post || {}) },
+    },
     site: { ...base.site, ...(d.site || {}) },
   };
+  // Opgradér den gamle hul-standard (30 cm) til den nye (20 cm). Feltet sættes
+  // aldrig manuelt i UI'et (hul redigeres pr. stolpe), så det er sikkert at hæve.
+  if (merged.defaults.post.hole_mm === 300) merged.defaults.post.hole_mm = base.defaults.post.hole_mm;
   merged.library = mergeCatalog(merged.library);
+  merged.analysis.post.depth_m = atLeast(merged.analysis.post.depth_m, 0, base.analysis.post.depth_m);
+  merged.analysis.post.hole_mm = atLeast(merged.analysis.post.hole_mm, 0, base.analysis.post.hole_mm);
+  merged.analysis.post.height_m = atLeast(merged.analysis.post.height_m, 0, base.analysis.post.height_m);
+  merged.analysis.bar.span_m = atLeast(merged.analysis.bar.span_m, 0.1, base.analysis.bar.span_m);
+  merged.analysis.bar.load_kg = atLeast(merged.analysis.bar.load_kg, 0, base.analysis.bar.load_kg);
+  merged.analysis.bar.fixity = Math.min(1, atLeast(merged.analysis.bar.fixity, 0, base.analysis.bar.fixity));
+  merged.site.grid_m = atLeast(merged.site.grid_m, 0.01, base.site.grid_m);
+  merged.site.connHeight_m = atLeast(merged.site.connHeight_m, 0, base.site.connHeight_m);
+  merged.site.postHeight_m = atLeast(merged.site.postHeight_m, 0.1, base.site.postHeight_m);
+  merged.site.avatarHeight_m = atLeast(merged.site.avatarHeight_m, 0.3, base.site.avatarHeight_m);
+  merged.site.ladderWidth_m = atLeast(merged.site.ladderWidth_m, 0.05, base.site.ladderWidth_m);
+  merged.site.refLoad_kg = atLeast(merged.site.refLoad_kg, 0, base.site.refLoad_kg);
+  // global rør-godstykkelse: anvendes på ALLE rør-materialer (én antagelse)
+  merged.site.pipeWall_mm = atLeast(merged.site.pipeWall_mm, 0.5, base.site.pipeWall_mm);
+  merged.library.forEach(m => { if (m.kind === 'pipe') m.wall = merged.site.pipeWall_mm; });
+  merged.posts.forEach(p => {
+    if (p.height_m != null) p.height_m = atLeast(p.height_m, 0.1, merged.site.postHeight_m);
+    if (p.depth_m != null) p.depth_m = atLeast(p.depth_m, 0.1, merged.defaults.post.depth_m);
+    if (p.hole_mm != null) p.hole_mm = atLeast(p.hole_mm, 0, merged.defaults.post.hole_mm);
+  });
+  merged.connections.forEach(c => { c.height_m = atLeast(c.height_m, 0, merged.site.connHeight_m); });
+  merged.attachments.forEach(a => {
+    if (a.type === 'ladder') a.width_m = atLeast(a.width_m, 0.05, merged.site.ladderWidth_m);
+    if (a.type === 'avatar') a.height_m = atLeast(a.height_m, 0.3, merged.site.avatarHeight_m);
+  });
+  Object.keys(merged.stock || {}).forEach(id => { merged.stock[id] = atLeast(merged.stock[id], 0.5, 0.5); });
   return merged;
 }
 
@@ -91,7 +124,7 @@ function validate(d) {
 // Konvertér den oprindelige apps gemte data (fast firkant) til den nye graf-model.
 function fromLegacy(o) {
   const d = defaultDesign();
-  const lenLong = num(o.lenLong, 2.4), lenShort = num(o.lenShort, 1.2);
+  const lenLong = atLeast(o.lenLong, 0.1, 2.4), lenShort = atLeast(o.lenShort, 0.1, 1.2);
   const hL = (lenLong + POST) / 2, hS = (lenShort + POST) / 2;
   const corners = [{ x: -hL, z: -hS }, { x: hL, z: -hS }, { x: hL, z: hS }, { x: -hL, z: hS }];
   d.posts = corners.map((c, i) => ({ id: 'p' + (i + 1), x_m: c.x, z_m: c.z, override: null }));
@@ -102,18 +135,18 @@ function fromLegacy(o) {
   d.connections = sides.map((s, i) => ({
     id: 'c' + (i + 1),
     a: 'p' + (s[0] + 1), b: 'p' + (s[1] + 1),
-    height_m: num(heights[i], 1.5),
+    height_m: atLeast(heights[i], 0, 1.5),
     material: { source: 'library', id: LEGACY_SIZE_IDS[sizeIdx[i]] || 'pipe-1' },
-    onTop: num(heights[i], 0) >= POST_ABOVE,
+    onTop: atLeast(heights[i], 0, 0) >= POST_ABOVE,
   }));
 
-  d.attachments = [{ id: 'a1', type: 'ladder', postId: 'p1', connectionId: 'c1', width_m: num(o.ladderWidth, 0.5) }];
+  d.attachments = [{ id: 'a1', type: 'ladder', postId: 'p1', connectionId: 'c1', width_m: atLeast(o.ladderWidth, 0.05, 0.5) }];
   d.defaults = {
-    post: { materialId: 'wood-125', depth_m: num(o.depth, 1.2), hole_mm: num(o.hole, 0.3) * 1000, height_m: POST_ABOVE },
+    post: { materialId: 'wood-125', depth_m: atLeast(o.depth, 0, 1.2), hole_mm: atLeast(o.hole, 0, 0.3) * 1000, height_m: POST_ABOVE },
     soil: {},
-    load: { centerKg: num(o.load, 120), fixity: 0.25 },
+    load: { centerKg: atLeast(o.load, 0, 120), fixity: 0.25 },
   };
-  d.analysis.bar.load_kg = num(o.load, 120);
+  d.analysis.bar.load_kg = atLeast(o.load, 0, 120);
   d.meta.name = 'Importeret rig';
   return d;
 }

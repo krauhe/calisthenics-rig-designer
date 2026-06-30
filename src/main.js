@@ -4,28 +4,31 @@
 const store = { getDesign, subscribe, commit, update, replace, addMaterial, removeMaterial, undo, redo, canUndo, canRedo };
 
 const TABS = [
-  tabPost,
-  tabBar,
   tabSite,
   tabView3d,
   tabMaterials,
+  tabPost,
+  tabBar,
+];
+const TAB_GROUPS = [
+  { labelKey: 'nav.project', tabs: [tabSite, tabView3d, tabMaterials] },
+  { labelKey: 'nav.analysis', tabs: [tabPost, tabBar] },
 ];
 
 const ACTIVE_KEY = 'crd-active-tab';
 let active = (() => {
   try { const s = localStorage.getItem(ACTIVE_KEY); if (s && TABS.some(t => t.id === s)) return s; } catch (_) {}
-  return 'post';
+  return 'site';
 })();
 
 const lang = () => store.getDesign().settings.lang;
-const ctx = () => ({ design: store.getDesign(), store, t, lang: lang(), rerender: renderActive, rerenderAll: renderAll });
+const ctx = () => ({ design: store.getDesign(), store, t, lang: lang(), rerender: renderActive, rerenderAll: renderAll, openTab: setActive });
 
 function renderHeader() {
   const hd = clear(document.getElementById('hd'));
   hd.append(
     el('div', { class: 'brand' },
-      el('strong', {}, t('app.title', lang())),
-      el('span', { class: 'sub' }, t('app.subtitle', lang()))),
+      el('strong', {}, t('app.title', lang()))),
     fileBar(ctx()),
     el('div', { class: 'lang' },
       el('span', { class: 'lang-l' }, t('lang.label', lang())),
@@ -39,17 +42,25 @@ function renderHeader() {
 
 function renderTabbar() {
   const nav = clear(document.getElementById('tabbar'));
-  TABS.forEach(tab => nav.append(
-    el('button', {
-      class: 'tab' + (tab.id === active ? ' on' : ''),
-      type: 'button',
-      onclick: () => setActive(tab.id),
-    }, t(tab.labelKey, lang()))));
+  TAB_GROUPS.forEach(group => {
+    const wrap = el('div', { class: 'tab-group' + (group.labelKey ? ' tab-group-labeled' : '') });
+    if (group.labelKey) wrap.append(el('span', { class: 'tab-group-label' }, t(group.labelKey, lang())));
+    const rowTabs = el('div', { class: 'tab-row' });
+    group.tabs.forEach(tab => rowTabs.append(
+      el('button', {
+        class: 'tab' + (tab.id === active ? ' on' : ''),
+        type: 'button',
+        onclick: () => setActive(tab.id),
+      }, t(tab.labelKey, lang()))));
+    wrap.append(rowTabs);
+    nav.append(wrap);
+  });
 }
 
 function renderActive() {
   const c = clear(document.getElementById('content'));
   const tab = TABS.find(x => x.id === active);
+  c.className = 'view-' + tab.id;
   tab.render(c, ctx());
 }
 

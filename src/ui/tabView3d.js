@@ -35,7 +35,17 @@ const tabView3d = {
     container.append(el('h2', {}, tt('tab.view3d')), el('p', { class: 'intro' }, tt('view3d.intro')));
 
     if (!design.posts.length) {
-      container.append(el('div', { class: 'soon' }, el('p', {}, tt('view3d.empty'))));
+      container.append(el('div', { class: 'empty-state empty-3d' },
+        el('div', { class: 'rig-ghost', 'aria-hidden': 'true' },
+          el('span', { class: 'ghost-post ghost-post-a' }),
+          el('span', { class: 'ghost-post ghost-post-b' }),
+          el('span', { class: 'ghost-post ghost-post-c' }),
+          el('span', { class: 'ghost-post ghost-post-d' }),
+          el('span', { class: 'ghost-bar ghost-bar-top' }),
+          el('span', { class: 'ghost-bar ghost-bar-mid' }),
+          el('span', { class: 'ghost-ladder' })),
+        el('p', {}, tt('view3d.empty')),
+        el('button', { class: 'btn-sm primary', type: 'button', onclick: () => ctx.openTab && ctx.openTab('site') }, tt('tab.site'))));
       return;
     }
 
@@ -73,16 +83,42 @@ function build3d(THREE, host, design, ctx) {
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
   const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
   const connLabel = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
+  // Stolpe-label ligger fladt på jorden uden for stolpen og er STATISK.
+  // Teksten vender UDAD (væk fra centrum), så den læses fra kameraet, der
+  // altid ser riggen udefra. (dx,dz) = udadgående retning fra centrum.
+  const outwardLabelYawFor = (dx, dz) => Math.atan2(dx, dz);
+  const postLabelDir = (p, idx) => {
+    const posts = design.posts || [];
+    const nearest = posts
+      .slice()
+      .sort((a, b) => Math.hypot(a.x_m - p.x_m, a.z_m - p.z_m) - Math.hypot(b.x_m - p.x_m, b.z_m - p.z_m))
+      .slice(0, Math.min(4, posts.length));
+    const centroid = pts => pts.reduce((s, q) => ({ x: s.x + q.x_m, z: s.z + q.z_m }), { x: 0, z: 0 });
+    let c = nearest.length ? centroid(nearest) : { x: 0, z: 0 };
+    if (nearest.length) { c.x /= nearest.length; c.z /= nearest.length; }
+    let dx = p.x_m - c.x, dz = p.z_m - c.z;
+    if (Math.hypot(dx, dz) < 1e-6 && posts.length > 1) {
+      c = centroid(posts); c.x /= posts.length; c.z /= posts.length;
+      dx = p.x_m - c.x; dz = p.z_m - c.z;
+    }
+    if (Math.hypot(dx, dz) < 1e-6) {
+      const a = (idx / Math.max(1, posts.length)) * Math.PI * 2 - Math.PI / 2;
+      dx = Math.cos(a); dz = Math.sin(a);
+    }
+    const d = Math.hypot(dx, dz) || 1;
+    return { x: dx / d, z: dz / d };
+  };
   const pm = resolveMaterial(design, design.defaults.post.materialId);
   const POST = ((pm && (pm.side || pm.od)) || 125) / 1000;
   const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
   const siteDefH = design.site.postHeight_m || 3.0;
-  // pr. stolpe: over-jord-højde = stolpens egen højde, dog mindst højeste bar + margin
+  // pr. stolpe: over-jord-højde = stolpens egen højde (dog mindst en bars
+  // overkant, så bjælken ikke svæver over toppen — bar ≤ stolpe via Kort-klamp).
   const aboveOf = {};
   design.posts.forEach(p => { aboveOf[p.id] = (p.height_m != null ? p.height_m : siteDefH); });
   design.connections.forEach(c => {
-    if (aboveOf[c.a] != null) aboveOf[c.a] = Math.max(aboveOf[c.a], c.height_m + 0.12);
-    if (aboveOf[c.b] != null) aboveOf[c.b] = Math.max(aboveOf[c.b], c.height_m + 0.12);
+    if (aboveOf[c.a] != null) aboveOf[c.a] = Math.max(aboveOf[c.a], c.height_m);
+    if (aboveOf[c.b] != null) aboveOf[c.b] = Math.max(aboveOf[c.b], c.height_m);
   });
   const maxAbove = Math.max(2.0, ...design.posts.map(p => aboveOf[p.id]));
 
@@ -143,15 +179,33 @@ function build3d(THREE, host, design, ctx) {
   }
   // fast flad label på jorden (ligger fladt, følger IKKE kameraet).
   // ring/txt = farve; orange = stolper, blå = forbindelser (som på Kort).
-  function makeFlatLabel(text, ring, txt) {
+  function makeFlatLabel(text, ring, txt, opts = {}) {
+    const pill = opts.shape === 'pill';
     const c = document.createElement('canvas'), g = c.getContext('2d');
-    c.width = 128; c.height = 128;
+    c.width = pill ? 256 : 128; c.height = 128;
     g.fillStyle = 'rgba(255,255,255,0.94)';
-    g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.fill();
-    g.lineWidth = 7; g.strokeStyle = ring; g.stroke();
-    g.fillStyle = txt; g.font = `bold ${text.length > 2 ? 50 : 76}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(text, 64, 70);
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42),
+    if (pill) {
+      const x = 14, y = 30, w = 228, h = 68, r = 24;
+      g.beginPath();
+      g.moveTo(x + r, y);
+      g.arcTo(x + w, y, x + w, y + h, r);
+      g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r);
+      g.arcTo(x, y, x + w, y, r);
+      g.closePath();
+      g.fill();
+      g.lineWidth = 7; g.strokeStyle = ring; g.stroke();
+      g.fillStyle = txt; g.font = 'bold 48px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(text, 128, 66);
+    } else {
+      g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.fill();
+      g.lineWidth = 7; g.strokeStyle = ring; g.stroke();
+      g.fillStyle = txt; g.font = `bold ${text.length > 2 ? 50 : 76}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(text, 64, 70);
+    }
+    const wM = pill ? Math.max(0.62, Math.min(0.9, 0.32 + text.length * 0.1)) : 0.42;
+    const hM = pill ? 0.28 : 0.42;
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(wM, hM),
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
     plane.rotation.x = -Math.PI / 2;
     const grp = new THREE.Group(); grp.add(plane); return grp;
@@ -196,22 +250,26 @@ function build3d(THREE, host, design, ctx) {
     const tarTop = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.02, 0.02, POST * 1.02), tarMat);
     tarTop.position.set(X, above + 0.01, Z); tarTop.castShadow = true; group.add(tarTop);
 
-    // fast stolpe-label på jorden (orange, bogstav — som på Kort)
-    let ox = X, oz = Z; const dl = Math.hypot(X, Z);
-    if (dl > 1e-3) { ox = X + (X / dl) * 0.34; oz = Z + (Z / dl) * 0.34; } else { oz = Z + 0.34; }
+    // Stolpe-label: fast gulvmarkering uden for stolpegruppen, med toppen vendt udad.
+    const ld = postLabelDir(p, pi);
+    const labelGap = Math.max(0.42, POST * 2.8 + 0.16);
+    const ox = X + ld.x * labelGap, oz = Z + ld.z * labelGap;
     const pl = makeFlatLabel(letterFor(pi), '#d98324', '#9a3412');
-    pl.position.set(ox, 0.03, oz);
-    pl.rotation.y = Math.atan2(ox, oz);
+    pl.position.set(ox, 0.035, oz);
+    pl.rotation.y = outwardLabelYawFor(ld.x, ld.z);
     group.add(pl);
   });
 
   // ---- forbindelser (bars) + beslag ----
   design.connections.forEach((c, idx) => {
     const a = byId[c.a], b = byId[c.b]; if (!a || !b) return;
-    const A = V3(a.x_m - cx, c.height_m, a.z_m - cz);
-    const B = V3(b.x_m - cx, c.height_m, b.z_m - cz);
     const span = Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m);
     const mat = connMat(c.material);
+    // c.height_m = barens ØVERSTE kant → centrum ligger en halv tykkelse lavere
+    const barHalf = (mat.kind === 'wood' ? (mat.side || 100) : (mat.od || 33)) / 2000;
+    const yBar = c.height_m - barHalf;
+    const A = V3(a.x_m - cx, yBar, a.z_m - cz);
+    const B = V3(b.x_m - cx, yBar, b.z_m - cz);
     const eff = effSpan(c, span);   // stige aflaster baren (ekstra støttepunkt)
     const crit = eff > 0 && beam(eff, mat, 1, 0.25).pYield < refLoad;
     const baseMat = crit ? critMat : (mat.kind === 'wood' ? woodMat : pipeMat);
@@ -229,7 +287,7 @@ function build3d(THREE, host, design, ctx) {
       [[A, B], [B, A]].forEach(([end, other]) => {
         const f = makeFitting(r);
         const toMid = new THREE.Vector3().subVectors(other, end).setY(0).normalize();
-        f.position.set(end.x + toMid.x * POST / 2, c.height_m, end.z + toMid.z * POST / 2);
+        f.position.set(end.x + toMid.x * POST / 2, yBar, end.z + toMid.z * POST / 2);
         f.quaternion.setFromUnitVectors(V3(1, 0, 0), toMid);
         group.add(f);
       });
@@ -240,10 +298,11 @@ function build3d(THREE, host, design, ctx) {
     const hl = makeLabel(fmtH(c.height_m));
     hl.position.set((A.x + B.x) / 2 + out.x * 0.3, c.height_m + 0.16, (A.z + B.z) / 2 + out.z * 0.3);
     group.add(hl);
-    // fast forbindelses-label på jorden (blå, par-navn — som på Kort)
-    const fl = makeFlatLabel(connLabel(c), '#0b66c3', '#0b3a66');
+    // fast forbindelses-label på jorden (blå, par-navn). Statisk og vendt
+    // UDAD som stolpe-labels (samme helper), så den læses fra kameraet.
+    const fl = makeFlatLabel(connLabel(c), '#0b66c3', '#0b3a66', { shape: 'pill' });
     fl.position.set((A.x + B.x) / 2, 0.02, (A.z + B.z) / 2);
-    fl.rotation.y = Math.atan2(out.x, out.z);
+    fl.rotation.y = outwardLabelYawFor(out.x, out.z);
     group.add(fl);
   });
 
@@ -264,7 +323,7 @@ function build3d(THREE, host, design, ctx) {
     for (const at of design.attachments) {
       if (at.type !== 'ladder') continue;
       const bar = ladderBar(at);
-      if (bar && bar.conn && bar.conn.id === c.id) relief = Math.max(relief, at.width_m || 0.5);
+      if (bar && bar.conn && bar.conn.id === c.id) relief = Math.max(relief, Math.max(0.05, at.width_m || 0.5));
     }
     return relief > 0 ? Math.max(0.05, Math.max(relief, span - relief)) : span;
   }
@@ -276,7 +335,7 @@ function build3d(THREE, host, design, ctx) {
     const bar = ladderBar(at);
     const dx = bar ? bar.dx : 0, dz = bar ? bar.dz : 1;
     const barY = bar ? bar.height : (design.site.connHeight_m || 2.2);
-    const inset = at.width_m || 0.5;           // afstand stolpe → lodret rør
+    const inset = Math.max(0.05, at.width_m || 0.5);           // afstand stolpe → lodret rør
     const rLad = (33.7 / 1000) / 2;            // 1" stigerør
     const vBot = -0.5;                         // nedstøbt ½ m
     const vx = X + dx * inset, vz = Z + dz * inset;
