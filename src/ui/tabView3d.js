@@ -125,7 +125,7 @@ function build3d(THREE, host, design, ctx) {
   // ---- scene + renderer ----
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xdfe6ee);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
