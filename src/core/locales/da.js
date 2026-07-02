@@ -1,6 +1,5 @@
 const da = {
   'app.title': 'Calisthenics Rig Designer',
-  'app.subtitle': 'Planlæg dit calisthenics-stativ',
 
   'tab.post': 'Stolpe',
   'tab.bar': 'Bar',
@@ -135,7 +134,6 @@ const da = {
   'site.help.monkey': 'Armgang: hold knappen nede og træk — trinnene klikker fast mellem to parallelle barer (i nogenlunde samme højde); slip for at placere. Rød = pladsen er optaget.',
   'site.help.avatar': 'Person: klik på fladen for at sætte en person ind (justér højden ved at vælge den). Vises i 3D med strakte arme.',
   'site.help.delete': 'Slet: klik på en stolpe, forbindelse, stige eller person for at fjerne den.',
-  'site.avatar.title': 'Valgt person',
   'site.persons.title': 'Personer',
   'site.summary.ladder.one': 'Stige',
   'site.summary.ladder.many': 'Stiger',
@@ -157,11 +155,7 @@ const da = {
   'site.refload.hint': 'Husk ~2× kropsvægt (dynamik). Bruges til at markere spinkle forbindelser.',
   'site.pipewall': 'Rør-gods',
   'site.pipewall.hint': 'Antaget godstykkelse for ALLE rør. Default 3,2 mm = alm. galvaniseret vandrør (EN10255 medium). Påvirker styrke/nedbøjning.',
-  'site.conn.title': 'Valgt forbindelse',
-  'site.conn.span': 'Spænd',
-  'site.conn.deflection': 'Nedbøjning ved',
   'site.conn.critical': '⚠ Lavt dimensioneret — for spinkelt til designlasten',
-  'site.conn.none': 'Vælg en forbindelse (med Vælg/flyt) for at se styrke og ændre materiale/højde.',
   'site.conn.tableTitle': 'Forbindelser',
   'site.conn.empty': 'Ingen forbindelser endnu — brug Forbind-værktøjet.',
   'site.conn.th.mat': 'Materiale',

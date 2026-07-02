@@ -5,6 +5,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Calisthenics Rig Designer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%230f141b%22/%3E%3Crect%20x%3D%2214%22%20y%3D%2216%22%20width%3D%225%22%20height%3D%2234%22%20rx%3D%222%22%20fill%3D%22%23b6986a%22/%3E%3Crect%20x%3D%2245%22%20y%3D%2216%22%20width%3D%225%22%20height%3D%2234%22%20rx%3D%222%22%20fill%3D%22%23b6986a%22/%3E%3Crect%20x%3D%2212%22%20y%3D%2218%22%20width%3D%2240%22%20height%3D%226%22%20rx%3D%223%22%20fill%3D%22%234f9bff%22/%3E%3C/svg%3E" />
 <style>
 :root {
   --bg: #10110f;
@@ -963,6 +964,47 @@ function resolveMaterial(design, id) {
   return design.library.find(m => m.id === id) || design.library[0];
 }
 
+// ---- Delte visnings-/opslags-hjælpere for stolper og forbindelser ----
+// Ren, side-effekt-fri logik der ellers var duplikeret i Kort/3D/Materialer/Print.
+
+// Bogstav-label for stolpe nr. i (0-indekseret): A, B, C … Z, derefter '#'+n.
+function letterFor(i) { return i < 26 ? String.fromCharCode(65 + i) : '#' + (i + 1); }
+
+// Bogstavet for en given stolpe-id (via dens indeks i design.posts); '?' hvis ukendt.
+function postLetterOf(design, id) {
+  const i = design.posts.findIndex(p => p.id === id);
+  return i < 0 ? '?' : letterFor(i);
+}
+
+// Label for en forbindelse: de to stolpe-bogstaver, sorteret og bindestregs-adskilt.
+function connLabelOf(design, c) {
+  return [postLetterOf(design, c.a), postLetterOf(design, c.b)].sort().join('–');
+}
+
+// Slå forbindelsens materiale op (ref kan være {source:'library', id} eller en ren id).
+function connMatOf(design, ref) {
+  const id = ref && ref.source === 'library' ? ref.id : ref;
+  return design.library.find(m => m.id === id) || design.library[0];
+}
+
+// Stolpens højde over jord, dybde og hul/betonklods (mm) — egne værdier pr.
+// stolpe, ellers design-standarderne.
+function postHeightOfD(design, p) {
+  return p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0);
+}
+function postDepthOfD(design, p) {
+  return p.depth_m != null ? p.depth_m : ((design.defaults.post && design.defaults.post.depth_m) || 1.2);
+}
+function postHoleMmOf(design, p) {
+  return p.hole_mm != null ? p.hole_mm : ((design.defaults.post && design.defaults.post.hole_mm) || 200);
+}
+
+// Spændvidden (m) for en forbindelse ud fra dens to stolpers positioner; 0 hvis ukendt.
+function spanOfConn(design, c) {
+  const a = design.posts.find(p => p.id === c.a), b = design.posts.find(p => p.id === c.b);
+  return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0;
+}
+
 // Jordtype → faktor på fundamentets jordstivhed (K_SOIL). Groft, men nok til
 // at "blød stolpe"-flaget reagerer på pladsens forhold.
 const SOIL_FACTORS = { soft: 0.45, normal: 1.0, firm: 1.7 };
@@ -1279,11 +1321,24 @@ function commit() {
   scheduleSave();
 }
 
+// Forsøg at parse + validere/normalisere en stak-post via adopt(). Ved fejl:
+// advar og returnér null, så kaldstedet kan afbryde uden at installere et ødelagt design.
+function restoreFromStack(entry) {
+  try {
+    return adopt(JSON.parse(entry));
+  } catch (e) {
+    console.warn('Fortryd/gentag fejlede (ugyldig tilstand):', e);
+    return null;
+  }
+}
+
 // Gendan forrige tilstand (commit-niveau). Returnerer true hvis der skete noget.
 function undo() {
   if (undoStack.length < 2) return false;
+  const restored = restoreFromStack(undoStack[undoStack.length - 2]); // forrige tilstand
+  if (!restored) return false;
   redoStack.push(undoStack.pop());                       // nuværende → gentag
-  design = JSON.parse(undoStack[undoStack.length - 1]);  // forrige tilstand
+  design = restored;
   subs.forEach(fn => fn(design));
   scheduleSave();
   return true;
@@ -1291,9 +1346,12 @@ function undo() {
 
 function redo() {
   if (!redoStack.length) return false;
-  const s = redoStack.pop();
+  const s = redoStack[redoStack.length - 1];
+  const restored = restoreFromStack(s);
+  if (!restored) return false;
+  redoStack.pop();
   undoStack.push(s);
-  design = JSON.parse(s);
+  design = restored;
   subs.forEach(fn => fn(design));
   scheduleSave();
   return true;
@@ -1311,7 +1369,7 @@ function replace(newDesign) { design = newDesign; commit(); }
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(design)); } catch (e) { /* fuld/privat */ }
+    try { localStorage.setItem(KEY, JSON.stringify(design)); } catch (e) { console.warn('Autosave fejlede (localStorage):', e); }
   }, 300);
 }
 
@@ -1355,7 +1413,6 @@ function removeMaterial(id) {
 // ===== src/core/locales/da.js =====
 const da = {
   'app.title': 'Calisthenics Rig Designer',
-  'app.subtitle': 'Planlæg dit calisthenics-stativ',
 
   'tab.post': 'Stolpe',
   'tab.bar': 'Bar',
@@ -1490,7 +1547,6 @@ const da = {
   'site.help.monkey': 'Armgang: hold knappen nede og træk — trinnene klikker fast mellem to parallelle barer (i nogenlunde samme højde); slip for at placere. Rød = pladsen er optaget.',
   'site.help.avatar': 'Person: klik på fladen for at sætte en person ind (justér højden ved at vælge den). Vises i 3D med strakte arme.',
   'site.help.delete': 'Slet: klik på en stolpe, forbindelse, stige eller person for at fjerne den.',
-  'site.avatar.title': 'Valgt person',
   'site.persons.title': 'Personer',
   'site.summary.ladder.one': 'Stige',
   'site.summary.ladder.many': 'Stiger',
@@ -1512,11 +1568,7 @@ const da = {
   'site.refload.hint': 'Husk ~2× kropsvægt (dynamik). Bruges til at markere spinkle forbindelser.',
   'site.pipewall': 'Rør-gods',
   'site.pipewall.hint': 'Antaget godstykkelse for ALLE rør. Default 3,2 mm = alm. galvaniseret vandrør (EN10255 medium). Påvirker styrke/nedbøjning.',
-  'site.conn.title': 'Valgt forbindelse',
-  'site.conn.span': 'Spænd',
-  'site.conn.deflection': 'Nedbøjning ved',
   'site.conn.critical': '⚠ Lavt dimensioneret — for spinkelt til designlasten',
-  'site.conn.none': 'Vælg en forbindelse (med Vælg/flyt) for at se styrke og ændre materiale/højde.',
   'site.conn.tableTitle': 'Forbindelser',
   'site.conn.empty': 'Ingen forbindelser endnu — brug Forbind-værktøjet.',
   'site.conn.th.mat': 'Materiale',
@@ -1594,7 +1646,6 @@ const da = {
 // ===== src/core/locales/en.js =====
 const en = {
   'app.title': 'Calisthenics Rig Designer',
-  'app.subtitle': 'Plan your calisthenics rig',
 
   'tab.post': 'Post',
   'tab.bar': 'Bar',
@@ -1729,7 +1780,6 @@ const en = {
   'site.help.monkey': 'Monkey bars: hold the button and drag — the rungs snap between two parallel bars (at roughly the same height); release to place. Red = spot taken.',
   'site.help.avatar': 'Person: click the canvas to place a person (select it to set the height). Shown in 3D with arms raised.',
   'site.help.delete': 'Delete: click a post, connection, ladder or person to remove it.',
-  'site.avatar.title': 'Selected person',
   'site.persons.title': 'Persons',
   'site.summary.ladder.one': 'Ladder',
   'site.summary.ladder.many': 'Ladders',
@@ -1751,11 +1801,7 @@ const en = {
   'site.refload.hint': 'Remember ~2x body weight (dynamic). Used to flag under-dimensioned connections.',
   'site.pipewall': 'Pipe wall',
   'site.pipewall.hint': 'Assumed wall thickness for ALL pipes. Default 3.2 mm = standard galvanised water pipe (EN10255 medium). Affects strength/deflection.',
-  'site.conn.title': 'Selected connection',
-  'site.conn.span': 'Span',
-  'site.conn.deflection': 'Deflection at',
   'site.conn.critical': '⚠ Under-dimensioned — too slim for the design load',
-  'site.conn.none': 'Select a connection (with Select/move) to see its strength and change material/height.',
   'site.conn.tableTitle': 'Connections',
   'site.conn.empty': 'No connections yet — use the Connect tool.',
   'site.conn.th.mat': 'Material',
@@ -2527,8 +2573,6 @@ const TOOLS = [
   ['delete', '🗑', 'tool.delete'],
 ];
 
-function letterFor(i) { return i < 26 ? String.fromCharCode(65 + i) : '#' + (i + 1); }
-
 function nonNegativeNumber(v, fallback = 0) {
   return typeof v === 'number' && isFinite(v) ? Math.max(0, v) : fallback;
 }
@@ -2618,12 +2662,12 @@ const tabSite = {
       return [(e.clientX - r.left) * (W / r.width), (e.clientY - r.top) * (H / r.height)];
     };
     const postSideM = () => { const m = resolveMaterial(design, design.defaults.post.materialId); return (m.kind === 'wood' ? m.side : m.od) / 1000; };
-    const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
+    const connMat = ref => connMatOf(design, ref);
     const colorOf = ref => materialColor(connMat(ref));   // blå = rør, brun = træ
     const libOpts = () => sortLibrary(design.library).map(m => [m.id, m.name]);
     const byPost = () => Object.fromEntries(design.posts.map(p => [p.id, p]));
-    const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
-    const connLabel = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
+    const postLetter = id => postLetterOf(design, id);
+    const connLabel = c => connLabelOf(design, c);
     const readableDeg = deg => {
       let a = ((deg + 180) % 360 + 360) % 360 - 180;
       if (a > 90) a -= 180;
@@ -2632,6 +2676,7 @@ const tabSite = {
     };
     const postLabelDir = (p, idx) => {
       const posts = design.posts || [];
+      if (!posts.length) return { x: 1, z: 0 };   // ingen stolper: undgå division med nul/NaN
       const nearest = posts
         .slice()
         .sort((a, b) => Math.hypot(a.x_m - p.x_m, a.z_m - p.z_m) - Math.hypot(b.x_m - p.x_m, b.z_m - p.z_m))
@@ -2651,7 +2696,7 @@ const tabSite = {
       const d = Math.hypot(dx, dz) || 1;
       return { x: dx / d, z: dz / d };
     };
-    const spanOf = (c, byId) => { const a = byId[c.a], b = byId[c.b]; return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0; };
+    const spanOf = (c, byId) => spanOfConn(design, c);
     const nearestPost = (wx, wz) => { let best = null, bd = Infinity; for (const p of design.posts) { const d = Math.hypot(p.x_m - wx, p.z_m - wz); if (d < bd) { bd = d; best = p; } } return best; };
     // Find det bedste sted at sætte en stige: nærmeste stolpe, og vinklen
     // snapper til retningen af den nærmeste bar på den stolpe (så stigen
@@ -2824,9 +2869,9 @@ const tabSite = {
     // pr. stolpe. "Blød" = top-sving ≥ 20 mm (samme tærskel som Stolpe-fanen).
     const SOFT_SWAY_MM = 20;
     const postMatObj = () => resolveMaterial(design, design.defaults.post.materialId);
-    const postHeightOf = p => p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0);
-    const postDepthOf = p => p.depth_m != null ? p.depth_m : ((design.defaults.post && design.defaults.post.depth_m) || 1.2);
-    const postHoleOf = p => p.hole_mm != null ? p.hole_mm : ((design.defaults.post && design.defaults.post.hole_mm) || 300);
+    const postHeightOf = p => postHeightOfD(design, p);
+    const postDepthOf = p => postDepthOfD(design, p);
+    const postHoleOf = p => postHoleMmOf(design, p);
     const maxBarHOf = pid => { let h = 0, found = false; for (const c of design.connections) { if (c.a === pid || c.b === pid) { found = true; h = Math.max(h, c.height_m || 0); } } return found ? h : null; };
     const postSwayMm = p => {
       const pm = postMatObj();
@@ -2971,7 +3016,7 @@ const tabSite = {
       if (!(newLenSI > 0)) return;
       store.update(d => {
         const a = d.posts.find(p => p.id === c.a), b = d.posts.find(p => p.id === c.b);
-        if (!a || !b) return;
+        if (!a || !b || !isFinite(newLenSI)) return;
         let ux = b.x_m - a.x_m, uz = b.z_m - a.z_m; const len = Math.hypot(ux, uz);
         if (len < 1e-6) { ux = 1; uz = 0; } else { ux /= len; uz /= len; }
         b.x_m = a.x_m + ux * newLenSI; b.z_m = a.z_m + uz * newLenSI;
@@ -3080,14 +3125,14 @@ const tabSite = {
             tr.className = 'crow' + (c.id === selectedConn ? ' on' : '') + (crit ? ' crit' : '');
           };
           const matSel = select(libOpts(), mat.id, v => {
-            store.update(d => { d.connections.find(x => x.id === c.id).material = { source: 'library', id: v }; });
+            store.update(d => { const cc = d.connections.find(x => x.id === c.id); if (cc) cc.material = { source: 'library', id: v }; });
             redraw(); renderPanel();
           });
           // højde: 0 ≤ h ≤ laveste stolpe
           const mh = maxBarH(c);
           const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0', max: String(round(lenFromSI(mh, su))),
             value: String(round(lenFromSI(c.height_m, su))), title: `${tt('site.barheight.max')} ${fmt(lenFromSI(mh, su), 2, lang)} ${suTxt}` });
-          hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (isNaN(v)) return; const m = Math.min(Math.max(lenToSI(v, su), 0), mh); store.update(d => { d.connections.find(x => x.id === c.id).height_m = m; }); redraw(); });
+          hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (isNaN(v)) return; const m = Math.min(Math.max(lenToSI(v, su), 0), mh); store.update(d => { const cc = d.connections.find(x => x.id === c.id); if (cc) cc.height_m = m; }); redraw(); });
           hInp.addEventListener('change', () => { hInp.value = String(round(lenFromSI(Math.min(Math.max(lenToSI(parseFloat(hInp.value) || 0, su), 0), mh), su))); });
           // længde: ≥ 0,1 m; flytter stolpe c.b langs forbindelsen
           const lInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))),
@@ -3569,7 +3614,7 @@ function build3d(THREE, host, design, ctx) {
 
   // ---- faste fundament-mål (som i den oprindelige app) ----
   const DEPTH = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
-  const HOLE = ((design.defaults.post && design.defaults.post.hole_mm) || 300) / 1000;
+  const HOLE = ((design.defaults.post && design.defaults.post.hole_mm) || 200) / 1000;
   const GRAVEL_H = 0.10, TAR_BOTTOM = -0.5, TAR_TOP = 0.10;
 
   // ---- model-data ----
@@ -3577,8 +3622,8 @@ function build3d(THREE, host, design, ctx) {
   const cx = design.posts.reduce((s, p) => s + p.x_m, 0) / design.posts.length;
   const cz = design.posts.reduce((s, p) => s + p.z_m, 0) / design.posts.length;
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
-  const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
-  const connLabel = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
+  const postLetter = id => postLetterOf(design, id);
+  const connLabel = c => connLabelOf(design, c);
   // Stolpe-label ligger fladt på jorden uden for stolpen og er STATISK.
   // Teksten vender UDAD (væk fra centrum), så den læses fra kameraet, der
   // altid ser riggen udefra. (dx,dz) = udadgående retning fra centrum.
@@ -3606,7 +3651,7 @@ function build3d(THREE, host, design, ctx) {
   };
   const pm = resolveMaterial(design, design.defaults.post.materialId);
   const POST = ((pm && (pm.side || pm.od)) || 125) / 1000;
-  const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
+  const connMat = ref => connMatOf(design, ref);
   const siteDefH = design.site.postHeight_m || 3.0;
   // pr. stolpe: over-jord-højde = stolpens egen højde (dog mindst en bars
   // overkant, så bjælken ikke svæver over toppen — bar ≤ stolpe via Kort-klamp).
@@ -3980,22 +4025,22 @@ function build3d(THREE, host, design, ctx) {
 // oprindelige enkelt-fil-app til en vilkårlig stolpe+forbindelses-graf.
 
 function computeMaterials(design) {
-  const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
+  const connMat = ref => connMatOf(design, ref);
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
-  const spanOf = c => { const a = byId[c.a], b = byId[c.b]; return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0; };
+  const spanOf = c => spanOfConn(design, c);
 
   const depth = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
-  const hole = ((design.defaults.post && design.defaults.post.hole_mm) || 300) / 1000;
+  const hole = ((design.defaults.post && design.defaults.post.hole_mm) || 200) / 1000;
   const siteDefH = design.site.postHeight_m || 3.0;
   // pr. stolpe-mål (som på Kort) — falder tilbage til standarderne
-  const postHeightOf = p => p.height_m != null ? p.height_m : siteDefH;
-  const postDepthOf = p => p.depth_m != null ? p.depth_m : depth;
-  const postHoleM = p => p.hole_mm != null ? p.hole_mm / 1000 : hole;
+  const postHeightOf = p => postHeightOfD(design, p);
+  const postDepthOf = p => postDepthOfD(design, p);
+  const postHoleM = p => postHoleMmOf(design, p) / 1000;
   const postMat = resolveMaterial(design, design.defaults.post.materialId);
   const postSide = (postMat.side || postMat.od || 125) / 1000;
   const postCount = design.posts.length;
-  const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
-  const connLbl = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
+  const postLetter = id => postLetterOf(design, id);
+  const connLbl = c => connLabelOf(design, c);
 
   // bar-grupper (perimeter) til tabellen, pr. materiale
   const barGroups = {};   // id -> { mat, totalLen, count }
@@ -4022,6 +4067,8 @@ function computeMaterials(design) {
     let best = conns[0]; for (const c of conns) if (c.height_m > best.height_m) best = c;
     return best;
   };
+  // ladderMat kan være null (intet rør-bibliotek) — addCut no-opper stille når mat er null,
+  // så stige-/armgangs-tællere (ladVert, ladRungCount osv.) opgøres stadig, men uden skæreliste-stykker.
   const ladderMat = design.library.find(m => m.id === 'pipe-1') || design.library.find(m => m.kind === 'pipe') || null;
   let ladVert = 0, ladRungLen = 0, ladRungCount = 0, ladKee = 0, ladderCount = 0;
   design.attachments.forEach(at => {
@@ -4213,8 +4260,8 @@ function printMapSvg(design) {
   const sx = x => (x - minX) * k + (Wp - (maxX - minX) * k) / 2;
   const sy = z => (z - minZ) * k + (Hp - (maxZ - minZ) * k) / 2;
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
-  const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
-  const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
+  const connMat = ref => connMatOf(design, ref);
+  const postLetter = id => postLetterOf(design, id);
   let svg = '';
   design.connections.forEach(c => {
     const a = byId[c.a], b = byId[c.b]; if (!a || !b) return;
@@ -4277,9 +4324,9 @@ function printGuide(ctx) {
   root.append(el('h2', {}, tt('print.mapTitle')), el('div', { html: printMapSvg(design) }));
 
   // ---- stolpetabel ----
-  const postHeightOf = p => p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0);
-  const postDepthOf = p => p.depth_m != null ? p.depth_m : ((design.defaults.post && design.defaults.post.depth_m) || 1.2);
-  const postHoleOf = p => p.hole_mm != null ? p.hole_mm : ((design.defaults.post && design.defaults.post.hole_mm) || 200);
+  const postHeightOf = p => postHeightOfD(design, p);
+  const postDepthOf = p => postDepthOfD(design, p);
+  const postHoleOf = p => postHoleMmOf(design, p);
   root.append(el('h2', {}, tt('print.postsTitle')),
     el('table', { class: 'pr-tab' },
       el('thead', {}, el('tr', {},
@@ -4291,8 +4338,8 @@ function printGuide(ctx) {
 
   // ---- forbindelsestabel ----
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
-  const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
-  const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
+  const connMat = ref => connMatOf(design, ref);
+  const postLetter = id => postLetterOf(design, id);
   root.append(el('h2', {}, tt('print.connsTitle')),
     el('table', { class: 'pr-tab' },
       el('thead', {}, el('tr', {},

@@ -27,11 +27,24 @@ function commit() {
   scheduleSave();
 }
 
+// Forsøg at parse + validere/normalisere en stak-post via adopt(). Ved fejl:
+// advar og returnér null, så kaldstedet kan afbryde uden at installere et ødelagt design.
+function restoreFromStack(entry) {
+  try {
+    return adopt(JSON.parse(entry));
+  } catch (e) {
+    console.warn('Fortryd/gentag fejlede (ugyldig tilstand):', e);
+    return null;
+  }
+}
+
 // Gendan forrige tilstand (commit-niveau). Returnerer true hvis der skete noget.
 function undo() {
   if (undoStack.length < 2) return false;
+  const restored = restoreFromStack(undoStack[undoStack.length - 2]); // forrige tilstand
+  if (!restored) return false;
   redoStack.push(undoStack.pop());                       // nuværende → gentag
-  design = JSON.parse(undoStack[undoStack.length - 1]);  // forrige tilstand
+  design = restored;
   subs.forEach(fn => fn(design));
   scheduleSave();
   return true;
@@ -39,9 +52,12 @@ function undo() {
 
 function redo() {
   if (!redoStack.length) return false;
-  const s = redoStack.pop();
+  const s = redoStack[redoStack.length - 1];
+  const restored = restoreFromStack(s);
+  if (!restored) return false;
+  redoStack.pop();
   undoStack.push(s);
-  design = JSON.parse(s);
+  design = restored;
   subs.forEach(fn => fn(design));
   scheduleSave();
   return true;
@@ -59,7 +75,7 @@ function replace(newDesign) { design = newDesign; commit(); }
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(design)); } catch (e) { /* fuld/privat */ }
+    try { localStorage.setItem(KEY, JSON.stringify(design)); } catch (e) { console.warn('Autosave fejlede (localStorage):', e); }
   }, 300);
 }
 

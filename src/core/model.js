@@ -54,6 +54,47 @@ function resolveMaterial(design, id) {
   return design.library.find(m => m.id === id) || design.library[0];
 }
 
+// ---- Delte visnings-/opslags-hjælpere for stolper og forbindelser ----
+// Ren, side-effekt-fri logik der ellers var duplikeret i Kort/3D/Materialer/Print.
+
+// Bogstav-label for stolpe nr. i (0-indekseret): A, B, C … Z, derefter '#'+n.
+function letterFor(i) { return i < 26 ? String.fromCharCode(65 + i) : '#' + (i + 1); }
+
+// Bogstavet for en given stolpe-id (via dens indeks i design.posts); '?' hvis ukendt.
+function postLetterOf(design, id) {
+  const i = design.posts.findIndex(p => p.id === id);
+  return i < 0 ? '?' : letterFor(i);
+}
+
+// Label for en forbindelse: de to stolpe-bogstaver, sorteret og bindestregs-adskilt.
+function connLabelOf(design, c) {
+  return [postLetterOf(design, c.a), postLetterOf(design, c.b)].sort().join('–');
+}
+
+// Slå forbindelsens materiale op (ref kan være {source:'library', id} eller en ren id).
+function connMatOf(design, ref) {
+  const id = ref && ref.source === 'library' ? ref.id : ref;
+  return design.library.find(m => m.id === id) || design.library[0];
+}
+
+// Stolpens højde over jord, dybde og hul/betonklods (mm) — egne værdier pr.
+// stolpe, ellers design-standarderne.
+function postHeightOfD(design, p) {
+  return p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0);
+}
+function postDepthOfD(design, p) {
+  return p.depth_m != null ? p.depth_m : ((design.defaults.post && design.defaults.post.depth_m) || 1.2);
+}
+function postHoleMmOf(design, p) {
+  return p.hole_mm != null ? p.hole_mm : ((design.defaults.post && design.defaults.post.hole_mm) || 200);
+}
+
+// Spændvidden (m) for en forbindelse ud fra dens to stolpers positioner; 0 hvis ukendt.
+function spanOfConn(design, c) {
+  const a = design.posts.find(p => p.id === c.a), b = design.posts.find(p => p.id === c.b);
+  return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0;
+}
+
 // Jordtype → faktor på fundamentets jordstivhed (K_SOIL). Groft, men nok til
 // at "blød stolpe"-flaget reagerer på pladsens forhold.
 const SOIL_FACTORS = { soft: 0.45, normal: 1.0, firm: 1.7 };

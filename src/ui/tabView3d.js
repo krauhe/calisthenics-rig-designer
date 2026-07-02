@@ -73,7 +73,7 @@ function build3d(THREE, host, design, ctx) {
 
   // ---- faste fundament-mål (som i den oprindelige app) ----
   const DEPTH = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
-  const HOLE = ((design.defaults.post && design.defaults.post.hole_mm) || 300) / 1000;
+  const HOLE = ((design.defaults.post && design.defaults.post.hole_mm) || 200) / 1000;
   const GRAVEL_H = 0.10, TAR_BOTTOM = -0.5, TAR_TOP = 0.10;
 
   // ---- model-data ----
@@ -81,8 +81,8 @@ function build3d(THREE, host, design, ctx) {
   const cx = design.posts.reduce((s, p) => s + p.x_m, 0) / design.posts.length;
   const cz = design.posts.reduce((s, p) => s + p.z_m, 0) / design.posts.length;
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
-  const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
-  const connLabel = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
+  const postLetter = id => postLetterOf(design, id);
+  const connLabel = c => connLabelOf(design, c);
   // Stolpe-label ligger fladt på jorden uden for stolpen og er STATISK.
   // Teksten vender UDAD (væk fra centrum), så den læses fra kameraet, der
   // altid ser riggen udefra. (dx,dz) = udadgående retning fra centrum.
@@ -110,7 +110,7 @@ function build3d(THREE, host, design, ctx) {
   };
   const pm = resolveMaterial(design, design.defaults.post.materialId);
   const POST = ((pm && (pm.side || pm.od)) || 125) / 1000;
-  const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
+  const connMat = ref => connMatOf(design, ref);
   const siteDefH = design.site.postHeight_m || 3.0;
   // pr. stolpe: over-jord-højde = stolpens egen højde (dog mindst en bars
   // overkant, så bjælken ikke svæver over toppen — bar ≤ stolpe via Kort-klamp).

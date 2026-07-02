@@ -3,22 +3,22 @@
 // oprindelige enkelt-fil-app til en vilkårlig stolpe+forbindelses-graf.
 
 function computeMaterials(design) {
-  const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
+  const connMat = ref => connMatOf(design, ref);
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
-  const spanOf = c => { const a = byId[c.a], b = byId[c.b]; return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0; };
+  const spanOf = c => spanOfConn(design, c);
 
   const depth = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
-  const hole = ((design.defaults.post && design.defaults.post.hole_mm) || 300) / 1000;
+  const hole = ((design.defaults.post && design.defaults.post.hole_mm) || 200) / 1000;
   const siteDefH = design.site.postHeight_m || 3.0;
   // pr. stolpe-mål (som på Kort) — falder tilbage til standarderne
-  const postHeightOf = p => p.height_m != null ? p.height_m : siteDefH;
-  const postDepthOf = p => p.depth_m != null ? p.depth_m : depth;
-  const postHoleM = p => p.hole_mm != null ? p.hole_mm / 1000 : hole;
+  const postHeightOf = p => postHeightOfD(design, p);
+  const postDepthOf = p => postDepthOfD(design, p);
+  const postHoleM = p => postHoleMmOf(design, p) / 1000;
   const postMat = resolveMaterial(design, design.defaults.post.materialId);
   const postSide = (postMat.side || postMat.od || 125) / 1000;
   const postCount = design.posts.length;
-  const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
-  const connLbl = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
+  const postLetter = id => postLetterOf(design, id);
+  const connLbl = c => connLabelOf(design, c);
 
   // bar-grupper (perimeter) til tabellen, pr. materiale
   const barGroups = {};   // id -> { mat, totalLen, count }
@@ -45,6 +45,8 @@ function computeMaterials(design) {
     let best = conns[0]; for (const c of conns) if (c.height_m > best.height_m) best = c;
     return best;
   };
+  // ladderMat kan være null (intet rør-bibliotek) — addCut no-opper stille når mat er null,
+  // så stige-/armgangs-tællere (ladVert, ladRungCount osv.) opgøres stadig, men uden skæreliste-stykker.
   const ladderMat = design.library.find(m => m.id === 'pipe-1') || design.library.find(m => m.kind === 'pipe') || null;
   let ladVert = 0, ladRungLen = 0, ladRungCount = 0, ladKee = 0, ladderCount = 0;
   design.attachments.forEach(at => {

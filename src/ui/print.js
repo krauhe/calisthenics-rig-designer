@@ -15,8 +15,8 @@ function printMapSvg(design) {
   const sx = x => (x - minX) * k + (Wp - (maxX - minX) * k) / 2;
   const sy = z => (z - minZ) * k + (Hp - (maxZ - minZ) * k) / 2;
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
-  const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
-  const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
+  const connMat = ref => connMatOf(design, ref);
+  const postLetter = id => postLetterOf(design, id);
   let svg = '';
   design.connections.forEach(c => {
     const a = byId[c.a], b = byId[c.b]; if (!a || !b) return;
@@ -79,9 +79,9 @@ function printGuide(ctx) {
   root.append(el('h2', {}, tt('print.mapTitle')), el('div', { html: printMapSvg(design) }));
 
   // ---- stolpetabel ----
-  const postHeightOf = p => p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0);
-  const postDepthOf = p => p.depth_m != null ? p.depth_m : ((design.defaults.post && design.defaults.post.depth_m) || 1.2);
-  const postHoleOf = p => p.hole_mm != null ? p.hole_mm : ((design.defaults.post && design.defaults.post.hole_mm) || 200);
+  const postHeightOf = p => postHeightOfD(design, p);
+  const postDepthOf = p => postDepthOfD(design, p);
+  const postHoleOf = p => postHoleMmOf(design, p);
   root.append(el('h2', {}, tt('print.postsTitle')),
     el('table', { class: 'pr-tab' },
       el('thead', {}, el('tr', {},
@@ -93,8 +93,8 @@ function printGuide(ctx) {
 
   // ---- forbindelsestabel ----
   const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
-  const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
-  const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
+  const connMat = ref => connMatOf(design, ref);
+  const postLetter = id => postLetterOf(design, id);
   root.append(el('h2', {}, tt('print.connsTitle')),
     el('table', { class: 'pr-tab' },
       el('thead', {}, el('tr', {},

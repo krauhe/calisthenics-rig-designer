@@ -29,8 +29,6 @@ const TOOLS = [
   ['delete', '🗑', 'tool.delete'],
 ];
 
-function letterFor(i) { return i < 26 ? String.fromCharCode(65 + i) : '#' + (i + 1); }
-
 function nonNegativeNumber(v, fallback = 0) {
   return typeof v === 'number' && isFinite(v) ? Math.max(0, v) : fallback;
 }
@@ -120,12 +118,12 @@ const tabSite = {
       return [(e.clientX - r.left) * (W / r.width), (e.clientY - r.top) * (H / r.height)];
     };
     const postSideM = () => { const m = resolveMaterial(design, design.defaults.post.materialId); return (m.kind === 'wood' ? m.side : m.od) / 1000; };
-    const connMat = ref => { const id = ref && ref.source === 'library' ? ref.id : ref; return design.library.find(m => m.id === id) || design.library[0]; };
+    const connMat = ref => connMatOf(design, ref);
     const colorOf = ref => materialColor(connMat(ref));   // blå = rør, brun = træ
     const libOpts = () => sortLibrary(design.library).map(m => [m.id, m.name]);
     const byPost = () => Object.fromEntries(design.posts.map(p => [p.id, p]));
-    const postLetter = id => { const i = design.posts.findIndex(p => p.id === id); return i < 0 ? '?' : letterFor(i); };
-    const connLabel = c => [postLetter(c.a), postLetter(c.b)].sort().join('–');
+    const postLetter = id => postLetterOf(design, id);
+    const connLabel = c => connLabelOf(design, c);
     const readableDeg = deg => {
       let a = ((deg + 180) % 360 + 360) % 360 - 180;
       if (a > 90) a -= 180;
@@ -134,6 +132,7 @@ const tabSite = {
     };
     const postLabelDir = (p, idx) => {
       const posts = design.posts || [];
+      if (!posts.length) return { x: 1, z: 0 };   // ingen stolper: undgå division med nul/NaN
       const nearest = posts
         .slice()
         .sort((a, b) => Math.hypot(a.x_m - p.x_m, a.z_m - p.z_m) - Math.hypot(b.x_m - p.x_m, b.z_m - p.z_m))
@@ -153,7 +152,7 @@ const tabSite = {
       const d = Math.hypot(dx, dz) || 1;
       return { x: dx / d, z: dz / d };
     };
-    const spanOf = (c, byId) => { const a = byId[c.a], b = byId[c.b]; return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0; };
+    const spanOf = (c, byId) => spanOfConn(design, c);
     const nearestPost = (wx, wz) => { let best = null, bd = Infinity; for (const p of design.posts) { const d = Math.hypot(p.x_m - wx, p.z_m - wz); if (d < bd) { bd = d; best = p; } } return best; };
     // Find det bedste sted at sætte en stige: nærmeste stolpe, og vinklen
     // snapper til retningen af den nærmeste bar på den stolpe (så stigen
@@ -326,9 +325,9 @@ const tabSite = {
     // pr. stolpe. "Blød" = top-sving ≥ 20 mm (samme tærskel som Stolpe-fanen).
     const SOFT_SWAY_MM = 20;
     const postMatObj = () => resolveMaterial(design, design.defaults.post.materialId);
-    const postHeightOf = p => p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0);
-    const postDepthOf = p => p.depth_m != null ? p.depth_m : ((design.defaults.post && design.defaults.post.depth_m) || 1.2);
-    const postHoleOf = p => p.hole_mm != null ? p.hole_mm : ((design.defaults.post && design.defaults.post.hole_mm) || 300);
+    const postHeightOf = p => postHeightOfD(design, p);
+    const postDepthOf = p => postDepthOfD(design, p);
+    const postHoleOf = p => postHoleMmOf(design, p);
     const maxBarHOf = pid => { let h = 0, found = false; for (const c of design.connections) { if (c.a === pid || c.b === pid) { found = true; h = Math.max(h, c.height_m || 0); } } return found ? h : null; };
     const postSwayMm = p => {
       const pm = postMatObj();
@@ -473,7 +472,7 @@ const tabSite = {
       if (!(newLenSI > 0)) return;
       store.update(d => {
         const a = d.posts.find(p => p.id === c.a), b = d.posts.find(p => p.id === c.b);
-        if (!a || !b) return;
+        if (!a || !b || !isFinite(newLenSI)) return;
         let ux = b.x_m - a.x_m, uz = b.z_m - a.z_m; const len = Math.hypot(ux, uz);
         if (len < 1e-6) { ux = 1; uz = 0; } else { ux /= len; uz /= len; }
         b.x_m = a.x_m + ux * newLenSI; b.z_m = a.z_m + uz * newLenSI;
@@ -582,14 +581,14 @@ const tabSite = {
             tr.className = 'crow' + (c.id === selectedConn ? ' on' : '') + (crit ? ' crit' : '');
           };
           const matSel = select(libOpts(), mat.id, v => {
-            store.update(d => { d.connections.find(x => x.id === c.id).material = { source: 'library', id: v }; });
+            store.update(d => { const cc = d.connections.find(x => x.id === c.id); if (cc) cc.material = { source: 'library', id: v }; });
             redraw(); renderPanel();
           });
           // højde: 0 ≤ h ≤ laveste stolpe
           const mh = maxBarH(c);
           const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0', max: String(round(lenFromSI(mh, su))),
             value: String(round(lenFromSI(c.height_m, su))), title: `${tt('site.barheight.max')} ${fmt(lenFromSI(mh, su), 2, lang)} ${suTxt}` });
-          hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (isNaN(v)) return; const m = Math.min(Math.max(lenToSI(v, su), 0), mh); store.update(d => { d.connections.find(x => x.id === c.id).height_m = m; }); redraw(); });
+          hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (isNaN(v)) return; const m = Math.min(Math.max(lenToSI(v, su), 0), mh); store.update(d => { const cc = d.connections.find(x => x.id === c.id); if (cc) cc.height_m = m; }); redraw(); });
           hInp.addEventListener('change', () => { hInp.value = String(round(lenFromSI(Math.min(Math.max(lenToSI(parseFloat(hInp.value) || 0, su), 0), mh), su))); });
           // længde: ≥ 0,1 m; flytter stolpe c.b langs forbindelsen
           const lInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))),

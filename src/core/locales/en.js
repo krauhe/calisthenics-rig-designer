@@ -1,6 +1,5 @@
 const en = {
   'app.title': 'Calisthenics Rig Designer',
-  'app.subtitle': 'Plan your calisthenics rig',
 
   'tab.post': 'Post',
   'tab.bar': 'Bar',
@@ -135,7 +134,6 @@ const en = {
   'site.help.monkey': 'Monkey bars: hold the button and drag — the rungs snap between two parallel bars (at roughly the same height); release to place. Red = spot taken.',
   'site.help.avatar': 'Person: click the canvas to place a person (select it to set the height). Shown in 3D with arms raised.',
   'site.help.delete': 'Delete: click a post, connection, ladder or person to remove it.',
-  'site.avatar.title': 'Selected person',
   'site.persons.title': 'Persons',
   'site.summary.ladder.one': 'Ladder',
   'site.summary.ladder.many': 'Ladders',
@@ -157,11 +155,7 @@ const en = {
   'site.refload.hint': 'Remember ~2x body weight (dynamic). Used to flag under-dimensioned connections.',
   'site.pipewall': 'Pipe wall',
   'site.pipewall.hint': 'Assumed wall thickness for ALL pipes. Default 3.2 mm = standard galvanised water pipe (EN10255 medium). Affects strength/deflection.',
-  'site.conn.title': 'Selected connection',
-  'site.conn.span': 'Span',
-  'site.conn.deflection': 'Deflection at',
   'site.conn.critical': '⚠ Under-dimensioned — too slim for the design load',
-  'site.conn.none': 'Select a connection (with Select/move) to see its strength and change material/height.',
   'site.conn.tableTitle': 'Connections',
   'site.conn.empty': 'No connections yet — use the Connect tool.',
   'site.conn.th.mat': 'Material',
