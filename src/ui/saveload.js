@@ -40,10 +40,28 @@ function fileBar(ctx) {
     if (confirm(tt('file.newConfirm'))) { store.replace(defaultDesign()); ctx.rerenderAll(); }
   }
 
+  // Forslags-/skabelon-vælger: erstatter tegningen med en færdig rig.
+  const presetSel = el('select', { class: 'btn-sm', title: tt('file.presetHint') });
+  presetSel.append(el('option', { value: '' }, tt('file.preset')));
+  presetList().forEach(p => presetSel.append(el('option', { value: p.id }, tt(p.nameKey))));
+  presetSel.addEventListener('change', () => {
+    const id = presetSel.value; presetSel.value = '';
+    if (!id) return;
+    if (!confirm(tt('file.newConfirm'))) return;
+    const p = presetList().find(x => x.id === id);
+    const d = buildPreset(id);
+    if (p) d.meta.name = tt(p.nameKey);
+    if (typeof tabSite !== 'undefined') tabSite.fitNext = true;   // tilpas zoom til den nye rig
+    store.replace(d);
+    if (ctx.openTab) ctx.openTab('site');
+    ctx.rerenderAll();
+  });
+
   return el('div', { class: 'filebar' },
     nameInp,
     el('button', { class: 'btn-sm', type: 'button', onclick: doSave }, tt('file.save')),
     el('button', { class: 'btn-sm', type: 'button', onclick: () => fileInput.click() }, tt('file.load')),
     el('button', { class: 'btn-sm', type: 'button', onclick: doNew }, tt('file.new')),
+    presetSel,
     fileInput);
 }

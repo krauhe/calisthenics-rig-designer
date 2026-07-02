@@ -780,6 +780,7 @@ const tabSite = {
     setHelp();
     redraw();
     renderPanel();
+    if (tabSite.fitNext) { tabSite.fitNext = false; fit(); }   // tilpas zoom efter en forslags-rig
     const ladderCount = design.attachments.filter(a => a.type === 'ladder').length;
     const avatarCount = design.attachments.filter(a => a.type === 'avatar').length;
     const countLabel = (n, oneKey, manyKey) => `${n} ${tt(n === 1 ? oneKey : manyKey)}`;

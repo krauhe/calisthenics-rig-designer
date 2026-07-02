@@ -15,6 +15,11 @@ const en = {
   'file.save': 'Save file',
   'file.load': 'Load file',
   'file.new': 'New',
+  'file.preset': 'Templates …',
+  'file.presetHint': 'Start from a ready-made example rig (replaces the current design).',
+  'preset.pullup2': 'Pull-up (2 posts)',
+  'preset.square4': 'Square rig (4 posts)',
+  'preset.long6': 'Long rig / monkey bars (6 posts)',
   'file.error': 'Could not read the file — is it a valid .json design?',
   'file.newConfirm': 'Start over? The current design will be cleared (save it to a file first if you want to keep it).',
 

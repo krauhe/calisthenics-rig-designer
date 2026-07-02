@@ -14,7 +14,7 @@ root = pathlib.Path(__file__).resolve().parent
 ORDER = [
     'src/core/constants.js', 'src/core/units.js', 'src/core/sections.js',
     'src/core/mechanics.js', 'src/core/foundation.js', 'src/core/cutplan.js',
-    'src/core/materials.js', 'src/core/model.js', 'src/core/schema.js', 'src/core/store.js',
+    'src/core/materials.js', 'src/core/model.js', 'src/core/presets.js', 'src/core/schema.js', 'src/core/store.js',
     'src/core/locales/da.js', 'src/core/locales/en.js', 'src/core/i18n.js',
     'src/ui/dom.js', 'src/ui/controls.js', 'src/ui/chart.js', 'src/ui/library.js',
     'src/ui/saveload.js', 'src/ui/tabPost.js', 'src/ui/tabBar.js', 'src/ui/tabSite.js',

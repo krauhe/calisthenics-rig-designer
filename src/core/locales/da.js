@@ -15,6 +15,11 @@ const da = {
   'file.save': 'Gem fil',
   'file.load': 'Hent fil',
   'file.new': 'Ny',
+  'file.preset': 'Forslag …',
+  'file.presetHint': 'Start fra en færdig eksempel-rig (erstatter den nuværende tegning).',
+  'preset.pullup2': 'Pull-up (2 stolper)',
+  'preset.square4': 'Firkant-rig (4 stolper)',
+  'preset.long6': 'Lang rig / armgang (6 stolper)',
   'file.error': 'Kunne ikke læse filen — er det en gyldig .json-tegning?',
   'file.newConfirm': 'Start forfra? Den nuværende tegning ryddes (gem den først som fil, hvis du vil beholde den).',
 
