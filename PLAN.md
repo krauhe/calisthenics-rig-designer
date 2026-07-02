@@ -1,7 +1,7 @@
 # Plan: Calisthenics Rig Designer 2.0
 
 Dette er arbejdsdokumentet for ombygningen fra den nuværende ene fil
-(`chalestetics-3d.html`) til en mere fleksibel og lækker udgave med faner.
+(`calisthenics-3d.html`) til en mere fleksibel og lækker udgave med faner.
 
 Skrevet til at kunne læses uden at kunne kode. Du styrer retningen og
 specificerer detaljer; jeg implementerer. Vi rører **ikke** kode, før du har

@@ -1,7 +1,7 @@
 # Genererer to ting ud fra src/ (som nu er klassiske scripts):
 #   1) index.html               - multi-fil-appen (klassiske <script src> i rækkefølge).
 #                                  Kan dobbeltklikkes lokalt (file://) ELLER serveres online.
-#   2) chalestetics-lokal.html  - alt samlet i ÉN selvstændig fil (til deling).
+#   2) calisthenics-lokal.html  - alt samlet i ÉN selvstændig fil (til deling).
 #
 # Kør:  python build.py   (efter enhver ændring i src/)
 
@@ -69,7 +69,7 @@ index = '''<!DOCTYPE html>
 '''.replace('%SHELL%', SHELL).replace('%SW%', SW).replace('%TAGS%', tags)
 (root / 'index.html').write_text(index, encoding='utf-8')
 
-# ---- 2) chalestetics-lokal.html (alt i én fil) ----
+# ---- 2) calisthenics-lokal.html (alt i én fil) ----
 bundle = '\n\n'.join(
     '// ===== {} =====\n{}'.format(f, strip_module((root / f).read_text(encoding='utf-8')))
     for f in ORDER
@@ -95,6 +95,6 @@ single = '''<!DOCTYPE html>
 </body>
 </html>
 '''.replace('%CSS%', css).replace('%SHELL%', SHELL).replace('%JS%', bundle)
-(root / 'chalestetics-lokal.html').write_text(single, encoding='utf-8')
+(root / 'calisthenics-lokal.html').write_text(single, encoding='utf-8')
 
-print('Skrev index.html (multi-fil) og chalestetics-lokal.html (enkelt-fil)')
+print('Skrev index.html (multi-fil) og calisthenics-lokal.html (enkelt-fil)')

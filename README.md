@@ -7,7 +7,7 @@ stiffness) plus a 3D view, a material list and a pipe/wood cutting plan.
 
 **▶ Run it in your browser (no install): <https://krauhe.github.io/calisthenics-rig-designer/>**
 
-![3D rendering of the rig](chalestetics-render.png)
+![3D rendering of the rig](calisthenics-render.png)
 
 > The UI is in Danish 🇩🇰 (with an English toggle).
 
@@ -38,7 +38,7 @@ file, and **autosave** to `localStorage`.
   It's served by GitHub Pages straight from this repo's `main` branch — every push
   redeploys automatically (~1 min). Three.js loads from a CDN, so you need to be online
   the first time.
-- **Offline, single file:** double‑click [`chalestetics-lokal.html`](chalestetics-lokal.html)
+- **Offline, single file:** double‑click [`calisthenics-lokal.html`](calisthenics-lokal.html)
   — everything (HTML/CSS/JS) bundled into one self‑contained file.
 - **Locally, multi‑file:** open [`index.html`](index.html) (loads the `src/` scripts).
 
@@ -48,7 +48,7 @@ Source lives in `src/` (framework‑free classic scripts: `core/` engine + `ui/`
 After any change, regenerate both entry points:
 
 ```sh
-python build.py   # rebuilds index.html (multi-file) and chalestetics-lokal.html (bundle)
+python build.py   # rebuilds index.html (multi-file) and calisthenics-lokal.html (bundle)
 ```
 
 There is no compile/bundler step to *run* the app — `build.py` just concatenates the

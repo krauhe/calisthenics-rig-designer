@@ -1,6 +1,6 @@
 // Fane: 3D. Viser dét, der er tegnet på Kort (stolper + forbindelser + stiger)
 // i ægte 3D — bygget til at ligne den oprindelige enkelt-fil-app
-// (chalestetics-3d.html): halvgennemsigtig jord så fundamentet ses (småsten,
+// (calisthenics-3d.html): halvgennemsigtig jord så fundamentet ses (småsten,
 // beton, tjære-zone), Kee-beslag på rørene, og en LODRET stige der binder sig
 // til en vandret bar. Three.js hentes som ES-modul fra et CDN (kun når fanen
 // åbnes) og lægges på window, så det passer ind i den klassiske
@@ -60,7 +60,7 @@ const tabView3d = {
         clear(status);
         status.append(
           el('p', {}, tt('view3d.failed')),
-          el('p', {}, el('a', { href: 'chalestetics-3d.html', class: 'classic-link' }, tt('view3d.classic'))));
+          el('p', {}, el('a', { href: 'calisthenics-3d.html', class: 'classic-link' }, tt('view3d.classic'))));
       });
   },
 };
