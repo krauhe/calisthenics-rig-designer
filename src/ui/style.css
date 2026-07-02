@@ -598,3 +598,36 @@ body { background: linear-gradient(180deg, #1b1d18 0%, #111310 44%, #0c0d0c 100%
 
 /* ---- Footer ---- */
 #ft { padding: 10px 20px 16px; color: #c08a82; font-size: 11px; line-height: 1.4; }
+
+/* ---- Gem/Åbn-menu i filbjælken ---- */
+.filebar { position: relative; }
+.filebar-sep { width: 1px; align-self: stretch; margin: 2px 3px; background: rgba(255,255,255,.14); }
+.save-menu { position: absolute; z-index: 50; min-width: 240px; max-height: 300px; overflow-y: auto; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.45); padding: 6px; }
+.save-menu-empty { padding: 10px 12px; color: var(--muted); font-size: 12.5px; }
+.save-menu-row { display: flex; align-items: stretch; gap: 4px; }
+.save-menu-name { flex: 1; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; text-align: left; font: inherit; font-size: 13px; color: var(--ink); background: none; border: 0; border-radius: 7px; padding: 7px 9px; cursor: pointer; }
+.save-menu-name:hover { background: rgba(255,255,255,.07); }
+.save-menu-date { color: var(--muted); font-size: 11px; }
+.save-menu-del { font: inherit; font-size: 15px; line-height: 1; color: var(--muted); background: none; border: 0; border-radius: 7px; padding: 0 9px; cursor: pointer; }
+.save-menu-del:hover { color: #ff6b6b; background: rgba(225,29,29,.12); }
+
+/* ---- Print: byggevejledningen (#print-root) ---- */
+#print-root { display: none; }
+@media print {
+  body { background: #fff !important; }
+  #app { display: none !important; }
+  #print-root { display: block; color: #111; background: #fff; font: 12px/1.5 system-ui, sans-serif; padding: 0 4mm; }
+  #print-root h1 { font-size: 22px; margin: 0 0 2px; }
+  #print-root h2 { font-size: 15px; margin: 14px 0 6px; border-bottom: 1.5px solid #333; padding-bottom: 3px; break-after: avoid; }
+  #print-root .pr-sub { color: #444; margin: 0 0 10px; }
+  #print-root .pr-tab { width: 100%; border-collapse: collapse; break-inside: avoid; }
+  #print-root .pr-tab th, #print-root .pr-tab td { border: 1px solid #999; padding: 4px 8px; text-align: left; font-size: 12px; }
+  #print-root .pr-tab th { background: #eee; }
+  #print-root .pr-q { text-align: right; white-space: nowrap; }
+  #print-root .pr-cut-h { margin: 8px 0 2px; font-weight: 700; }
+  #print-root .pr-cut { margin: 0 0 6px; padding-left: 20px; }
+  #print-root .pr-cut li { margin: 1px 0; }
+  #print-root .pr-steps li { margin: 3px 0; }
+  #print-root .pr-note { color: #555; font-size: 11px; margin-top: 10px; }
+  #print-root svg { max-height: 105mm; }
+}

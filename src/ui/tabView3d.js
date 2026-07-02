@@ -363,6 +363,23 @@ function build3d(THREE, host, design, ctx) {
     }
   }
 
+  // ---- armgange (monkey bars): 1"-trin hængt under to parallelle barer ----
+  for (const at of design.attachments) {
+    if (at.type !== 'monkey') continue;
+    const g = monkeyGeometry(design, at.connA, at.connB, at.spacing_m);
+    if (!g || !g.rungs.length) continue;
+    const rRung = (33.7 / 1000) / 2;                          // 1" rør
+    const diaOf = c => { const m = connMat(c.material); return (m.kind === 'wood' ? (m.side || 100) : (m.od || 33)) / 1000; };
+    // trin-centrum lige under UNDERKANTEN af den laveste bar (barens top = height_m)
+    const y = Math.min(g.ca.height_m - diaOf(g.ca), g.cb.height_m - diaOf(g.cb)) - rRung;
+    for (const r of g.rungs) {
+      group.add(cylBetween(V3(r.ax - cx, y, r.az - cz), V3(r.bx - cx, y, r.bz - cz), rRung, pipeMat));
+      // klemme-beslag i hver ende (mod de to barer)
+      const c1 = makeClamp(rRung); c1.position.set(r.ax - cx, y, r.az - cz); group.add(c1);
+      const c2 = makeClamp(rRung); c2.position.set(r.bx - cx, y, r.bz - cz); group.add(c2);
+    }
+  }
+
   // ---- avatarer: person med STRAKTE arme (skala = personhøjde) ----
   const skinMat = new THREE.MeshStandardMaterial({ color: 0xd9a679, roughness: 0.8 });
   const bodyMat = new THREE.MeshStandardMaterial({ color: 0x5b6b8c, roughness: 0.75 });

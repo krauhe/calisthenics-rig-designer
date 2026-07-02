@@ -87,6 +87,8 @@ function fill(d) {
   // global rør-godstykkelse: anvendes på ALLE rør-materialer (én antagelse)
   merged.site.pipeWall_mm = atLeast(merged.site.pipeWall_mm, 0.5, base.site.pipeWall_mm);
   merged.library.forEach(m => { if (m.kind === 'pipe') m.wall = merged.site.pipeWall_mm; });
+  merged.site.monkeySpacing_m = atLeast(merged.site.monkeySpacing_m, 0.15, base.site.monkeySpacing_m);
+  if (!SOIL_FACTORS[merged.site.soil]) merged.site.soil = base.site.soil;
   merged.posts.forEach(p => {
     if (p.height_m != null) p.height_m = atLeast(p.height_m, 0.1, merged.site.postHeight_m);
     if (p.depth_m != null) p.depth_m = atLeast(p.depth_m, 0.1, merged.defaults.post.depth_m);
@@ -96,7 +98,11 @@ function fill(d) {
   merged.attachments.forEach(a => {
     if (a.type === 'ladder') a.width_m = atLeast(a.width_m, 0.05, merged.site.ladderWidth_m);
     if (a.type === 'avatar') a.height_m = atLeast(a.height_m, 0.3, merged.site.avatarHeight_m);
+    if (a.type === 'monkey') a.spacing_m = atLeast(a.spacing_m, 0.15, merged.site.monkeySpacing_m);
   });
+  // armgange der peger på slettede forbindelser er meningsløse — smid dem ud
+  merged.attachments = merged.attachments.filter(a => a.type !== 'monkey'
+    || (merged.connections.some(c => c.id === a.connA) && merged.connections.some(c => c.id === a.connB)));
   Object.keys(merged.stock || {}).forEach(id => { merged.stock[id] = atLeast(merged.stock[id], 0.5, 0.5); });
   return merged;
 }

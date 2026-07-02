@@ -34,17 +34,22 @@ function buildPreset(id) {
     ];
     d.attachments = [ladder('p1'), avatar(1.2, 0.8)];
   } else if (id === 'long6') {
-    // Lang rig: to fag i en række (god til armgang/monkey-bars) + stige.
+    // Lang rig: to fag i en række med ARMGANG (monkey bars) mellem de to
+    // langsgående skinner (0,8 m fra hinanden = realistisk trinlængde) + stige.
     d.posts = [
       post('p1', 0, 0), post('p2', 2.0, 0), post('p3', 4.0, 0),
-      post('p4', 0, 1.4), post('p5', 2.0, 1.4), post('p6', 4.0, 1.4),
+      post('p4', 0, 0.8), post('p5', 2.0, 0.8), post('p6', 4.0, 0.8),
     ];
     d.connections = [
       conn('c1', 'p1', 'p2', 2.4, pipeBig), conn('c2', 'p2', 'p3', 2.4, pipeBig),
       conn('c3', 'p4', 'p5', 2.4, pipeBig), conn('c4', 'p5', 'p6', 2.4, pipeBig),
       conn('c5', 'p1', 'p4', 2.0), conn('c6', 'p2', 'p5', 2.0), conn('c7', 'p3', 'p6', 2.0),
     ];
-    d.attachments = [ladder('p1'), avatar(2.0, 0.7)];
+    d.attachments = [
+      { id: 'mb1', type: 'monkey', connA: 'c1', connB: 'c3', spacing_m: 0.33 },
+      { id: 'mb2', type: 'monkey', connA: 'c2', connB: 'c4', spacing_m: 0.33 },
+      ladder('p1'), avatar(2.0, -0.6),
+    ];
   }
   return d;
 }

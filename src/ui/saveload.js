@@ -1,6 +1,20 @@
-// Fil-bjælke: navngiv, gem til fil, hent fil, ny tegning.
+// Fil-bjælke: navngiv, gem/åbn i browseren (flere tegninger), eksportér/
+// importér .json-filer, ny tegning, forslag og print.
 // Ren klient-side I/O — ingen server, virker offline.
 
+const SAVED_KEY = 'crd-saved-designs';
+
+function readSaved() {
+  try {
+    const v = JSON.parse(localStorage.getItem(SAVED_KEY));
+    return Array.isArray(v) ? v : [];
+  } catch (_) { return []; }
+}
+
+function writeSaved(list) {
+  try { localStorage.setItem(SAVED_KEY, JSON.stringify(list)); return true; }
+  catch (e) { console.warn('Kunne ikke gemme tegning (localStorage):', e); alert('⚠ ' + e.message); return false; }
+}
 
 function fileBar(ctx) {
   const { design, store } = ctx;
@@ -27,7 +41,8 @@ function fileBar(ctx) {
     fileInput.value = '';
   });
 
-  function doSave() {
+  // ---- Eksport: download som .json-fil (til deling/backup) ----
+  function doExport() {
     const blob = new Blob([serialize(store.getDesign())], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const name = (store.getDesign().meta.name || 'rig').replace(/[^\wæøåÆØÅ \-]/g, '').trim() || 'rig';
@@ -40,7 +55,57 @@ function fileBar(ctx) {
     if (confirm(tt('file.newConfirm'))) { store.replace(defaultDesign()); ctx.rerenderAll(); }
   }
 
-  // Forslags-/skabelon-vælger: erstatter tegningen med en færdig rig.
+  // ---- Gem/Åbn i browseren: flere navngivne tegninger (localStorage) ----
+  function doSaveLocal() {
+    const d = store.getDesign();
+    const name = (d.meta.name || '').trim() || 'rig';
+    const list = readSaved().filter(s => s.name !== name);
+    list.unshift({ name, savedAt: Date.now(), data: serialize(d) });
+    if (writeSaved(list)) {
+      saveBtn.textContent = '✓ ' + tt('file.savedAs') + ' "' + name + '"';
+      setTimeout(() => { saveBtn.textContent = tt('file.saveLocal'); }, 1600);
+    }
+  }
+
+  let menu = null;
+  function closeMenu() { if (menu) { menu.remove(); menu = null; document.removeEventListener('pointerdown', onDocDown, true); } }
+  function onDocDown(e) { if (menu && !menu.contains(e.target) && e.target !== openBtn) closeMenu(); }
+  function toggleMenu() {
+    if (menu) { closeMenu(); return; }
+    const list = readSaved();
+    menu = el('div', { class: 'save-menu' });
+    if (!list.length) menu.append(el('div', { class: 'save-menu-empty' }, tt('file.noSaved')));
+    list.forEach(s => {
+      const when = new Date(s.savedAt || 0);
+      const row = el('div', { class: 'save-menu-row' },
+        el('button', { class: 'save-menu-name', type: 'button', title: when.toLocaleString() },
+          s.name, el('span', { class: 'save-menu-date' }, when.toLocaleDateString())),
+        el('button', { class: 'save-menu-del', type: 'button', title: `${tt('file.deleteConfirm')} "${s.name}"` }, '×'));
+      row.querySelector('.save-menu-name').addEventListener('click', () => {
+        if (!confirm(`${tt('file.openConfirm')}\n\n"${s.name}"`)) return;
+        try {
+          const d = deserialize(s.data);
+          closeMenu();
+          if (typeof tabSite !== 'undefined') tabSite.fitNext = true;
+          store.replace(d);
+          ctx.rerenderAll();
+        } catch (e) { alert(tt('file.error')); }
+      });
+      row.querySelector('.save-menu-del').addEventListener('click', () => {
+        if (!confirm(`${tt('file.deleteConfirm')} "${s.name}"?`)) return;
+        writeSaved(readSaved().filter(x => x.name !== s.name));
+        closeMenu(); toggleMenu();   // gentegn menuen
+      });
+      menu.append(row);
+    });
+    openBtn.parentElement.append(menu);
+    const r = openBtn.getBoundingClientRect(), pr = openBtn.parentElement.getBoundingClientRect();
+    menu.style.left = (r.left - pr.left) + 'px';
+    menu.style.top = (r.bottom - pr.top + 4) + 'px';
+    document.addEventListener('pointerdown', onDocDown, true);
+  }
+
+  // ---- Forslags-/skabelon-vælger: erstatter tegningen med en færdig rig ----
   const presetSel = el('select', { class: 'btn-sm', title: tt('file.presetHint') });
   presetSel.append(el('option', { value: '' }, tt('file.preset')));
   presetList().forEach(p => presetSel.append(el('option', { value: p.id }, tt(p.nameKey))));
@@ -57,11 +122,18 @@ function fileBar(ctx) {
     ctx.rerenderAll();
   });
 
+  const saveBtn = el('button', { class: 'btn-sm', type: 'button', title: tt('file.saveLocalHint'), onclick: doSaveLocal }, tt('file.saveLocal'));
+  const openBtn = el('button', { class: 'btn-sm', type: 'button', title: tt('file.openLocalHint'), onclick: toggleMenu }, tt('file.openLocal'));
+
   return el('div', { class: 'filebar' },
     nameInp,
-    el('button', { class: 'btn-sm', type: 'button', onclick: doSave }, tt('file.save')),
-    el('button', { class: 'btn-sm', type: 'button', onclick: () => fileInput.click() }, tt('file.load')),
+    saveBtn,
+    openBtn,
+    el('span', { class: 'filebar-sep' }),
+    el('button', { class: 'btn-sm', type: 'button', title: tt('file.saveHint'), onclick: doExport }, tt('file.save')),
+    el('button', { class: 'btn-sm', type: 'button', title: tt('file.loadHint'), onclick: () => fileInput.click() }, tt('file.load')),
     el('button', { class: 'btn-sm', type: 'button', onclick: doNew }, tt('file.new')),
     presetSel,
+    el('button', { class: 'btn-sm', type: 'button', title: tt('file.printHint'), onclick: () => printGuide(ctx) }, '🖨 ' + tt('file.print')),
     fileInput);
 }

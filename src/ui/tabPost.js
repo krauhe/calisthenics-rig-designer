@@ -1,4 +1,4 @@
-// Fane: Stolpe-analyse. Bruger foundation() fra kernen.
+﻿// Fane: Stolpe-analyse. Bruger foundation() fra kernen.
 
 
 const tabPost = {
@@ -16,7 +16,7 @@ const tabPost = {
     const results = el('div', { class: 'results' });
     const chartHost = el('div', { class: 'charthost' });
 
-    // Hullets sidemål kan ikke være mindre end stolpens sidemål/diameter.
+    // Hullets sidemÃ¥l kan ikke vÃ¦re mindre end stolpens sidemÃ¥l/diameter.
     const matPost = resolveMaterial(design, a.materialId);
     const postSideMm = matPost.kind === 'wood' ? matPost.side : matPost.od;
     if (a.hole_mm < postSideMm) a.hole_mm = postSideMm;
@@ -55,7 +55,7 @@ const tabPost = {
       const mat = resolveMaterial(design, a.materialId);
       const postSide = (mat.kind === 'wood' ? mat.side : mat.od) / 1000;
       const Ipost = sectionProps(mat).I;
-      const f = foundation({ postSide, depth: a.depth_m, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E });
+      const f = foundation({ postSide, depth: a.depth_m, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E, kSoil: K_SOIL * soilFactorOf(design) });
       const swayMm = f.dTop * 1000;
       const feelKey = swayMm < 10 ? 'feel.solid' : swayMm < 20 ? 'feel.springy' : 'feel.soft';
       results.className = 'results analysis-card result-' + (swayMm < 10 ? 'ok' : swayMm < 20 ? 'warn' : 'bad');
@@ -70,26 +70,26 @@ const tabPost = {
         resRow(tt('post.res.rot'), `${Math.round(f.Ktheta / 1000)} kNm/rad`),
         resRow(tt('post.res.feel'), tt(feelKey)));
 
-      // graf: sving som funktion af nedgravningsdybde — opdelt i de tre dele
+      // graf: sving som funktion af nedgravningsdybde â€” opdelt i de tre dele
       const depths = [];
       for (let dp = 0.4; dp <= 2.0 + 1e-9; dp += 0.1) depths.push(Math.round(dp * 10) / 10);
       const inch = u.dim === 'in';
       const cv = v => inch ? v / 25.4 : v;
       const sSum = [], sBend = [], sRot = [];
       depths.forEach(dp => {
-        const ff = foundation({ postSide, depth: dp, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E });
+        const ff = foundation({ postSide, depth: dp, hole: a.hole_mm / 1000, topHeight: a.height_m, Ipost, E: mat.E, kSoil: K_SOIL * soilFactorOf(design) });
         sSum.push({ x: dp, y: cv(ff.dTop * 1000) });
         sBend.push({ x: dp, y: cv(ff.dBend * 1000) });
         sRot.push({ x: dp, y: cv(ff.dRot * 1000) });
       });
-      // Fast y-akse (uafhængig af hullet), så stolpe-elasticitet-linjen IKKE
-      // ser ud til at flytte sig når man kun ændrer hullet — kun fundament-
-      // og sum-linjen reagerer på hullet. Skaleres efter et fast referencehul.
-      const yRef = foundation({ postSide, depth: 0.4, hole: 0.30, topHeight: a.height_m, Ipost, E: mat.E });
+      // Fast y-akse (uafhÃ¦ngig af hullet), sÃ¥ stolpe-elasticitet-linjen IKKE
+      // ser ud til at flytte sig nÃ¥r man kun Ã¦ndrer hullet â€” kun fundament-
+      // og sum-linjen reagerer pÃ¥ hullet. Skaleres efter et fast referencehul.
+      const yRef = foundation({ postSide, depth: 0.4, hole: 0.30, topHeight: a.height_m, Ipost, E: mat.E, kSoil: K_SOIL * soilFactorOf(design) });
       const yMax = Math.max(cv(yRef.dTop * 1000), ...sBend.map(p => p.y)) * 1.12;
       const series = [
-        { points: sSum, color: COLORS[0] },   // sum (blå)
-        { points: sBend, color: COLORS[1] },  // stolpe-elasticitet (grøn)
+        { points: sSum, color: COLORS[0] },   // sum (blÃ¥)
+        { points: sBend, color: COLORS[1] },  // stolpe-elasticitet (grÃ¸n)
         { points: sRot, color: COLORS[2] },   // fundament-eftergivenhed (orange)
       ];
       const swatch = (c, label) => `<span class="leg-item"><span class="leg-sw" style="background:${c}"></span>${label}</span>`;

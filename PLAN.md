@@ -233,9 +233,13 @@ Tekniske detaljer fundet i den nuværende kode, som skal rettes for at analyse­
 
 **Senere / valgfrit (ikke nu):**
 - Del via URL (tegningen pakket ind i et link) udover filer.
-- Print-venlig PDF af materialeliste + skæreplan til byggedagen.
-- Touch/mobil-venlig kort-editor.
+- ~~Print-venlig PDF af materialeliste + skæreplan til byggedagen.~~ ✅ Lavet (Print-knappen: samlet byggevejledning).
+- ~~Touch/mobil-venlig kort-editor.~~ ✅ Lavet (pinch-zoom + træk med finger).
 - "Installér som app" / fuld offline (PWA).
+- **Skråstivere (diagonal afstivning) som elementtype** — ville have stor effekt på
+  svaj-beregningen (stolpen aflastes markant), men kræver ny geometri på Kort/3D,
+  samlingsdetaljer (beslag/vinkler) og en udvidelse af fundamentmodellen, så den
+  belønner afstivningen korrekt. Parkeret indtil en elegant model er fundet.
 
 ---
 

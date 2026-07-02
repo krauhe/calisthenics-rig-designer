@@ -14,6 +14,7 @@ let tool = 'select';
 let selectedPost = null;
 let selectedConn = null;
 let selectedLadder = null;
+let selectedMonkey = null;
 let selectedAvatar = null;
 let connectFrom = null;
 let view = null;
@@ -23,6 +24,7 @@ const TOOLS = [
   ['post', '▪', 'tool.post'],
   ['connect', '／', 'tool.connect'],
   ['ladder', '🪜', 'tool.ladder'],
+  ['monkey', '🐒', 'tool.monkey'],
   ['avatar', '🧍', 'tool.avatar'],
   ['delete', '🗑', 'tool.delete'],
 ];
@@ -42,6 +44,8 @@ function sanitizeSiteDesign(design) {
   design.site.refLoad_kg = nonNegativeNumber(design.site.refLoad_kg, 120);
   design.site.pipeWall_mm = Math.max(nonNegativeNumber(design.site.pipeWall_mm, 3.2), 0.5);
   design.library.forEach(m => { if (m.kind === 'pipe') m.wall = design.site.pipeWall_mm; });
+  design.site.monkeySpacing_m = Math.max(nonNegativeNumber(design.site.monkeySpacing_m, 0.33), 0.15);
+  if (!SOIL_FACTORS[design.site.soil]) design.site.soil = 'normal';
   const pmS = resolveMaterial(design, design.defaults.post.materialId);
   const postSideMmS = pmS ? (pmS.kind === 'wood' ? pmS.side : pmS.od) : 125;
   design.posts.forEach(p => {
@@ -55,7 +59,10 @@ function sanitizeSiteDesign(design) {
   design.attachments.forEach(a => {
     if (a.type === 'ladder') a.width_m = Math.max(nonNegativeNumber(a.width_m, design.site.ladderWidth_m), MIN_LADDER_WIDTH_M);
     if (a.type === 'avatar') a.height_m = Math.max(nonNegativeNumber(a.height_m, design.site.avatarHeight_m), MIN_AVATAR_HEIGHT_M);
+    if (a.type === 'monkey') a.spacing_m = Math.max(nonNegativeNumber(a.spacing_m, design.site.monkeySpacing_m), 0.15);
   });
+  design.attachments = design.attachments.filter(a => a.type !== 'monkey'
+    || (design.connections.some(c => c.id === a.connA) && design.connections.some(c => c.id === a.connB)));
 }
 
 // Knap-ikon der matcher musecursoren for hvert værktøj (lille inline-SVG).
@@ -65,6 +72,7 @@ function toolIcon(t) {
   if (t === 'post') return w(`<line x1='14' y1='3' x2='14' y2='25' stroke='#0b66c3' stroke-width='1.4'/><line x1='3' y1='14' x2='25' y2='14' stroke='#0b66c3' stroke-width='1.4'/><rect x='9' y='9' width='10' height='10' rx='2' fill='#b6986a' stroke='#6b4f2a' stroke-width='1.3'/>`);
   if (t === 'connect') return w(`<line x1='14' y1='14' x2='6' y2='22' stroke='#0b66c3' stroke-width='1.6'/><line x1='14' y1='14' x2='22' y2='6' stroke='#0b66c3' stroke-width='1.6'/><circle cx='6' cy='22' r='2.6' fill='#fff' stroke='#0b66c3' stroke-width='1.4'/><circle cx='22' cy='6' r='2.6' fill='#fff' stroke='#0b66c3' stroke-width='1.4'/><circle cx='14' cy='14' r='2.6' fill='#0b66c3'/>`);
   if (t === 'ladder') return w(`<line x1='10' y1='3' x2='10' y2='25' stroke='#0e7490' stroke-width='2'/><line x1='18' y1='3' x2='18' y2='25' stroke='#0e7490' stroke-width='2'/><line x1='10' y1='8' x2='18' y2='8' stroke='#0e7490' stroke-width='1.8'/><line x1='10' y1='14' x2='18' y2='14' stroke='#0e7490' stroke-width='1.8'/><line x1='10' y1='20' x2='18' y2='20' stroke='#0e7490' stroke-width='1.8'/>`);
+  if (t === 'monkey') return w(`<line x1='3' y1='10' x2='25' y2='10' stroke='#0e7490' stroke-width='2'/><line x1='3' y1='18' x2='25' y2='18' stroke='#0e7490' stroke-width='2'/><line x1='8' y1='10' x2='8' y2='18' stroke='#0e7490' stroke-width='1.8'/><line x1='14' y1='10' x2='14' y2='18' stroke='#0e7490' stroke-width='1.8'/><line x1='20' y1='10' x2='20' y2='18' stroke='#0e7490' stroke-width='1.8'/>`);
   if (t === 'avatar') return w(`<circle cx='14' cy='6' r='3' fill='#8fa3c9'/><line x1='14' y1='9' x2='14' y2='18' stroke='#8fa3c9' stroke-width='2'/><line x1='14' y1='11' x2='9' y2='4' stroke='#8fa3c9' stroke-width='2'/><line x1='14' y1='11' x2='19' y2='4' stroke='#8fa3c9' stroke-width='2'/><line x1='14' y1='18' x2='10' y2='25' stroke='#8fa3c9' stroke-width='2'/><line x1='14' y1='18' x2='18' y2='25' stroke='#8fa3c9' stroke-width='2'/>`);
   if (t === 'delete') return w(`<circle cx='14' cy='14' r='10.5' fill='#fff' stroke='#b3261e' stroke-width='2'/><line x1='9.5' y1='9.5' x2='18.5' y2='18.5' stroke='#b3261e' stroke-width='2.4'/><line x1='18.5' y1='9.5' x2='9.5' y2='18.5' stroke='#b3261e' stroke-width='2.4'/>`);
   return '';
@@ -77,6 +85,7 @@ function toolCursor(t) {
   if (t === 'post') return cur(`<line x1='14' y1='3' x2='14' y2='25' stroke='#0b66c3' stroke-width='1.5'/><line x1='3' y1='14' x2='25' y2='14' stroke='#0b66c3' stroke-width='1.5'/><rect x='9' y='9' width='10' height='10' rx='2' fill='#b6986a' stroke='#6b4f2a' stroke-width='1.3'/>`, 14, 14);
   if (t === 'connect') return cur(`<line x1='14' y1='14' x2='6' y2='22' stroke='#0b66c3' stroke-width='1.8'/><line x1='14' y1='14' x2='22' y2='6' stroke='#0b66c3' stroke-width='1.8'/><circle cx='6' cy='22' r='2.8' fill='#fff' stroke='#0b66c3' stroke-width='1.5'/><circle cx='22' cy='6' r='2.8' fill='#fff' stroke='#0b66c3' stroke-width='1.5'/><circle cx='14' cy='14' r='2.8' fill='#0b66c3'/>`, 14, 14);
   if (t === 'ladder') return 'crosshair';   // spøgelses-stigen viser placeringen
+  if (t === 'monkey') return 'crosshair';   // spøgelses-armgangen viser placeringen
   if (t === 'avatar') return cur(`<circle cx='14' cy='6' r='3' fill='#8fa3c9'/><line x1='14' y1='9' x2='14' y2='18' stroke='#8fa3c9' stroke-width='2'/><line x1='14' y1='11' x2='9' y2='4' stroke='#8fa3c9' stroke-width='2'/><line x1='14' y1='11' x2='19' y2='4' stroke='#8fa3c9' stroke-width='2'/><line x1='14' y1='18' x2='10' y2='25' stroke='#8fa3c9' stroke-width='2'/><line x1='14' y1='18' x2='18' y2='25' stroke='#8fa3c9' stroke-width='2'/>`, 14, 18);
   if (t === 'delete') return cur(`<circle cx='14' cy='14' r='11' fill='#fff' stroke='#b3261e' stroke-width='2'/><line x1='9' y1='9' x2='19' y2='19' stroke='#b3261e' stroke-width='2.4'/><line x1='19' y1='9' x2='9' y2='19' stroke='#b3261e' stroke-width='2.4'/>`, 14, 14);
   return 'crosshair';
@@ -204,6 +213,26 @@ const tabSite = {
       return design.attachments.some(a => a.type === 'ladder' && a.id !== excludeId
         && ladderSlot({ postId: a.postId, angle_rad: a.angle_rad }) === slot);
     };
+    // ---- Armgang (monkey bars): snap til nærmeste GYLDIGE par af parallelle barer ----
+    const monkeySnap = (wx, wz) => {
+      let best = null, bd = Infinity;
+      const cs = design.connections;
+      for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++) {
+        const g = monkeyGeometry(design, cs[i].id, cs[j].id, design.site.monkeySpacing_m);
+        if (!monkeyPlacementValid(g)) continue;
+        const d = Math.hypot(g.mid.x - wx, g.mid.z - wz);
+        if (d < bd) { bd = d; best = { connA: cs[i].id, connB: cs[j].id }; }
+      }
+      return best;
+    };
+    const monkeyKey = (a, b) => [a, b].sort().join(':');
+    const monkeySlotTaken = (pair, excludeId) => {
+      if (!pair) return false;
+      const key = monkeyKey(pair.connA, pair.connB);
+      return design.attachments.some(a => a.type === 'monkey' && a.id !== excludeId
+        && monkeyKey(a.connA, a.connB) === key);
+    };
+
     // Effektiv (bærende) spændvidde: en stige der binder til baren, virker som
     // et ekstra støttepunkt og aflaster den (som i den oprindelige version) —
     // det længste ustøttede stykke bliver styrende for styrke/nedbøjning.
@@ -263,6 +292,29 @@ const tabSite = {
         <line x1="${ox.toFixed(1)}" y1="${oy.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="#000" opacity="0" stroke-width="${(wHalf * 2 + 8).toFixed(1)}" pointer-events="all"/></g>`;
     }
 
+    // Tegn en armgang (trin mellem to barer) — normal, ghost eller ghostBad.
+    function monkeyMarkup(at, mode) {
+      const g = monkeyGeometry(design, at.connA, at.connB, at.spacing_m || design.site.monkeySpacing_m);
+      if (!g || !g.rungs.length) return '';
+      const ghost = mode === 'ghost' || mode === 'ghostDown' || mode === 'ghostBad';
+      const bad = mode === 'ghostBad';
+      const col = bad ? '#e11d1d' : (ghost ? '#4f9bff' : '#0e7490');
+      const dash = mode === 'ghost' ? 'stroke-dasharray="5 3"' : '';
+      let rungs = '';
+      for (const r of g.rungs) {
+        const [x1, y1] = toScreen(r.ax, r.az), [x2, y2] = toScreen(r.bx, r.bz);
+        rungs += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${col}" stroke-width="2.2" stroke-linecap="round" ${dash}/>`;
+      }
+      const f = g.rungs[0], l = g.rungs[g.rungs.length - 1];
+      const [hx1, hy1] = toScreen((f.ax + f.bx) / 2, (f.az + f.bz) / 2);
+      const [hx2, hy2] = toScreen((l.ax + l.bx) / 2, (l.az + l.bz) / 2);
+      if (ghost) return `<g pointer-events="none" opacity="${mode === 'ghostDown' || bad ? 0.9 : 0.55}">${rungs}</g>`;
+      const selM = at.id === selectedMonkey
+        ? `<line x1="${hx1.toFixed(1)}" y1="${hy1.toFixed(1)}" x2="${hx2.toFixed(1)}" y2="${hy2.toFixed(1)}" stroke="#4f9bff" stroke-width="${Math.max(14, g.rungLen * view.k * 0.9).toFixed(1)}" stroke-linecap="round" opacity="0.25"/>` : '';
+      return `<g data-el="monkey" data-id="${at.id}">${selM}${rungs}
+        <line x1="${hx1.toFixed(1)}" y1="${hy1.toFixed(1)}" x2="${hx2.toFixed(1)}" y2="${hy2.toFixed(1)}" stroke="#000" opacity="0" stroke-width="16" stroke-linecap="round" pointer-events="all"/></g>`;
+    }
+
     function niceScale() {
       // Fast målestok: 1 m (metrisk) ≈ 3 fod (imperial).
       if (su === 'ft') return { meters: 3 * 0.3048, label: `3 ${tt('unit.ft')}` };
@@ -283,7 +335,7 @@ const tabSite = {
       const postSide = (pm.kind === 'wood' ? pm.side : pm.od) / 1000;
       const arm = maxBarHOf(p.id);
       const topHeight = Math.max(0.3, arm != null ? arm : postHeightOf(p));
-      const f = foundation({ postSide, depth: Math.max(postDepthOf(p), 0.05), hole: postHoleOf(p) / 1000, topHeight, Ipost: sectionProps(pm).I, E: pm.E });
+      const f = foundation({ postSide, depth: Math.max(postDepthOf(p), 0.05), hole: postHoleOf(p) / 1000, topHeight, Ipost: sectionProps(pm).I, E: pm.E, kSoil: K_SOIL * soilFactorOf(design) });
       return f.dTop * 1000;
     };
     const postSoft = p => postSwayMm(p) >= SOFT_SWAY_MM;
@@ -327,6 +379,17 @@ const tabSite = {
           const aDeg = readableDeg(Math.atan2(by - ay, bx - ax) * 180 / Math.PI);
           conns += `<g pointer-events="none" transform="translate(${mx.toFixed(1)} ${my.toFixed(1)}) rotate(${aDeg.toFixed(1)})"><ellipse cx="0" cy="0" rx="${(7 + lbl.length * 2.8).toFixed(1)}" ry="8.5" fill="#1a212c" stroke="#4f9bff"/><text x="0" y="3.2" text-anchor="middle" font-size="10" font-weight="700" fill="#8bbcfd">${lbl}</text></g>`;
         }
+        // MÅL på kortet: vis længden mens en tilstødende stolpe trækkes,
+        // eller når forbindelsen er valgt — så man kan slippe på rette afstand.
+        const dragged = live && drag && drag.mode === 'move' && (c.a === drag.id || c.b === drag.id);
+        if (dragged || c.id === selectedConn) {
+          const txt = `${fmt(lenFromSI(span, su), 2, lang)} ${suTxt}`;
+          const aDeg = readableDeg(Math.atan2(by - ay, bx - ax) * 180 / Math.PI);
+          const rad = aDeg * Math.PI / 180;
+          const off = sw / 2 + 11;                       // vinkelret offset fra baren
+          const ox2 = mx - Math.sin(rad) * off, oy2 = my + Math.cos(rad) * off;
+          conns += `<g pointer-events="none" transform="translate(${ox2.toFixed(1)} ${oy2.toFixed(1)}) rotate(${aDeg.toFixed(1)})"><rect x="${(-txt.length * 3.4 - 4).toFixed(1)}" y="-8" width="${(txt.length * 6.8 + 8).toFixed(1)}" height="16" rx="4" fill="#1a212c" opacity="0.92"/><text x="0" y="3.6" text-anchor="middle" font-size="11" font-weight="700" fill="#ffd166">${txt}</text></g>`;
+        }
       });
 
       // ---- stiger: lodret stige der binder sig til en vandret bar (som i 3D).
@@ -339,6 +402,15 @@ const tabSite = {
       // spøgelses-stige (forhåndsvisning ved placering med stige-værktøjet)
       let ghostLad = '';
       if (ghostLadder) ghostLad = ladderMarkup(ghostLadder, byId, ghostLadder.invalid ? 'ghostBad' : (ghostLadder.down ? 'ghostDown' : 'ghost'));
+
+      // ---- armgange (monkey bars) + spøgelses-armgang ----
+      let monkeys = '';
+      for (const at of design.attachments) {
+        if (at.type !== 'monkey') continue;
+        monkeys += monkeyMarkup(at, 'normal');
+      }
+      let ghostMon = '';
+      if (ghostMonkey) ghostMon = monkeyMarkup(ghostMonkey, ghostMonkey.invalid ? 'ghostBad' : (ghostMonkey.down ? 'ghostDown' : 'ghost'));
 
       // ---- avatarer (person set oppefra: hoved + skuldre) ----
       let avatars = '';
@@ -391,7 +463,7 @@ const tabSite = {
       mapBox.innerHTML =
         `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="display:block;width:100%;height:100%">` +
         `<rect data-el="bg" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>` +
-        grid + conns + ladders + avatars + posts + ghostLad + guideSvg + empty + scale + `</svg>`;
+        grid + conns + ladders + monkeys + avatars + posts + ghostLad + ghostMon + guideSvg + empty + scale + `</svg>`;
     }
 
     // ---- forbindelses-tabel: ALLE parametre, redigerbare direkte i tabellen ----
@@ -477,7 +549,7 @@ const tabSite = {
             el('td', { class: 'editc' }, hInp),
             el('td', { class: 'editc' }, dInp),
             el('td', { class: 'editc' }, holeInp));
-          tr.addEventListener('click', e => { if (e.target.closest('input,select')) return; selectedPost = p.id; selectedConn = null; selectedLadder = null; redraw(); renderPanel(); });
+          tr.addEventListener('click', e => { if (e.target.closest('input,select')) return; selectedPost = p.id; selectedConn = null; selectedLadder = null; selectedMonkey = null; redraw(); renderPanel(); });
           return tr;
         });
         selPanel.append(el('table', { class: 'conntab full dense posts-tab' }, el('thead', {}, phead), el('tbody', {}, ...prows)));
@@ -525,7 +597,7 @@ const tabSite = {
           lInp.addEventListener('input', () => { const v = parseFloat(lInp.value); if (isNaN(v)) return; setSpan(c, Math.max(lenToSI(v, su), 0.1)); redraw(); paint(); });
           lInp.addEventListener('change', () => { lInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(lInp.value) || 0, su), 0.1), su))); redraw(); renderPanel(); });
           [matSel, hInp, lInp].forEach(x => x.addEventListener('pointerdown', stopProp));
-          tr.addEventListener('click', e => { if (e.target.closest('select,input')) return; selectedConn = c.id; selectedPost = null; selectedLadder = null; redraw(); renderPanel(); });
+          tr.addEventListener('click', e => { if (e.target.closest('select,input')) return; selectedConn = c.id; selectedPost = null; selectedLadder = null; selectedMonkey = null; redraw(); renderPanel(); });
           tr.append(
             el('td', { class: 'conn-name' }, el('span', { class: 'cdot', style: `background:${colorOf(c.material)}` }), el('span', { class: 'conn-name-text' }, connLabel(c))),
             el('td', { class: 'editc' }, matSel),
@@ -550,6 +622,39 @@ const tabSite = {
         sw('#e11d1d', tt('site.legend.crit'), 6)));
       selPanel.append(el('p', { class: 'encnote' }, tt('site.conn.encoding')));
 
+      // ---- Armgange (trinafstand redigerbar; trin-antal og -længde beregnes) ----
+      const monkeysList = design.attachments.filter(a => a.type === 'monkey');
+      if (monkeysList.length) {
+        selPanel.append(el('h3', { class: 'posts-h' }, tt('site.monkeys.title')));
+        const spUnitTxt = su === 'ft' ? tt('unit.in') : 'cm';
+        const spToM = v => su === 'ft' ? v * 0.0254 : v / 100;
+        const spFromM = m => Math.round((su === 'ft' ? m / 0.0254 : m * 100) * 10) / 10;
+        const mhead = el('tr', {}, el('th', {}, '#'),
+          el('th', {}, `${tt('site.monkeyspacing')} (${spUnitTxt})`),
+          el('th', {}, tt('site.monkey.rungs')),
+          el('th', {}, `H (${suTxt})`));
+        const mrows = monkeysList.map((a, i) => {
+          const infoCell = el('td', { class: 'numc' }, '');
+          const hCell = el('td', { class: 'numc' }, '');
+          const paintInfo = () => {
+            const g = monkeyGeometry(design, a.connA, a.connB, a.spacing_m);
+            clear(infoCell); infoCell.append(g ? `${g.count} × ${fmt(lenFromSI(g.rungLen, su), 2, lang)} ${suTxt}` : '—');
+            clear(hCell); hCell.append(g ? fmt(lenFromSI(g.y, su), 2, lang) : '—');
+          };
+          const spInp = el('input', { type: 'number', step: su === 'ft' ? '0.5' : '1', min: String(spFromM(0.15)), value: String(spFromM(a.spacing_m || design.site.monkeySpacing_m)) });
+          spInp.addEventListener('input', () => { const v = parseFloat(spInp.value); if (isNaN(v)) return; const m = Math.max(spToM(v), 0.15); store.update(d => { const x = d.attachments.find(y => y.id === a.id); if (x) x.spacing_m = m; }); paintInfo(); redraw(); });
+          spInp.addEventListener('change', () => { spInp.value = String(spFromM(Math.max(spToM(parseFloat(spInp.value) || 0), 0.15))); });
+          spInp.addEventListener('pointerdown', stopProp);
+          const tr = el('tr', { class: 'crow' + (a.id === selectedMonkey ? ' on' : '') },
+            el('td', {}, el('span', { class: 'pdot' }), (() => { const ca = design.connections.find(c => c.id === a.connA), cb = design.connections.find(c => c.id === a.connB); return (ca ? connLabel(ca) : '?') + ' × ' + (cb ? connLabel(cb) : '?'); })()),
+            el('td', { class: 'editc' }, spInp), infoCell, hCell);
+          paintInfo();
+          tr.addEventListener('click', e => { if (e.target.closest('input,select')) return; selectedMonkey = a.id; selectedPost = null; selectedConn = null; selectedLadder = null; selectedAvatar = null; redraw(); renderPanel(); });
+          return tr;
+        });
+        selPanel.append(el('table', { class: 'conntab full dense' }, el('thead', {}, mhead), el('tbody', {}, ...mrows)));
+      }
+
       // ---- Personer (én pr. avatar, redigerbar højde + rækkehøjde) ----
       const avatars = design.attachments.filter(a => a.type === 'avatar');
       if (avatars.length) {
@@ -565,7 +670,7 @@ const tabSite = {
           const tr = el('tr', { class: 'crow' + (a.id === selectedAvatar ? ' on' : '') },
             el('td', {}, el('span', { class: 'adot' }), i + 1),
             el('td', { class: 'editc' }, hInp), reachCell);
-          tr.addEventListener('click', e => { if (e.target.closest('input,select')) return; selectedAvatar = a.id; selectedPost = null; selectedConn = null; selectedLadder = null; redraw(); renderPanel(); });
+          tr.addEventListener('click', e => { if (e.target.closest('input,select')) return; selectedAvatar = a.id; selectedPost = null; selectedConn = null; selectedLadder = null; selectedMonkey = null; redraw(); renderPanel(); });
           return tr;
         });
         selPanel.append(el('table', { class: 'conntab full dense persons-tab' }, el('thead', {}, ahead), el('tbody', {}, ...arows)));
@@ -573,13 +678,29 @@ const tabSite = {
     }
 
     // ---- interaktion (husk klik-mål ved pointerdown — robust mod pan-capture) ----
-    let drag = null, down = null, guides = null, ghostLadder = null;
+    let drag = null, down = null, guides = null, ghostLadder = null, ghostMonkey = null;
+    // Touch: aktive fingre på kortet (til pinch-zoom med to fingre).
+    const touchPts = new Map();
     mapBox.addEventListener('pointerdown', e => {
       const [ux, uy] = evtToUser(e);
+      if (e.pointerType === 'touch') {
+        touchPts.set(e.pointerId, [ux, uy]);
+        if (touchPts.size === 2) {
+          // to fingre → pinch-zoom (afbryder evt. igangværende træk uden at gemme)
+          const [p1, p2] = [...touchPts.values()];
+          const mid = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
+          drag = { mode: 'pinch', d0: Math.hypot(p1[0] - p2[0], p1[1] - p2[1]) || 1, k0: view.k, w0: toWorld(mid[0], mid[1]) };
+          guides = null; ghostLadder = null; ghostMonkey = null;
+          try { mapBox.setPointerCapture(e.pointerId); } catch (_) {}
+          redraw(true);
+          return;
+        }
+      }
       const t = e.target.closest('[data-el]');
       down = { kind: t && t.getAttribute('data-el'), id: t && t.getAttribute('data-id'), ux, uy };
       if (tool === 'select' && down.kind === 'post') { drag = { mode: 'move', id: down.id, sux: ux, suy: uy, moved: false }; try { mapBox.setPointerCapture(e.pointerId); } catch (_) {} }
       else if (tool === 'select' && down.kind === 'ladder') { drag = { mode: 'ladder', id: down.id, sux: ux, suy: uy, moved: false }; try { mapBox.setPointerCapture(e.pointerId); } catch (_) {} }
+      else if (tool === 'select' && down.kind === 'monkey') { drag = { mode: 'monkey', id: down.id, sux: ux, suy: uy, moved: false }; try { mapBox.setPointerCapture(e.pointerId); } catch (_) {} }
       else if (tool === 'select' && down.kind === 'avatar') { drag = { mode: 'avatar', id: down.id, sux: ux, suy: uy, moved: false }; try { mapBox.setPointerCapture(e.pointerId); } catch (_) {} }
       else if (tool === 'select') { drag = { mode: 'pan', sux: ux, suy: uy, stx: view.tx, sty: view.ty, moved: false }; try { mapBox.setPointerCapture(e.pointerId); } catch (_) {} }
       else if (tool === 'ladder') {
@@ -591,8 +712,18 @@ const tabSite = {
         try { mapBox.setPointerCapture(e.pointerId); } catch (_) {}
         redraw();
       }
+      else if (tool === 'monkey') {
+        // start placering: armgangen snapper til nærmeste gyldige bar-par
+        const [wx, wz] = toWorld(ux, uy);
+        const sp = monkeySnap(wx, wz);
+        ghostMonkey = sp ? { ...sp, spacing_m: design.site.monkeySpacing_m, down: true, invalid: monkeySlotTaken(sp, null) } : null;
+        drag = { mode: 'place-monkey', sux: ux, suy: uy, moved: false };
+        try { mapBox.setPointerCapture(e.pointerId); } catch (_) {}
+        redraw();
+      }
     });
     mapBox.addEventListener('pointermove', e => {
+      if (e.pointerType === 'touch' && touchPts.has(e.pointerId)) touchPts.set(e.pointerId, evtToUser(e));
       if (!drag) {
         const [ux, uy] = evtToUser(e);
         // forhåndsvisning + justeringslinjer når man placerer en stolpe
@@ -607,7 +738,24 @@ const tabSite = {
           const sp = ladderSnap(wx, wz);
           ghostLadder = sp ? { ...sp, width_m: Math.max(design.site.ladderWidth_m, MIN_LADDER_WIDTH_M), down: false, invalid: ladderSlotTaken(sp, null) } : null;
           redraw();
-        } else if (guides || ghostLadder) { guides = null; ghostLadder = null; redraw(); }
+        } else if (tool === 'monkey') {
+          // spøgelses-armgang følger musen og snapper til gyldige bar-par
+          const [wx, wz] = toWorld(ux, uy);
+          const sp = monkeySnap(wx, wz);
+          ghostMonkey = sp ? { ...sp, spacing_m: design.site.monkeySpacing_m, down: false, invalid: monkeySlotTaken(sp, null) } : null;
+          redraw();
+        } else if (guides || ghostLadder || ghostMonkey) { guides = null; ghostLadder = null; ghostMonkey = null; redraw(); }
+        return;
+      }
+      if (drag.mode === 'pinch') {
+        if (touchPts.size < 2) return;
+        const [p1, p2] = [...touchPts.values()];
+        const d = Math.hypot(p1[0] - p2[0], p1[1] - p2[1]) || 1;
+        const mid = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
+        view.k = Math.min(MAX_K, Math.max(MIN_K, drag.k0 * d / drag.d0));
+        view.tx = mid[0] - drag.w0[0] * view.k;
+        view.ty = mid[1] - drag.w0[1] * view.k;
+        redraw(true);
         return;
       }
       const [ux, uy] = evtToUser(e);
@@ -629,12 +777,26 @@ const tabSite = {
         ghostLadder = sp ? { ...sp, width_m: Math.max(design.site.ladderWidth_m, MIN_LADDER_WIDTH_M), down: true, invalid: ladderSlotTaken(sp, null) } : null;
         redraw(true);
       }
+      else if (drag.mode === 'place-monkey') {
+        const [wx, wz] = toWorld(ux, uy);
+        const sp = monkeySnap(wx, wz);
+        ghostMonkey = sp ? { ...sp, spacing_m: design.site.monkeySpacing_m, down: true, invalid: monkeySlotTaken(sp, null) } : null;
+        redraw(true);
+      }
       else if (drag.mode === 'ladder') {
         const at = design.attachments.find(a => a.id === drag.id); if (!at) return;
         const [wx, wz] = toWorld(ux, uy);
         const sp = ladderSnap(wx, wz);
         // følg kun med til pladser der ikke allerede er optaget af en anden stige
         if (sp && !ladderSlotTaken(sp, at.id)) { at.postId = sp.postId; at.angle_rad = sp.angle_rad; }
+        redraw(true);
+      }
+      else if (drag.mode === 'monkey') {
+        const at = design.attachments.find(a => a.id === drag.id); if (!at) return;
+        const [wx, wz] = toWorld(ux, uy);
+        const sp = monkeySnap(wx, wz);
+        // følg kun med til bar-par der ikke allerede har en armgang
+        if (sp && !monkeySlotTaken(sp, at.id)) { at.connA = sp.connA; at.connB = sp.connB; }
         redraw(true);
       }
       else if (drag.mode === 'avatar') {
@@ -644,8 +806,13 @@ const tabSite = {
         redraw(true);
       }
     });
-    mapBox.addEventListener('pointerup', () => {
+    const endPointer = e => {
+      if (e && e.pointerType === 'touch') touchPts.delete(e.pointerId);
       const mode = drag && drag.mode;
+      if (mode === 'pinch') {
+        if (touchPts.size < 2) { drag = null; down = null; saveView(); redraw(); }
+        return;
+      }
       // stige-værktøj: placér endeligt der hvor spøgelset snappede fast
       if (mode === 'place-ladder') {
         const sp = ghostLadder;
@@ -655,16 +822,26 @@ const tabSite = {
         redraw(); renderPanel();
         return;
       }
+      // armgangs-værktøj: placér endeligt på det bar-par spøgelset snappede til
+      if (mode === 'place-monkey') {
+        const sp = ghostMonkey;
+        if (sp && !sp.invalid) store.update(d => d.attachments.push({ id: nextId(d.attachments, 'a'), type: 'monkey', connA: sp.connA, connB: sp.connB, spacing_m: d.site.monkeySpacing_m }));
+        drag = null; down = null; ghostMonkey = null;
+        redraw(); renderPanel();
+        return;
+      }
       const wasDrag = drag && drag.moved;
       if (mode === 'pan') saveView();   // husk pan på tværs af refresh
-      if (wasDrag && (mode === 'move' || mode === 'ladder' || mode === 'avatar')) store.commit();
+      if (wasDrag && (mode === 'move' || mode === 'ladder' || mode === 'monkey' || mode === 'avatar')) store.commit();
       drag = null; guides = null;
       if (wasDrag) redraw();                              // gentegn med bogstav-labels igen
-      if (wasDrag && (mode === 'move' || mode === 'ladder' || mode === 'avatar')) renderPanel();
+      if (wasDrag && (mode === 'move' || mode === 'ladder' || mode === 'monkey' || mode === 'avatar')) renderPanel();
       if (!wasDrag && down) handleClick(down.kind, down.id, down.ux, down.uy);
       down = null;
-    });
-    mapBox.addEventListener('pointerleave', () => { if (!drag && (guides || ghostLadder)) { guides = null; ghostLadder = null; redraw(); } });
+    };
+    mapBox.addEventListener('pointerup', endPointer);
+    mapBox.addEventListener('pointercancel', endPointer);
+    mapBox.addEventListener('pointerleave', () => { if (!drag && (guides || ghostLadder || ghostMonkey)) { guides = null; ghostLadder = null; ghostMonkey = null; redraw(); } });
 
     function handleClick(kind, id, ux, uy) {
       if (tool === 'post' && (kind === 'bg' || !kind)) {
@@ -681,6 +858,7 @@ const tabSite = {
         selectedPost = kind === 'post' ? id : null;
         selectedConn = kind === 'conn' ? id : null;
         selectedLadder = kind === 'ladder' ? id : null;
+        selectedMonkey = kind === 'monkey' ? id : null;
         selectedAvatar = kind === 'avatar' ? id : null;
         redraw(); renderPanel();
       } else if (tool === 'connect' && kind === 'post') {
@@ -693,12 +871,15 @@ const tabSite = {
         }
         redraw(); renderPanel();
       } else if (tool === 'delete') {
-        if (kind === 'post') store.update(d => { d.posts = d.posts.filter(p => p.id !== id); d.connections = d.connections.filter(c => c.a !== id && c.b !== id); d.attachments = d.attachments.filter(at => at.postId !== id); });
-        else if (kind === 'conn') store.update(d => { d.connections = d.connections.filter(c => c.id !== id); d.attachments = d.attachments.filter(at => at.connectionId !== id); });
-        else if (kind === 'ladder' || kind === 'avatar') store.update(d => { d.attachments = d.attachments.filter(at => at.id !== id); });
+        // armgange der mister en af deres barer skal også væk
+        const dropOrphanMonkeys = d => { d.attachments = d.attachments.filter(at => at.type !== 'monkey' || (d.connections.some(c => c.id === at.connA) && d.connections.some(c => c.id === at.connB))); };
+        if (kind === 'post') store.update(d => { d.posts = d.posts.filter(p => p.id !== id); d.connections = d.connections.filter(c => c.a !== id && c.b !== id); d.attachments = d.attachments.filter(at => at.postId !== id); dropOrphanMonkeys(d); });
+        else if (kind === 'conn') store.update(d => { d.connections = d.connections.filter(c => c.id !== id); d.attachments = d.attachments.filter(at => at.connectionId !== id); dropOrphanMonkeys(d); });
+        else if (kind === 'ladder' || kind === 'monkey' || kind === 'avatar') store.update(d => { d.attachments = d.attachments.filter(at => at.id !== id); });
         if (selectedPost && !design.posts.some(p => p.id === selectedPost)) selectedPost = null;
         if (selectedConn && !design.connections.some(c => c.id === selectedConn)) selectedConn = null;
         if (selectedLadder && !design.attachments.some(a => a.id === selectedLadder)) selectedLadder = null;
+        if (selectedMonkey && !design.attachments.some(a => a.id === selectedMonkey)) selectedMonkey = null;
         if (selectedAvatar && !design.attachments.some(a => a.id === selectedAvatar)) selectedAvatar = null;
         redraw(); renderPanel();
       }
@@ -726,7 +907,7 @@ const tabSite = {
     const palette = el('div', { class: 'toolpalette' },
       ...TOOLS.map(([id, icon, key]) =>
         el('button', { class: 'toolbtn' + (tool === id ? ' on' : ''), type: 'button', title: tt(key), 'data-tool': id,
-          onclick: () => { tool = id; connectFrom = null; selectedPost = null; selectedConn = null; selectedLadder = null; selectedAvatar = null; guides = null; ghostLadder = null; setHelp();
+          onclick: () => { tool = id; connectFrom = null; selectedPost = null; selectedConn = null; selectedLadder = null; selectedMonkey = null; selectedAvatar = null; guides = null; ghostLadder = null; ghostMonkey = null; setHelp();
             palette.querySelectorAll('.toolbtn').forEach(b => b.classList.toggle('on', b.getAttribute('data-tool') === id));
             redraw(); renderPanel(); } },
           el('span', { class: 'toolbtn-i', html: toolIcon(id) }), el('span', { class: 'toolbtn-t' }, tt(key)))),
@@ -763,7 +944,11 @@ const tabSite = {
         lenInput(design.site.ladderWidth_m, su, v => { store.update(d => { d.site.ladderWidth_m = Math.max(v, MIN_LADDER_WIDTH_M); }); redraw(); }, { minSI: MIN_LADDER_WIDTH_M })),
       el('label', { class: 'fld inline', title: tt('site.pipewall.hint') }, el('span', { class: 'fld-l' }, `${tt('site.pipewall')} (mm)`), wallInp),
       el('label', { class: 'fld inline', title: tt('site.refload.hint') }, el('span', { class: 'fld-l' }, `${tt('site.refload')} (kg)`),
-        numInput(design.site.refLoad_kg || 120, 5, v => { store.update(d => { d.site.refLoad_kg = Math.max(v, 0); }); redraw(); renderPanel(); }, { min: 0 })));
+        numInput(design.site.refLoad_kg || 120, 5, v => { store.update(d => { d.site.refLoad_kg = Math.max(v, 0); }); redraw(); renderPanel(); }, { min: 0 })),
+      el('label', { class: 'fld inline', title: tt('site.soil.hint') }, el('span', { class: 'fld-l' }, tt('site.soil')),
+        select([['soft', tt('site.soil.soft')], ['normal', tt('site.soil.normal')], ['firm', tt('site.soil.firm')]],
+          design.site.soil || 'normal',
+          v => { store.update(d => { d.site.soil = v; }); redraw(); renderPanel(); })));
 
     // Ctrl+Z / Ctrl+Y (eller Ctrl+Shift+Z) — kun aktiv mens kortet er fremme.
     if (tabSite._keyHandler) document.removeEventListener('keydown', tabSite._keyHandler);
@@ -782,12 +967,14 @@ const tabSite = {
     renderPanel();
     if (tabSite.fitNext) { tabSite.fitNext = false; fit(); }   // tilpas zoom efter en forslags-rig
     const ladderCount = design.attachments.filter(a => a.type === 'ladder').length;
+    const monkeyCount = design.attachments.filter(a => a.type === 'monkey').length;
     const avatarCount = design.attachments.filter(a => a.type === 'avatar').length;
     const countLabel = (n, oneKey, manyKey) => `${n} ${tt(n === 1 ? oneKey : manyKey)}`;
     const summary = el('div', { class: 'site-summary' },
       el('span', { class: 'summary-pill' }, `${design.posts.length} ${tt('site.posts.title')}`),
       el('span', { class: 'summary-pill' }, `${design.connections.length} ${tt('site.conn.tableTitle')}`),
       ...(ladderCount ? [el('span', { class: 'summary-pill' }, countLabel(ladderCount, 'site.summary.ladder.one', 'site.summary.ladder.many'))] : []),
+      ...(monkeyCount ? [el('span', { class: 'summary-pill' }, countLabel(monkeyCount, 'site.summary.monkey.one', 'site.summary.monkey.many'))] : []),
       ...(avatarCount ? [el('span', { class: 'summary-pill' }, countLabel(avatarCount, 'site.summary.person.one', 'site.summary.person.many'))] : []));
     container.append(
       el('div', { class: 'page-head site-head' },

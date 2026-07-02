@@ -60,6 +60,17 @@ function computeMaterials(design) {
     for (let k = 0; k < rc; k++) addCut(ladderMat, width, 't' + (k + 1));
   });
 
+  // armgange (monkey bars): 1"-trin mellem to barer + 2 klemmer pr. trin
+  let monRungCount = 0, monRungLen = 0, monKee = 0, monkeyCount = 0;
+  design.attachments.forEach(at => {
+    if (at.type !== 'monkey') return;
+    const g = monkeyGeometry(design, at.connA, at.connB, at.spacing_m);
+    if (!g || !g.rungs.length) return;
+    monkeyCount++;
+    monRungCount += g.count; monRungLen += g.count * g.rungLen; monKee += g.count * 2;
+    for (let k = 0; k < g.count; k++) addCut(ladderMat, g.rungLen, 'g' + (k + 1));
+  });
+
   // fundament — pr. stolpe (egen dybde + hul fra Kort)
   const footVol = 0.22 * 0.22 * 0.5;
   let concVol = 0, gravelVol = 0, tarArea = 0;
@@ -79,6 +90,7 @@ function computeMaterials(design) {
     postMat, postCount, postTotalLen, buriedTotal, depth, postSide, hole,
     barGroups, cut, pipeConnCount,
     ladderCount, ladVert, ladRungLen, ladRungCount, ladKee,
+    monkeyCount, monRungCount, monRungLen, monKee,
     concVol, gravelVol, bags25, tarLitre,
   };
 }
@@ -123,7 +135,11 @@ const tabMaterials = {
       rows.push({ l: `${tt('mats.ladderRungs')} (${M.ladRungCount} ${tt('mats.pcs')})`, q: fm(M.ladRungLen) });
       rows.push({ l: tt('mats.ladderKee'), q: `${M.ladKee} ${tt('mats.pcs')}` });
     }
-    rows.push({ l: tt('mats.screws'), q: `~${32 + M.ladRungCount * 4} ${tt('mats.pcs')}` });
+    if (M.monkeyCount > 0) {
+      rows.push({ l: `${tt('mats.monkeyRungs')} (${M.monRungCount} ${tt('mats.pcs')})`, q: fm(M.monRungLen) });
+      rows.push({ l: tt('mats.monkeyKee'), q: `${M.monKee} ${tt('mats.pcs')}` });
+    }
+    rows.push({ l: tt('mats.screws'), q: `~${32 + (M.ladRungCount + M.monRungCount) * 4} ${tt('mats.pcs')}` });
     rows.push({ l: tt('mats.gravel'), q: `${Math.round(M.gravelVol * 1000)} L` });
     rows.push({ l: tt('mats.concrete'), q: `${fmt(M.concVol, 2, lang)} m³` });
     rows.push({ l: tt('mats.bags'), q: `~${M.bags25}`, sub: true });
