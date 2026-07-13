@@ -22,20 +22,9 @@ function fmt(v, digits = 2, lang = 'da') {
   return lang === 'da' ? s.replace('.', ',') : s;
 }
 
-// Længde med enhed, fx "2,40 m" / "7.87 ft"
-function fmtLen(si, unit = 'm', lang = 'da', digits = 2) {
-  return fmt(lenFromSI(si, unit), digits, lang) + ' ' + unit;
-}
-
 // Tværsnit med enhed, fx "33 mm" / "1,33″"
 function fmtDim(mm, unit = 'mm', lang = 'da', digits = unit === 'in' ? 2 : 0) {
   return fmt(dimFromMM(mm, unit), digits, lang) + (unit === 'in' ? '″' : ' mm');
-}
-
-// Nedbøjning i mm fra en SI-værdi i meter (fx 0.0364 → "36,4 mm")
-function fmtDeflection(si_m, lang = 'da') {
-  const mm = si_m * 1000;
-  return fmt(mm, mm < 10 ? 2 : 1, lang) + ' mm';
 }
 
 // ---- Masse/last: kilogram (intern) ↔ visningsenhed 'kg' | 'lb' ----

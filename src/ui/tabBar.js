@@ -97,7 +97,7 @@ const tabBar = {
         y: cvDim(beam(a.span_m, mat, Lk, a.fixity).dReal * 1000),
       }));
       const deflYMax = Math.max(cvDim(deflMm), ...deflPoints.map(p => p.y), 0.01) * 1.18;
-      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')} - ${mat.name}</div>` +
+      deflHost.innerHTML = `<div class="chart-title">${tt('bar.chart2.title')} - ${esc(mat.name)}</div>` +
         lineChart({
           points: deflPoints,
           xMin: 0,
@@ -131,7 +131,7 @@ const tabBar = {
       const currentLoad = massFromSI(a.load_kg, massU);
       const capYMax = pts => Math.max(currentLoad, ...pts.map(p => p.y), 1) * 1.12;
 
-      workHost.innerHTML = `<div class="chart-title">${tt('bar.chart.titleWork')} - ${mat.name}</div>` +
+      workHost.innerHTML = `<div class="chart-title">${tt('bar.chart.titleWork')} - ${esc(mat.name)}</div>` +
         lineChart({
           points: safePoints,
           xMin: lenFromSI(spanMin, u.len),
@@ -143,7 +143,7 @@ const tabBar = {
           hLine: currentLoad,
           lang,
         });
-      chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')} - ${mat.name}</div>` +
+      chartHost.innerHTML = `<div class="chart-title">${tt('bar.chart.title')} - ${esc(mat.name)}</div>` +
         lineChart({
           points: ultPoints,
           xMin: lenFromSI(spanMin, u.len),

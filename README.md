@@ -39,7 +39,8 @@ file, and **autosave** to `localStorage`.
   redeploys automatically (~1 min). Three.js loads from a CDN, so you need to be online
   the first time.
 - **Offline, single file:** double‑click [`calisthenics-lokal.html`](calisthenics-lokal.html)
-  — everything (HTML/CSS/JS) bundled into one self‑contained file.
+  — all HTML/CSS/JS bundled into one file. **Exception:** the 3D tab loads Three.js from a
+  CDN, so it needs internet the first time; everything else works fully offline.
 - **Locally, multi‑file:** open [`index.html`](index.html) (loads the `src/` scripts).
 
 ## Develop
@@ -52,7 +53,8 @@ python build.py   # rebuilds index.html (multi-file) and calisthenics-lokal.html
 ```
 
 There is no compile/bundler step to *run* the app — `build.py` just concatenates the
-sources. Math is checked by `tests/` (open `tests/run-tests.html` in a browser).
+sources. Math is checked by `tests/`: run `npm test` (Node, no install needed) or open
+`tests/run-tests.html` in a browser (works from `file://` too).
 
 ## Engineering assumptions
 
@@ -60,7 +62,9 @@ Simplified hand‑calculation models for planning, **not** a substitute for a st
 engineer:
 
 - Steel water pipe: E = 210 GPa, yield ≈ 195 MPa, ultimate ≈ 320 MPa (EN 10255 S195T);
-  wall thickness is a single adjustable assumption (default 3.2 mm, EN 10255 medium).
+  catalogue pipes use their documented wall thickness (2.6 mm for 3/4", 3.2 mm for 1"
+  and up, EN 10255 medium); the adjustable "pipe wall" setting is only a fallback for
+  custom pipes without their own value.
 - Wood (C24 pine): E ≈ 10 GPa, bending strength ≈ 24 MPa.
 - Kee‑clamp end fixity estimated at 25 % (between pinned and fixed); a bound ladder
   relieves its bar as an extra support.

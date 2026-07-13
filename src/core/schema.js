@@ -39,37 +39,52 @@ function migrate(raw) {
   return fill(raw);
 }
 
+// Er et bibliotekselement brugbart? Objekt med id + gyldig kind + positive
+// dimensioner og materialedata — ellers giver fallback-opslag NaN i alle beregninger.
+function usableMaterial(m) {
+  if (!m || typeof m !== 'object' || !m.id) return false;
+  if (!(m.E > 0 && m.sRe > 0 && m.sRm > 0)) return false;
+  if (m.kind === 'wood') return m.side > 0;
+  if (m.kind === 'pipe') return m.od > 0;
+  return false;
+}
+
 // Flet et (muligvis ufuldstændigt) design ind i en frisk default, så alle felter findes.
 function fill(d) {
   const base = defaultDesign();
   const u = d.units || {};
+  const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+  const objArr = a => (Array.isArray(a) ? a.filter(isObj) : []);
+  const lib = objArr(d.library).filter(usableMaterial);
   const merged = {
     ...base, ...d,
     schemaVersion: SCHEMA_VERSION,
-    meta: { ...base.meta, ...(d.meta || {}) },
-    settings: { ...base.settings, ...(d.settings || {}) },
+    meta: { ...base.meta, ...(isObj(d.meta) ? d.meta : {}) },
+    settings: { ...base.settings, ...(isObj(d.settings) ? d.settings : {}) },
     units: {
-      post: { ...base.units.post, ...(u.post || {}) },
-      bar: { ...base.units.bar, ...(u.bar || {}) },
-      site: { ...base.units.site, ...(u.site || {}) },
+      post: { ...base.units.post, ...(isObj(u.post) ? u.post : {}) },
+      bar: { ...base.units.bar, ...(isObj(u.bar) ? u.bar : {}) },
+      site: { ...base.units.site, ...(isObj(u.site) ? u.site : {}) },
     },
-    library: Array.isArray(d.library) && d.library.length ? d.library : base.library,
+    library: lib.length ? lib : base.library,
     analysis: {
-      post: { ...base.analysis.post, ...((d.analysis || {}).post || {}) },
-      bar: { ...base.analysis.bar, ...((d.analysis || {}).bar || {}) },
+      post: { ...base.analysis.post, ...(isObj((d.analysis || {}).post) ? d.analysis.post : {}) },
+      bar: { ...base.analysis.bar, ...(isObj((d.analysis || {}).bar) ? d.analysis.bar : {}) },
     },
-    posts: Array.isArray(d.posts) ? d.posts : base.posts,
-    connections: Array.isArray(d.connections) ? d.connections : base.connections,
-    attachments: Array.isArray(d.attachments) ? d.attachments : base.attachments,
-    stock: d.stock || base.stock,
+    posts: objArr(d.posts),
+    connections: objArr(d.connections),
+    attachments: objArr(d.attachments),
+    stock: isObj(d.stock) ? d.stock : {},
     defaults: {
-      ...base.defaults, ...(d.defaults || {}),
-      post: { ...base.defaults.post, ...((d.defaults || {}).post || {}) },
+      ...base.defaults, ...(isObj(d.defaults) ? d.defaults : {}),
+      post: { ...base.defaults.post, ...(isObj((d.defaults || {}).post) ? d.defaults.post : {}) },
     },
-    site: { ...base.site, ...(d.site || {}) },
+    site: { ...base.site, ...(isObj(d.site) ? d.site : {}) },
   };
-  // Opgradér den gamle hul-standard (30 cm) til den nye (20 cm). Feltet sættes
-  // aldrig manuelt i UI'et (hul redigeres pr. stolpe), så det er sikkert at hæve.
+  // Opgradér den gamle hul-standard (30 cm) til den nye (20 cm). Bemærk: en
+  // legacy-import kan have sat feltet fra brugerens gamle valg (0,3 m var
+  // legacy-default) — default og bevidst valg kan ikke skelnes, så vi
+  // accepterer at et bevidst 30 cm-valg også opgraderes.
   if (merged.defaults.post.hole_mm === 300) merged.defaults.post.hole_mm = base.defaults.post.hole_mm;
   merged.library = mergeCatalog(merged.library);
   merged.analysis.post.depth_m = atLeast(merged.analysis.post.depth_m, 0, base.analysis.post.depth_m);
@@ -84,17 +99,36 @@ function fill(d) {
   merged.site.avatarHeight_m = atLeast(merged.site.avatarHeight_m, 0.3, base.site.avatarHeight_m);
   merged.site.ladderWidth_m = atLeast(merged.site.ladderWidth_m, 0.05, base.site.ladderWidth_m);
   merged.site.refLoad_kg = atLeast(merged.site.refLoad_kg, 0, base.site.refLoad_kg);
-  // global rør-godstykkelse: anvendes på ALLE rør-materialer (én antagelse)
+  // Global rør-godstykkelse er en RESERVE-antagelse: den udfylder kun rør
+  // UDEN eget gods. Katalogets dokumenterede værdier (fx 2,6 mm for 3/4",
+  // EN 10255 medium) og brugerens egne rør bevares.
   merged.site.pipeWall_mm = atLeast(merged.site.pipeWall_mm, 0.5, base.site.pipeWall_mm);
-  merged.library.forEach(m => { if (m.kind === 'pipe') m.wall = merged.site.pipeWall_mm; });
+  merged.library.forEach(m => { if (m.kind === 'pipe' && !(m.wall > 0)) m.wall = merged.site.pipeWall_mm; });
   merged.site.monkeySpacing_m = atLeast(merged.site.monkeySpacing_m, 0.15, base.site.monkeySpacing_m);
   if (!SOIL_FACTORS[merged.site.soil]) merged.site.soil = base.site.soil;
+  // hul/betonklods kan aldrig være mindre end stolpens eget tværsnit
+  const pmFill = resolveMaterial(merged, merged.defaults.post.materialId);
+  const postSideMmFill = pmFill ? ((pmFill.kind === 'wood' ? pmFill.side : pmFill.od) || 125) : 125;
+  merged.defaults.post.hole_mm = Math.max(merged.defaults.post.hole_mm, postSideMmFill);
+  const pmAna = resolveMaterial(merged, merged.analysis.post.materialId);
+  merged.analysis.post.hole_mm = Math.max(merged.analysis.post.hole_mm,
+    pmAna ? ((pmAna.kind === 'wood' ? pmAna.side : pmAna.od) || 125) : 125);
+  // stolper: koordinater SKAL være endelige tal — ellers giver spænd/tegning NaN
+  merged.posts = merged.posts.filter(p => isFinite(p.x_m) && isFinite(p.z_m) && p.id != null);
   merged.posts.forEach(p => {
     if (p.height_m != null) p.height_m = atLeast(p.height_m, 0.1, merged.site.postHeight_m);
     if (p.depth_m != null) p.depth_m = atLeast(p.depth_m, 0.1, merged.defaults.post.depth_m);
-    if (p.hole_mm != null) p.hole_mm = atLeast(p.hole_mm, 0, merged.defaults.post.hole_mm);
+    if (p.hole_mm != null) p.hole_mm = atLeast(p.hole_mm, postSideMmFill, merged.defaults.post.hole_mm);
   });
+  // forbindelser skal pege på eksisterende stolper
+  const postIds = new Set(merged.posts.map(p => p.id));
+  merged.connections = merged.connections.filter(c => postIds.has(c.a) && postIds.has(c.b) && c.id != null);
   merged.connections.forEach(c => { c.height_m = atLeast(c.height_m, 0, merged.site.connHeight_m); });
+  // attachments: stiger/personer skal pege på noget der findes
+  merged.attachments = merged.attachments.filter(a =>
+    a.type !== 'ladder' || postIds.has(a.postId));
+  merged.attachments = merged.attachments.filter(a =>
+    a.type !== 'avatar' || (isFinite(a.x_m) && isFinite(a.z_m)));
   merged.attachments.forEach(a => {
     if (a.type === 'ladder') a.width_m = atLeast(a.width_m, 0.05, merged.site.ladderWidth_m);
     if (a.type === 'avatar') a.height_m = atLeast(a.height_m, 0.3, merged.site.avatarHeight_m);

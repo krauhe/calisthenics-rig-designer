@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- Browser-test af regnekernen. Åbn via en lokal statisk server
-     (ES-moduler virker ikke fra file://), fx:  python -m http.server
-     og gå til  http://localhost:8000/tests/run-tests.html -->
+<!-- Browser-test af regnekernen. Kernen er klassiske scripts, så denne side
+     kan åbnes direkte fra file:// ELLER via en lokal server, fx:
+     python -m http.server  →  http://localhost:8000/tests/run-tests.html -->
 <html lang="da">
 <head>
 <meta charset="UTF-8">
@@ -20,8 +20,18 @@
 <h1>Calisthenics Rig Designer — regnekerne-tests</h1>
 <div id="sum" class="sum">Kører…</div>
 <pre id="out"></pre>
-<script type="module">
-  import { runTests } from './tests.js';
+<script src="../src/core/constants.js"></script>
+<script src="../src/core/units.js"></script>
+<script src="../src/core/sections.js"></script>
+<script src="../src/core/mechanics.js"></script>
+<script src="../src/core/foundation.js"></script>
+<script src="../src/core/cutplan.js"></script>
+<script src="../src/core/materials.js"></script>
+<script src="../src/core/model.js"></script>
+<script src="../src/core/presets.js"></script>
+<script src="../src/core/schema.js"></script>
+<script src="tests.js"></script>
+<script>
   const r = runTests();
   const lines = r.results.map(t =>
     (t.ok ? '<span class="ok">✓</span>' : '<span class="no">✗</span>') +

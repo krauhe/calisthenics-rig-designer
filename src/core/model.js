@@ -1,6 +1,6 @@
 // Datamodellen: ét JSON-serialiserbart "design"-objekt er sandheden.
-// I denne fase bruges kun settings/units/library/analysis. Posts, connections,
-// attachments og stock kommer i de senere faser (kort + 3D + materialeliste).
+// Indeholder settings/units/library/analysis samt sted-modellen (posts,
+// connections, attachments, stock) og de delte, rene opslags-hjælpere.
 
 
 const SCHEMA_VERSION = 1;
@@ -71,6 +71,16 @@ function connLabelOf(design, c) {
   return [postLetterOf(design, c.a), postLetterOf(design, c.b)].sort().join('–');
 }
 
+// Labels for attachments: armgange hedder M1, M2 … og stiger S1, S2 …
+// (indeks blandt attachments af samme type, i deres rækkefølge i designet).
+function attachmentLabelOf(design, at, type, prefix) {
+  const list = design.attachments.filter(a => a.type === type);
+  const i = list.findIndex(a => a.id === at.id);
+  return i < 0 ? prefix + '?' : prefix + (i + 1);
+}
+function monkeyLabelOf(design, at) { return attachmentLabelOf(design, at, 'monkey', 'M'); }
+function ladderLabelOf(design, at) { return attachmentLabelOf(design, at, 'ladder', 'S'); }
+
 // Slå forbindelsens materiale op (ref kan være {source:'library', id} eller en ren id).
 function connMatOf(design, ref) {
   const id = ref && ref.source === 'library' ? ref.id : ref;
@@ -93,6 +103,66 @@ function postHoleMmOf(design, p) {
 function spanOfConn(design, c) {
   const a = design.posts.find(p => p.id === c.a), b = design.posts.find(p => p.id === c.b);
   return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0;
+}
+
+// Hvilken vandret bar binder en stige sig til? Den forbindelse på stolpen, hvis
+// retning bedst matcher stigens vinkel (uden vinkel: den højeste bar).
+// Delt af Kort, 3D, Materialer og Print, så alle fire viser SAMME stige.
+function ladderBarOf(design, at) {
+  const byId = Object.fromEntries(design.posts.map(p => [p.id, p]));
+  const conns = design.connections.filter(c => c.a === at.postId || c.b === at.postId);
+  const p = byId[at.postId]; if (!conns.length || !p) return null;
+  const dirTo = c => { const o = byId[c.a === at.postId ? c.b : c.a]; return o ? Math.atan2(o.z_m - p.z_m, o.x_m - p.x_m) : 0; };
+  let best = conns[0];
+  if (at.angle_rad == null) { for (const c of conns) if (c.height_m > best.height_m) best = c; }
+  else {
+    let bd = Infinity;
+    for (const c of conns) {
+      const d = dirTo(c);
+      const diff = Math.abs(((d - at.angle_rad + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI);
+      if (diff < bd) { bd = diff; best = c; }
+    }
+  }
+  const a = dirTo(best);
+  return { conn: best, height: best.height_m, dx: Math.cos(a), dz: Math.sin(a) };
+}
+
+// Effektiv (bærende) spændvidde: en stige der binder til baren virker som et
+// ekstra støttepunkt — det længste ustøttede stykke styrer styrke/nedbøjning.
+function effSpanOfConn(design, c) {
+  const span = spanOfConn(design, c);
+  let relief = 0;
+  for (const at of design.attachments) {
+    if (at.type !== 'ladder') continue;
+    const bar = ladderBarOf(design, at);
+    if (bar && bar.conn && bar.conn.id === c.id) relief = Math.max(relief, Math.max(0.05, at.width_m || 0.5));
+  }
+  return relief > 0 ? Math.max(0.05, Math.max(relief, span - relief)) : span;
+}
+
+// Udadgående retning til en stolpes label (væk fra de nærmeste stolpers
+// tyngdepunkt) — delt af Kort og 3D, så labels lander samme sted.
+function postLabelDirOf(design, p, idx) {
+  const posts = design.posts || [];
+  if (!posts.length) return { x: 1, z: 0 };   // ingen stolper: undgå division med nul/NaN
+  const nearest = posts
+    .slice()
+    .sort((a, b) => Math.hypot(a.x_m - p.x_m, a.z_m - p.z_m) - Math.hypot(b.x_m - p.x_m, b.z_m - p.z_m))
+    .slice(0, Math.min(4, posts.length));
+  const centroid = pts => pts.reduce((s, q) => ({ x: s.x + q.x_m, z: s.z + q.z_m }), { x: 0, z: 0 });
+  let c = nearest.length ? centroid(nearest) : { x: 0, z: 0 };
+  if (nearest.length) { c.x /= nearest.length; c.z /= nearest.length; }
+  let dx = p.x_m - c.x, dz = p.z_m - c.z;
+  if (Math.hypot(dx, dz) < 1e-6 && posts.length > 1) {
+    c = centroid(posts); c.x /= posts.length; c.z /= posts.length;
+    dx = p.x_m - c.x; dz = p.z_m - c.z;
+  }
+  if (Math.hypot(dx, dz) < 1e-6) {
+    const a = (idx / Math.max(1, posts.length)) * Math.PI * 2 - Math.PI / 2;
+    dx = Math.cos(a); dz = Math.sin(a);
+  }
+  const d = Math.hypot(dx, dz) || 1;
+  return { x: dx / d, z: dz / d };
 }
 
 // Jordtype → faktor på fundamentets jordstivhed (K_SOIL). Groft, men nok til
@@ -162,4 +232,20 @@ function monkeyGeometry(design, connA, connB, spacing_m) {
 function monkeyPlacementValid(g) {
   return !!g && g.cross <= 0.22 && g.gap >= 0.25 && g.gap <= 1.6
     && g.overlap >= 0.4 && g.hdiff <= 0.3;
+}
+
+// Armgangens maksimale grebshøjde: trinnene hæfter i BEGGE barer, så højden
+// er begrænset af den laveste af de fire bærende stolper (begge barers ender).
+// null hvis armgangens barer/stolper ikke kan slås op.
+function monkeyMaxHeight(design, at) {
+  const ca = design.connections.find(c => c.id === at.connA);
+  const cb = design.connections.find(c => c.id === at.connB);
+  if (!ca || !cb) return null;
+  const hOf = id => {
+    const p = design.posts.find(q => q.id === id);
+    return p ? postHeightOfD(design, p) : null;
+  };
+  const hs = [ca.a, ca.b, cb.a, cb.b].map(hOf);
+  if (hs.some(h => h == null)) return null;
+  return Math.min(...hs);
 }

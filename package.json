@@ -1,6 +1,6 @@
 {
   "name": "calisthenics-rig-designer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Interactive 3D + structural designer for backyard calisthenics rigs",
   "type": "module",
   "license": "GPL-3.0-or-later",
@@ -8,12 +8,7 @@
   "homepage": "https://krauhe.github.io/calisthenics-rig-designer/",
   "repository": { "type": "git", "url": "https://github.com/krauhe/calisthenics-rig-designer" },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "node tests/node-run.mjs"
-  },
-  "devDependencies": {
-    "vite": "^5.4.0"
+    "test": "node tests/node-run.mjs",
+    "build": "python build.py"
   }
 }

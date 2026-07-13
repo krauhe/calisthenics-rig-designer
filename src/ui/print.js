@@ -6,6 +6,7 @@
 // Lille selvstændig SVG-gengivelse af tegningen (sort/hvid-venlig, med mål).
 function printMapSvg(design) {
   if (!design.posts.length) return '';
+  const su = (design.units.site && design.units.site.len) || 'm';
   const xs = design.posts.map(p => p.x_m), zs = design.posts.map(p => p.z_m);
   const pad = 0.8;
   const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad;
@@ -29,10 +30,10 @@ function printMapSvg(design) {
     const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
     let deg = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
     if (deg > 90) deg -= 180; if (deg < -90) deg += 180;
-    const lbl = `${[postLetter(c.a), postLetter(c.b)].sort().join('–')}: ${span.toFixed(2)} m`;
+    const lbl = `${[postLetter(c.a), postLetter(c.b)].sort().join('–')}: ${lenFromSI(span, su).toFixed(2)} ${su === 'ft' ? 'ft' : 'm'}`;
     svg += `<g transform="translate(${mx.toFixed(1)} ${my.toFixed(1)}) rotate(${deg.toFixed(1)})"><rect x="${-lbl.length * 3.3 - 3}" y="-19" width="${lbl.length * 6.6 + 6}" height="14" rx="3" fill="#fff" opacity="0.85"/><text x="0" y="-8" text-anchor="middle" font-size="11" font-weight="600" fill="#111">${lbl}</text></g>`;
   });
-  // armgange: trin som tynde streger
+  // armgange: trin som tynde streger + M-label i midten (matcher Kort-fanen)
   design.attachments.forEach(at => {
     if (at.type !== 'monkey') return;
     const g = monkeyGeometry(design, at.connA, at.connB, at.spacing_m);
@@ -40,12 +41,15 @@ function printMapSvg(design) {
     g.rungs.forEach(r => {
       svg += `<line x1="${sx(r.ax).toFixed(1)}" y1="${sy(r.az).toFixed(1)}" x2="${sx(r.bx).toFixed(1)}" y2="${sy(r.bz).toFixed(1)}" stroke="#0e7490" stroke-width="1.6"/>`;
     });
+    const lbl = monkeyLabelOf(design, at);
+    svg += `<circle cx="${sx(g.mid.x).toFixed(1)}" cy="${sy(g.mid.z).toFixed(1)}" r="9" fill="#fff" stroke="#0e7490"/><text x="${sx(g.mid.x).toFixed(1)}" y="${(sy(g.mid.z) + 4).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="#0e7490">${lbl}</text>`;
   });
-  // stiger: lille markering ved stolpen
+  // stiger: markering + S-label ved stolpen
   design.attachments.forEach(at => {
     if (at.type !== 'ladder') return;
     const p = byId[at.postId]; if (!p) return;
     svg += `<text x="${(sx(p.x_m) + 10).toFixed(1)}" y="${(sy(p.z_m) - 10).toFixed(1)}" font-size="13">🪜</text>`;
+    svg += `<text x="${(sx(p.x_m) + 28).toFixed(1)}" y="${(sy(p.z_m) - 12).toFixed(1)}" font-size="11" font-weight="800" fill="#0e7490">${ladderLabelOf(design, at)}</text>`;
   });
   // stolper + bogstaver
   const side = Math.max(8, 0.125 * k);
@@ -54,17 +58,23 @@ function printMapSvg(design) {
     svg += `<rect x="${(x - side / 2).toFixed(1)}" y="${(y - side / 2).toFixed(1)}" width="${side.toFixed(1)}" height="${side.toFixed(1)}" rx="2" fill="#b6986a" stroke="#5b431f"/>`;
     svg += `<circle cx="${(x + side).toFixed(1)}" cy="${(y - side).toFixed(1)}" r="9" fill="#fff" stroke="#b45309"/><text x="${(x + side).toFixed(1)}" y="${(y - side + 4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="800" fill="#9a3412">${letterFor(i)}</text>`;
   });
-  // målestok: 1 m
-  svg += `<g><line x1="16" y1="${Hp - 14}" x2="${16 + k}" y2="${Hp - 14}" stroke="#111" stroke-width="2"/><line x1="16" y1="${Hp - 19}" x2="16" y2="${Hp - 9}" stroke="#111" stroke-width="2"/><line x1="${16 + k}" y1="${Hp - 19}" x2="${16 + k}" y2="${Hp - 9}" stroke="#111" stroke-width="2"/><text x="${16 + k / 2}" y="${Hp - 20}" text-anchor="middle" font-size="11" fill="#111">1 m</text></g>`;
+  // målestok: 1 m (metrisk) / 3 fod (imperial) — samme princip som Kort-fanen
+  const scM = su === 'ft' ? 3 * 0.3048 : 1, scLbl = su === 'ft' ? '3 ft' : '1 m', scPx = scM * k;
+  svg += `<g><line x1="16" y1="${Hp - 14}" x2="${16 + scPx}" y2="${Hp - 14}" stroke="#111" stroke-width="2"/><line x1="16" y1="${Hp - 19}" x2="16" y2="${Hp - 9}" stroke="#111" stroke-width="2"/><line x1="${16 + scPx}" y1="${Hp - 19}" x2="${16 + scPx}" y2="${Hp - 9}" stroke="#111" stroke-width="2"/><text x="${16 + scPx / 2}" y="${Hp - 20}" text-anchor="middle" font-size="11" fill="#111">${scLbl}</text></g>`;
   return `<svg viewBox="0 0 ${Wp} ${Hp}" width="100%" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border:1px solid #999;border-radius:4px">${svg}</svg>`;
 }
 
 function printGuide(ctx) {
-  const design = ctx.design, lang = ctx.lang;
+  // Hent designet fra store'en — ctx.design kan være et løsrevet (stale)
+  // objekt efter fortryd/gentag, der erstatter selve design-objektet.
+  const design = ctx.store.getDesign(), lang = ctx.lang;
   const tt = k => ctx.t(k, lang);
   if (!design.posts.length) { alert(tt('mats.empty')); return; }
   const M = computeMaterials(design);
-  const fm = v => fmt(v, 2, lang) + ' m';
+  // længder i kortets valgte enhed (som på Kort/Materialer)
+  const su = (design.units.site && design.units.site.len) || 'm';
+  const suTxt = su === 'ft' ? tt('unit.ft') : tt('unit.m');
+  const fm = v => `${fmt(lenFromSI(v, su), 2, lang)} ${suTxt}`;
 
   const old = document.getElementById('print-root');
   if (old) old.remove();
@@ -140,7 +150,7 @@ function printGuide(ctx) {
     const grp = M.cut[id];
     const stockLen = (design.stock && design.stock[id]) || (grp.mat.kind === 'wood' ? 4.8 : STOCK);
     const { bars, count } = packPieces(grp.pieces, stockLen, KERF);
-    root.append(el('p', { class: 'pr-cut-h' }, `${grp.mat.name}: ${count} × ${fmt(stockLen, stockLen % 1 ? 2 : 0, lang)} m (${tt('mats.stockLen').toLowerCase()})`));
+    root.append(el('p', { class: 'pr-cut-h' }, `${grp.mat.name}: ${count} × ${fm(stockLen)} (${tt('mats.stockLen').toLowerCase()})`));
     const ul = el('ul', { class: 'pr-cut' });
     bars.forEach((b, bi) => {
       const list = b.pieces.map(p => `${p.label} ${fmt(p.len, 2, lang)}`).join(' · ');

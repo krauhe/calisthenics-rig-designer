@@ -19,8 +19,10 @@ const POST_ABOVE = 3.0;  // standard stolpehøjde over jord (m)
 
 // Fundament-zoner
 const GRAVEL_H = 0.10;   // småsten i bunden af hullet (m)
-const TAR_BOTTOM = -0.5; // tjære fra 0,5 m i jord ...
-const TAR_TOP = 0.10;    // ... til 10 cm over jord
+// Tjære-zone: hele den nedgravede del + 20 cm over jord — samme zone som
+// print-vejledningen instruerer ("fra ca. 20 cm over jord til bunden").
+// Bunden er stolpens egen nedgravningsdybde (pr. stolpe), derfor ingen fast konstant.
+const TAR_TOP = 0.20;    // tjære til 20 cm over jord (m)
 
 // Skæreplan
 const STOCK = 6.0;       // standard stanglængde ved indkøb (m)

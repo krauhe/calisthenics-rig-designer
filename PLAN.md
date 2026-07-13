@@ -32,7 +32,7 @@ Gennemgående:
 
 ## 2. Den tekniske beslutning (kort, i klart sprog)
 
-**Valgt: almindelig JavaScript + en ren "regnekerne" + et lille værktøj kaldet Vite. Intet framework.**
+**Valgt: almindelig JavaScript + en ren "regnekerne" + et lille værktøj kaldet Vite. Intet framework.** *(Vite blev senere droppet — se Status i §10; appen kører build-frit og `build.py` genererer entry points.)*
 
 Hvorfor (kort): det er den letteste at vedligeholde for én person over år, det
 beskytter den vigtige matematik bedst, og det deployer stabilt til GitHub Pages.
@@ -65,46 +65,47 @@ skiftes ud igen senere (dette er allerede 2. gang vi laver udseendet om).
 
 ```
 calisthenics-rig-designer/
-  index.html              app-skal: fanebjælke + paneler
-  package.json            kommandoer: dev, build, preview, test
-  vite.config.js          base:'/calisthenics-rig-designer/'   ← GitHub Pages-stien
-  jsconfig.json           typehints i editoren, uden compile-trin
-  .github/workflows/deploy.yml   bygger + lægger på Pages ved hvert push
+  index.html              app-skal (GENERERES af build.py: klassiske <script src>)
+  calisthenics-lokal.html enkelt-fil-bundle til deling (GENERERES af build.py)
+  build.py                bygger de to entry points ud fra src/
+  package.json            kommandoer: test (Node) + build (python build.py)
+  jsconfig.json           editor-hints, uden compile-trin
+  manifest.json · sw.js   PWA: installérbar + offline (network-first)
   README.md · LICENSE · PLAN.md
 
   src/
     core/        ← REN logik. INGEN skærm, INGEN 3D. Det uerstattelige.
-      constants.js    G, E_WOOD, K_SOIL, FIXITY, GRAVEL_H, TAR_*, STOCK, KERF
+      constants.js    G, E_WOOD, K_SOIL, FIXITY, GRAVEL_H, TAR_TOP, STOCK, KERF
       units.js        konvertering mm↔tomme, m↔fod + visning (dansk komma)
-      sections.js     tværsnit: I og Z for rør/træ (fra dine SIZES)
-      mechanics.js    bjælke: nedbøjning + bæreevne (din mechanics(), parametriseret)
-      foundation.js   pæl/fundament-stivhed (din foundation(), parametriseret)
-      model.js        design-objektet + resolvePost() (arv af defaults)
-      cutplan.js      skæreplan (din bin-packing, stock-længde som parameter)
-      materials.js    materialeoptælling (beton, grus, tjære, rør, fittings)
-      library.js      brugerens gemte standardmaterialer
-      store.js        samlet tilstand + autosave
-      schema.js       schema-version + migrate() til gem/load
+      sections.js     tværsnit: I og Z for rør/træ
+      mechanics.js    bjælke: nedbøjning + bæreevne
+      foundation.js   pæl/fundament-stivhed
+      model.js        design-objektet + delte opslags-/geometri-hjælpere
+                      (labels, ladderBarOf, effSpanOfConn, monkeyGeometry,
+                      monkeyMaxHeight — deles af Kort/3D/Materialer/Print)
+      cutplan.js      skæreplan (bin-packing, stock-længde som parameter)
+      materials.js    materialekataloget (CATALOG) + sortering/farver
+      presets.js      forslags-rigge (pull-up, firkant, lang/armgang)
+      store.js        samlet tilstand + autosave + fortryd/gentag
+      schema.js       schema-version + migrate()/fill() til gem/load
       i18n.js         t(nøgle) + sprogskift
       locales/da.js · locales/en.js   teksterne
 
     ui/          ← tynd skærm-del, ét modul pr. fane
-      tabs.js · controls.js · chart.js · cutguide.js · toolbar.js
+      dom.js · controls.js · chart.js · library.js · saveload.js · print.js
       tabPost.js · tabBar.js · tabSite.js · tabView3d.js · tabMaterials.js
-      settings.js · saveload.js
-
-    three/       ← 3D-visning, læser modellen – ejer ingen logik
-      scene.js · builders.js · picking.js
+      style.css
 
   tests/         ← automatiske tests der "låser" matematikken
-    mechanics.test.js · sections.test.js · foundation.test.js
-    cutplan.test.js · units.test.js · schema.test.js
-
-  examples/
-    default-4post.json   din nuværende rig som delbar prøve-fil
+    tests.js (klassisk, definerer runTests())
+    node-run.mjs (kører kernen i en vm-kontekst — `npm test`)
+    run-tests.html (samme tests i browseren, virker fra file://)
 ```
 
 Ca. 25 små filer i stedet for én på 780 linjer. Hver fane kan forstås for sig.
+(Vite blev droppet igen — appen er build-fri; `build.py` er hele "byggetrinnet".
+Materialeoptællingen bor pt. i `ui/tabMaterials.js` (computeMaterials) — flyt til
+kernen hvis den skal testes.)
 
 ---
 
@@ -260,18 +261,14 @@ Du behøver ikke kunne koden – men nogle valg er dine:
 - [x] Ansvarsfraskrivelse tilføjet (app + README).
 - [x] **Fase 1 færdig:** regnekernen (`src/core/`) som browser-native ES-moduler + 30 tests (håndregnet + parity). Alle består.
 - [x] **Fase 2 færdig:** fane-skal (`app.html` + `src/main.js`) med da/en-skift, enheder pr. fane (m/fod + mm/tommer), materialebibliotek (med "tilføj"), **Stolpe-** og **Bar-analyse** (med kapacitets-graf), og autosave. Verificeret i browser. Kort/3D/Materialer er pladsholdere indtil senere faser.
-- [x] **Fase 3 færdig:** gem/hent navngivne tegninger som `.json`-filer (til deling) + schema-version (afviser nyere filer pænt) + **automatisk import** af din gamle rig fra den oprindelige app. Verificeret i browser (42/42 tests; ren første-start matcher den gamle apps tal).
-- [ ] Fase 0-tooling (Vite) — **afventer at Node bliver installeret** (se note nedenfor). Appen kører fint build-frit imens.
-- [x] **Fase 5a færdig:** kort-editoren — top-ned tegneprogram med værktøjspalette (vælg/flyt · stolpe · forbind · stige · slet), justerbart **gitter (default 12,5 cm = stolpetykkelse)** med snapping, pan/zoom og tilpas/centrér. Redigerer graf-modellen direkte; autosave. Verificeret i browser.
-- [ ] **Tilbage:** per-stolpe overstyring + valg af højde/"ovenpå" på forbindelser i kortet, **3D-omskrivning** så scenen læser grafen (i stedet for den faste firkant), **materialeliste-fane** (skæreplan ud fra grafen), og polish.
+- [x] **Fase 3 færdig:** gem/hent navngivne tegninger som `.json`-filer (til deling) + schema-version (afviser nyere filer pænt) + **automatisk import** af din gamle rig fra den oprindelige app.
+- [x] **Fase 5 færdig:** kort-editoren (værktøjspalette, gitter-snapping, pan/zoom/pinch, per-stolpe mål, armgang, avatarer), **3D læser grafen**, **materialeliste + skæreliste**, print-vejledning, presets, PWA.
+- [x] **Vite droppet** (2026-07-13): `src/` er klassiske scripts og appen er build-fri; `python build.py` genererer `index.html` + enkelt-filen. Node bruges kun til `npm test`.
+- [x] **Testsuiten genoplivet** (2026-07-13): kernen køres i en vm-kontekst (`npm test`, 81/81) og i browseren via `tests/run-tests.html` — begge fungerer med de klassiske scripts.
+- [x] **Code-review-fixes + armgangs-forbedringer** (2026-07-13): se `docs/code-review-2026-07-13.md` og `docs/plan-horisontal-stige.md` — bl.a. korrekt rør-gods pr. katalogmateriale, XSS-fix, delte helpers i `model.js`, M/S-labels, redigerbar armgangs-højde (klampet til laveste bærende stolpe), valgbart bar-par/retning, tjære-zone der matcher vejledningen, SW-cacheoprydning.
+- [ ] **Idéer/tilbage:** skrå armgang (progression), forskudte trin, PNG-ikoner (192/512) til iOS/Android-install, materialeoptælling flyttet til kernen + testet, tastaturadgang på kortet.
 
-**Live (ny udgave):** https://krauhe.github.io/calisthenics-rig-designer/app.html — `index.html` peger stadig på den gamle app, indtil v2 er klar til at overtage.
+**Live:** https://krauhe.github.io/calisthenics-rig-designer/ — `index.html` ER appen (genereres af build.py); `app.html` er kun en redirect-stub for gamle bogmærker.
 
-### Node-note (vigtig)
-Vite og de automatiske tests kører på **Node**, som ikke er installeret på maskinen endnu. Derfor:
-- Kernen er bygget **browser-native** (rene ES-moduler), så den kører **uden** at installere noget — det er escape-hatch'en fra afsnit 2 i praksis.
-- Testene kan køres på to måder: i en browser ved at åbne `tests/run-tests.html` (helt uden Node), eller med `node tests/node-run.mjs` når Node er installeret.
-- Når du vil have dev-server (`npm run dev`) + build + auto-tests: installér Node LTS fra nodejs.org — så er `package.json` / `vite.config.js` allerede klar. Sig til, så guider jeg dig.
-
-Matematikken i kernen er verificeret mod den nuværende apps tal (parity) og mod uafhængigt håndregnede værdier.
+Matematikken i kernen er verificeret mod uafhængigt håndregnede værdier og kørende parity-tal (`npm test`).
 ```

@@ -22,6 +22,9 @@ function ensureThree() {
     document.head.appendChild(s);
     setTimeout(() => { if (!window.__rigTHREE) reject(new Error('timeout')); }, 20000);
   });
+  // Fejlet/timet-out load må ikke caches for evigt — glem promisen, så næste
+  // fanebesøg prøver igen (fx når nettet er tilbage).
+  _threeP.catch(() => { _threeP = null; });
   return _threeP;
 }
 
@@ -71,10 +74,9 @@ function build3d(THREE, host, design, ctx) {
   const lang = design.settings.lang;
   const suTxt = su === 'ft' ? ctx.t('unit.ft', lang) : ctx.t('unit.m', lang);
 
-  // ---- faste fundament-mål (som i den oprindelige app) ----
+  // ---- faste fundament-mål (zoner fra constants.js — GRAVEL_H/TAR_TOP) ----
   const DEPTH = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
   const HOLE = ((design.defaults.post && design.defaults.post.hole_mm) || 200) / 1000;
-  const GRAVEL_H = 0.10, TAR_BOTTOM = -0.5, TAR_TOP = 0.10;
 
   // ---- model-data ----
   const refLoad = design.site.refLoad_kg || 120;
@@ -87,27 +89,7 @@ function build3d(THREE, host, design, ctx) {
   // Teksten vender UDAD (væk fra centrum), så den læses fra kameraet, der
   // altid ser riggen udefra. (dx,dz) = udadgående retning fra centrum.
   const outwardLabelYawFor = (dx, dz) => Math.atan2(dx, dz);
-  const postLabelDir = (p, idx) => {
-    const posts = design.posts || [];
-    const nearest = posts
-      .slice()
-      .sort((a, b) => Math.hypot(a.x_m - p.x_m, a.z_m - p.z_m) - Math.hypot(b.x_m - p.x_m, b.z_m - p.z_m))
-      .slice(0, Math.min(4, posts.length));
-    const centroid = pts => pts.reduce((s, q) => ({ x: s.x + q.x_m, z: s.z + q.z_m }), { x: 0, z: 0 });
-    let c = nearest.length ? centroid(nearest) : { x: 0, z: 0 };
-    if (nearest.length) { c.x /= nearest.length; c.z /= nearest.length; }
-    let dx = p.x_m - c.x, dz = p.z_m - c.z;
-    if (Math.hypot(dx, dz) < 1e-6 && posts.length > 1) {
-      c = centroid(posts); c.x /= posts.length; c.z /= posts.length;
-      dx = p.x_m - c.x; dz = p.z_m - c.z;
-    }
-    if (Math.hypot(dx, dz) < 1e-6) {
-      const a = (idx / Math.max(1, posts.length)) * Math.PI * 2 - Math.PI / 2;
-      dx = Math.cos(a); dz = Math.sin(a);
-    }
-    const d = Math.hypot(dx, dz) || 1;
-    return { x: dx / d, z: dz / d };
-  };
+  const postLabelDir = (p, idx) => postLabelDirOf(design, p, idx);   // delt med Kort (model.js)
   const pm = resolveMaterial(design, design.defaults.post.materialId);
   const POST = ((pm && (pm.side || pm.od)) || 125) / 1000;
   const connMat = ref => connMatOf(design, ref);
@@ -246,7 +228,7 @@ function build3d(THREE, host, design, ctx) {
     const conc = new THREE.Mesh(new THREE.BoxGeometry(hP, concH, hP), concMat);
     conc.position.set(X, -dP + GRAVEL_H + concH / 2, Z); group.add(conc);
 
-    const tarBot = Math.max(TAR_BOTTOM, -dP), tarH = TAR_TOP - tarBot;
+    const tarBot = -dP, tarH = TAR_TOP - tarBot;   // tjære: hele den nedgravede del + TAR_TOP over jord
     const tar = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.06, tarH, POST * 1.06), tarMat);
     tar.position.set(X, (tarBot + TAR_TOP) / 2, Z); group.add(tar);
     const tarTop = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.02, 0.02, POST * 1.02), tarMat);
@@ -309,26 +291,9 @@ function build3d(THREE, host, design, ctx) {
   });
 
   // ---- stiger: LODRET rør + vandrette trin, bundet til en vandret bar ----
-  function ladderBar(at) {
-    const conns = design.connections.filter(c => c.a === at.postId || c.b === at.postId);
-    const p = byId[at.postId]; if (!conns.length || !p) return null;
-    const dirTo = c => { const o = byId[c.a === at.postId ? c.b : c.a]; return Math.atan2(o.z_m - p.z_m, o.x_m - p.x_m); };
-    let best = conns[0];
-    if (at.angle_rad == null) { for (const c of conns) if (c.height_m > best.height_m) best = c; }
-    else { let bd = Infinity; for (const c of conns) { const d = dirTo(c); const diff = Math.abs(((d - at.angle_rad + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI); if (diff < bd) { bd = diff; best = c; } } }
-    const ang = dirTo(best);
-    return { conn: best, height: best.height_m, dx: Math.cos(ang), dz: Math.sin(ang) };
-  }
-  // Effektiv spændvidde med stige-aflastning (samme som Kort).
-  function effSpan(c, span) {
-    let relief = 0;
-    for (const at of design.attachments) {
-      if (at.type !== 'ladder') continue;
-      const bar = ladderBar(at);
-      if (bar && bar.conn && bar.conn.id === c.id) relief = Math.max(relief, Math.max(0.05, at.width_m || 0.5));
-    }
-    return relief > 0 ? Math.max(0.05, Math.max(relief, span - relief)) : span;
-  }
+  // Bar-valg og effektiv spændvidde deles med Kort/Materialer/Print (model.js).
+  const ladderBar = at => ladderBarOf(design, at);
+  const effSpan = c => effSpanOfConn(design, c);
 
   for (const at of design.attachments) {
     if (at.type !== 'ladder') continue;
@@ -432,14 +397,36 @@ function build3d(THREE, host, design, ctx) {
   const cvs = renderer.domElement;
   cvs.style.cursor = 'grab';
   cvs.style.touchAction = 'none';
+  let dirty = true;                 // scenen er statisk — render kun ved ændringer
+  const invalidate = () => { dirty = true; };
+  const clampR = r => Math.min(maxR * 8 + 20, Math.max(1.2, r));
   let drag = null;
+  const touch3d = new Map();        // aktive fingre (pinch-zoom med to fingre)
   cvs.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') {
+      touch3d.set(e.pointerId, [e.clientX, e.clientY]);
+      if (touch3d.size === 2) {
+        const [p1, p2] = [...touch3d.values()];
+        drag = { pinch: true, d0: Math.hypot(p1[0] - p2[0], p1[1] - p2[1]) || 1, r0: orbit.r };
+        try { cvs.setPointerCapture(e.pointerId); } catch (_) {}
+        return;
+      }
+    }
     drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey };
     cvs.style.cursor = 'grabbing';
     try { cvs.setPointerCapture(e.pointerId); } catch (_) {}
   });
   cvs.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch' && touch3d.has(e.pointerId)) touch3d.set(e.pointerId, [e.clientX, e.clientY]);
     if (!drag) return;
+    if (drag.pinch) {
+      if (touch3d.size < 2) return;
+      const [p1, p2] = [...touch3d.values()];
+      const d = Math.hypot(p1[0] - p2[0], p1[1] - p2[1]) || 1;
+      orbit.r = clampR(drag.r0 * drag.d0 / d);
+      applyCam(); invalidate();
+      return;
+    }
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
     if (drag.pan) {
       const right = V3().subVectors(camera.position, target); right.y = 0; right.normalize();
@@ -450,29 +437,42 @@ function build3d(THREE, host, design, ctx) {
       orbit.theta -= dx * 0.01;
       orbit.phi = Math.min(Math.PI * 0.49, Math.max(0.08, orbit.phi - dy * 0.01));
     }
-    applyCam();
+    applyCam(); invalidate();
   });
-  const endDrag = () => { drag = null; cvs.style.cursor = 'grab'; };
+  const endDrag = e => {
+    if (e && e.pointerType === 'touch') touch3d.delete(e.pointerId);
+    if (drag && drag.pinch && touch3d.size >= 2) return;   // stadig to fingre nede
+    drag = null; cvs.style.cursor = 'grab';
+  };
   cvs.addEventListener('pointerup', endDrag);
   cvs.addEventListener('pointercancel', endDrag);
   cvs.addEventListener('contextmenu', e => e.preventDefault());
   cvs.addEventListener('wheel', e => {
     e.preventDefault();
-    orbit.r = Math.min(maxR * 8 + 20, Math.max(1.2, orbit.r * (e.deltaY < 0 ? 1 / 1.1 : 1.1)));
-    applyCam();
+    orbit.r = clampR(orbit.r * (e.deltaY < 0 ? 1 / 1.1 : 1.1));
+    applyCam(); invalidate();
   }, { passive: false });
 
-  // ---- render-loop (stopper når lærredet fjernes fra DOM) ----
+  // ---- render-loop: kun ved ændringer; rydder GPU-ressourcer når fanen forlades ----
   let lastW = 0, lastH = 0;
+  function disposeAll() {
+    scene.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+      mats.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+    });
+    renderer.dispose();
+  }
   function frame() {
-    if (!host.isConnected) { renderer.dispose(); return; }
+    if (!host.isConnected) { disposeAll(); return; }
     const w = host.clientWidth || 1, h = host.clientHeight || Math.round(w * 0.62);
     if (w !== lastW || h !== lastH) {
       lastW = w; lastH = h;
       renderer.setSize(w, h, false);
       camera.aspect = w / h; camera.updateProjectionMatrix();
+      dirty = true;
     }
-    renderer.render(scene, camera);
+    if (dirty) { dirty = false; renderer.render(scene, camera); }
     requestAnimationFrame(frame);
   }
   frame();

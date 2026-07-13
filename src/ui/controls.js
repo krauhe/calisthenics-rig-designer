@@ -45,12 +45,6 @@ function lenInput(si, unit, onSI, opts = {}) {
     v => onSI(lenToSI(v, unit)), inputOpts);
 }
 
-// Tværsnits-input: gemmer mm, viser i 'mm' | 'in'.
-function dimInput(mm, unit, onMM) {
-  return numInput(round(dimFromMM(mm, unit)), unit === 'in' ? 0.05 : 1,
-    v => onMM(dimToMM(v, unit)));
-}
-
 function select(options, value, onChange) {
   const sel = el('select', {},
     ...options.map(([v, label]) => {

@@ -1,7 +1,7 @@
 // App-bootstrap: bygger header (sprog), fanebjælke, indhold og footer.
 
 // Saml store-funktionerne i ét objekt (virker både som ES-modul og i enkelt-fil-bundlen).
-const store = { getDesign, subscribe, commit, update, replace, addMaterial, removeMaterial, undo, redo, canUndo, canRedo };
+const store = { getDesign, commit, update, replace, undo, redo };
 
 const TABS = [
   tabSite,
@@ -59,7 +59,8 @@ function renderTabbar() {
 
 function renderActive() {
   const c = clear(document.getElementById('content'));
-  const tab = TABS.find(x => x.id === active);
+  const tab = TABS.find(x => x.id === active) || TABS[0];   // ukendt fane-id → fald pænt tilbage
+  active = tab.id;
   c.className = 'view-' + tab.id;
   tab.render(c, ctx());
 }

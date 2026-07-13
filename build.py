@@ -18,7 +18,7 @@ ORDER = [
     'src/core/locales/da.js', 'src/core/locales/en.js', 'src/core/i18n.js',
     'src/ui/dom.js', 'src/ui/controls.js', 'src/ui/chart.js', 'src/ui/library.js',
     'src/ui/saveload.js', 'src/ui/tabPost.js', 'src/ui/tabBar.js', 'src/ui/tabSite.js',
-    'src/ui/tabView3d.js', 'src/ui/tabMaterials.js', 'src/ui/print.js', 'src/ui/tabs.js', 'src/main.js',
+    'src/ui/tabView3d.js', 'src/ui/tabMaterials.js', 'src/ui/print.js', 'src/main.js',
 ]
 
 SHELL = '''<div id="app">
@@ -37,11 +37,15 @@ SW = '''<script>
 
 
 def strip_module(js):
+    # src/ er klassiske scripts, saa dette er en sikkerhedsline hvis nogen
+    # genindfoerer ESM: fjern imports (ogsaa side-effekt-imports) og export-
+    # praefikser. 'export default x' bliver 'x' (ikke 'default x' = syntaksfejl).
     out = []
     for line in js.splitlines():
         s = line.strip()
-        if s.startswith('import ') and ' from ' in s:
+        if s.startswith('import ') and (' from ' in s or re.match(r"import\s+['\"]", s)):
             continue
+        line = re.sub(r'^(\s*)export\s+default\s+', r'\1', line)
         line = re.sub(r'^(\s*)export\s+', r'\1', line)
         out.append(line)
     return '\n'.join(out)
@@ -74,6 +78,10 @@ bundle = '\n\n'.join(
     '// ===== {} =====\n{}'.format(f, strip_module((root / f).read_text(encoding='utf-8')))
     for f in ORDER
 )
+# Skabelonen kan ikke baere disse tokens i kildekoden — fang det ved build-tid.
+for bad in ('</script>', '%JS%', '%SHELL%', '%CSS%'):
+    if bad in bundle:
+        raise SystemExit('FEJL: kildekoden indeholder "%s" - enkelt-filen ville knaekke.' % bad)
 css = (root / 'src/ui/style.css').read_text(encoding='utf-8')
 single = '''<!DOCTYPE html>
 <!-- GENERERET af build.py - selvstaendig enkelt-fil. Ret i src/ og koer build.py. -->

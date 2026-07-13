@@ -20,3 +20,11 @@ function clear(node) {
   while (node.firstChild) node.removeChild(node.firstChild);
   return node;
 }
+
+// Escape til brug i innerHTML-strenge (fx graf-titler med materialenavne).
+// Brugerdata må ALDRIG interpoleres råt i html — det er en XSS-vej via
+// importerede .json-tegninger.
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}

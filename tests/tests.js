@@ -1,22 +1,17 @@
-// Tests for regnekernen. Framework-uafhængige: returnerer et resultatobjekt,
-// så de kan køres i browseren (run-tests.html) ELLER med bare Node
-// (node-run.mjs) — uden Vitest/npm-install.
+// Tests for regnekernen. Framework-uafhængige: definerer en global runTests(),
+// så de kan køres i browseren (run-tests.html, klassiske script-tags) ELLER
+// med bare Node (node-run.mjs, der kører kernefilerne i en vm-kontekst).
 //
 // Vigtigt: referenceværdierne er UAFHÆNGIGT håndregnede (lukkede formler),
 // ikke blot et snapshot af hvad koden tilfældigvis giver — så testene kan
 // fange en fejl, ikke kun en utilsigtet ændring. Rør-/fundamenttallene er
 // desuden krydstjekket mod den nuværende apps viste værdier (parity).
+//
+// Kernen er klassiske scripts (ingen ESM) — testene forudsætter at
+// constants/units/sections/mechanics/foundation/cutplan/materials/model/
+// presets/schema er indlæst som globals FØR denne fil.
 
-import { lenToSI, lenFromSI, dimToMM, dimFromMM } from '../src/core/units.js';
-import { sectionProps } from '../src/core/sections.js';
-import { beam } from '../src/core/mechanics.js';
-import { foundation } from '../src/core/foundation.js';
-import { packPieces } from '../src/core/cutplan.js';
-import { CATALOG, findMaterial } from '../src/core/materials.js';
-import { defaultDesign } from '../src/core/model.js';
-import { serialize, deserialize, validate, fromLegacy } from '../src/core/schema.js';
-
-export function runTests() {
+function runTests() {
   const results = [];
   const ok = (name, cond, msg = '') => results.push({ name, ok: !!cond, msg });
   const approx = (a, b, rel = 1e-3) => Math.abs(a - b) <= Math.abs(b) * rel + 1e-12;
@@ -42,8 +37,9 @@ export function runTests() {
   near('rør 1" I ≈ 3,605e-8', p.I, 3.6047e-8, 3e-3);
   near('rør 1" Z ≈ 2,139e-6', p.Z, 2.1393e-6, 3e-3);
 
-  // ---- katalog: dokumenterede ydre-diametre ----
+  // ---- katalog: dokumenterede dimensioner OG godstykkelser ----
   ok('katalog 3/4" od = 26,9', findMaterial('pipe-3-4').od === 26.9);
+  ok('katalog 3/4" gods = 2,6 (EN 10255 medium)', findMaterial('pipe-3-4').wall === 2.6);
   ok('katalog 1" od = 33,7', findMaterial('pipe-1').od === 33.7);
   ok('katalog 1¼" od = 42,4', findMaterial('pipe-1-4').od === 42.4);
   ok('katalog 10×10 træ side = 100', findMaterial('wood-10').side === 100);
@@ -62,15 +58,40 @@ export function runTests() {
   near('beam rør pYield = 81,0 kg', bp.pYield, 81.0, 8e-3);
   near('beam rør pUlt = 132,9 kg', bp.pUlt, 132.9, 8e-3);
 
+  // ---- schema/fill: global rør-godstykkelse må IKKE overskrive katalogværdien ----
+  {
+    const d = deserialize(serialize(defaultDesign()));
+    const p34 = d.library.find(m => m.id === 'pipe-3-4');
+    ok('fill bevarer 3/4"-gods (2,6 mm)', p34 && p34.wall === 2.6);
+    const p1 = d.library.find(m => m.id === 'pipe-1');
+    ok('fill bevarer 1"-gods (3,2 mm)', p1 && p1.wall === 3.2);
+    // rør UDEN eget gods udfyldes fra site.pipeWall_mm
+    const d2 = fill({ schemaVersion: 1, library: [{ id: 'u1', kind: 'pipe', od: 40, E: 210e9, sRe: 195e6, sRm: 320e6 }] });
+    const u1 = d2.library.find(m => m.id === 'u1');
+    ok('fill udfylder manglende gods fra reserve-antagelsen', u1 && u1.wall === d2.site.pipeWall_mm);
+  }
+
   // ---- foundation: parity m. nuværende postSpec (0,125 m stolpe) ----
+  // Kθ = k·(b·D³/3 + b⁴/12) = 20e6·(0,3·1,728/3 + 0,0081/12) = 3 469 500 Nm/rad.
+  // (Ældre reference 3456 medregnede kun side-leddet og var forældet.)
   const f = foundation({ postSide: 0.125, depth: 1.20, hole: 0.30, topHeight: 2.7 });
-  near('fund Kθ = 3456 kNm/rad', f.Ktheta / 1000, 3456, 2e-3);
+  near('fund Kθ = 3469,5 kNm/rad', f.Ktheta / 1000, 3469.5, 2e-3);
   near('fund dTop = 16,85 mm', f.dTop * 1000, 16.85, 5e-3);
   near('fund kLat = 29,1 N/mm', f.kLat / 1000, 29.1, 5e-3);
 
   // ---- foundation: dybere hul ⇒ stivere (monotoni-tjek) ----
   const fDeep = foundation({ postSide: 0.125, depth: 1.60, hole: 0.30, topHeight: 2.7 });
   ok('dybere fundament ⇒ stivere', fDeep.kLat > f.kLat);
+
+  // ---- foundation: jordtype-faktor skalerer stivheden rigtigt ----
+  {
+    const soft = foundation({ postSide: 0.125, depth: 1.2, hole: 0.3, topHeight: 2.7, kSoil: K_SOIL * SOIL_FACTORS.soft });
+    const firm = foundation({ postSide: 0.125, depth: 1.2, hole: 0.3, topHeight: 2.7, kSoil: K_SOIL * SOIL_FACTORS.firm });
+    ok('blød jord ⇒ mere sving end fast', soft.dTop > f.dTop && firm.dTop < f.dTop);
+    near('Kθ skalerer lineært med jordfaktor', soft.Ktheta, f.Ktheta * SOIL_FACTORS.soft, 1e-9);
+    ok('soilFactorOf: default/normal/ukendt', soilFactorOf({}) === 1 && soilFactorOf({ site: { soil: 'kaboom' } }) === 1
+      && soilFactorOf({ site: { soil: 'soft' } }) === SOIL_FACTORS.soft);
+  }
 
   // ---- cutplan: FFD med 4 mm savsnit ----
   const cp = packPieces(
@@ -82,6 +103,11 @@ export function runTests() {
      cp.bars.reduce((n, b) => n + b.pieces.length, 0) === 4);
   ok('cutplan: ingen stang overfyldt',
      cp.bars.every(b => b.used <= 6.0 + 1e-9));
+  // kant-tilfælde: stykke længere end stangen → placeres alligevel, rest aldrig negativ
+  const cpLong = packPieces([{ len: 7.5, label: 'X' }], 6.0, 0.004);
+  ok('cutplan: overlangt stykke placeres', cpLong.count === 1 && cpLong.bars[0].pieces.length === 1);
+  ok('cutplan: rest aldrig negativ', cpLong.bars[0].waste >= 0);
+  ok('cutplan: tom liste → 0 stænger', packPieces([], 6.0, 0.004).count === 0);
 
   // ---- schema: round-trip + validering + migrering ----
   const dd = defaultDesign();
@@ -94,6 +120,17 @@ export function runTests() {
   try { deserialize(JSON.stringify({ schemaVersion: 99 })); } catch (e) { refused = true; }
   ok('schema afviser nyere version', refused);
 
+  // ---- schema/fill: robusthed mod halvkorrupte filer (må ikke give NaN/crash) ----
+  {
+    const d = fill({ schemaVersion: 1, library: [{}], posts: [null, { id: 'p1', x_m: 'NaN-agtig', z_m: 2 }, { id: 'p2', x_m: 1, z_m: 2 }], connections: [{ id: 'c1', a: 'p1', b: 'p2' }], stock: '6', defaults: { post: { hole_mm: 50 } } });
+    ok('fill: tomt/ugyldigt bibliotek → katalog', d.library.length >= CATALOG.length && d.library.every(m => m.kind === 'wood' ? m.side > 0 : m.od > 0));
+    ok('fill: stolper uden tal-koordinater smides ud', d.posts.length === 1 && d.posts[0].id === 'p2');
+    ok('fill: forbindelser til slettede stolper smides ud', d.connections.length === 0);
+    ok('fill: stock af forkert type → {}', typeof d.stock === 'object' && !Array.isArray(d.stock));
+    ok('fill: hul ≥ stolpens sidemål', d.defaults.post.hole_mm >= 125);
+    ok('fill-resultat er gyldigt', validate(d) === true);
+  }
+
   // ---- legacy-import (gammelt fast-firkant format) ----
   const leg = fromLegacy({ lenLong: 2.4, lenShort: 1.2, sideSizes: [0, 1, 2, 3],
     heights: [3.1, 2.3, 1.5, 1.0], depth: 1.2, hole: 0.3, load: 120, ladderWidth: 0.5 });
@@ -104,6 +141,64 @@ export function runTests() {
   ok('legacy: bar ≥ 3,0 m lægges ovenpå', leg.connections[0].onTop === true);
   ok('legacy: stige-attachment', leg.attachments.length === 1 && leg.attachments[0].type === 'ladder');
   ok('legacy: gyldigt design', validate(leg) === true);
+
+  // ---- presets: alle forslag skal bygge gyldige designs ----
+  presetList().forEach(pr => {
+    const d = buildPreset(pr.id);
+    ok(`preset ${pr.id}: gyldigt design`, validate(d) === true);
+    ok(`preset ${pr.id}: overlever fill()`, validate(fill(JSON.parse(JSON.stringify(d)))) === true);
+  });
+
+  // ---- labels: stolpe-bogstaver, forbindelses- og attachment-labels ----
+  ok('letterFor: A, Z, #27', letterFor(0) === 'A' && letterFor(25) === 'Z' && letterFor(26) === '#27');
+  {
+    const d = buildPreset('long6');
+    ok('connLabelOf: sorteret par', connLabelOf(d, d.connections[0]) === 'A–B');
+    const monkeys = d.attachments.filter(a => a.type === 'monkey');
+    ok('monkeyLabelOf: M1, M2', monkeyLabelOf(d, monkeys[0]) === 'M1' && monkeyLabelOf(d, monkeys[1]) === 'M2');
+    const lad = d.attachments.find(a => a.type === 'ladder');
+    ok('ladderLabelOf: S1', ladderLabelOf(d, lad) === 'S1');
+  }
+
+  // ---- armgang: geometri, validering og maks-højde ----
+  {
+    const d = buildPreset('long6');   // to armgange mellem parallelle skinner, gap 0,8 m
+    const at = d.attachments.find(a => a.type === 'monkey');
+    const g = monkeyGeometry(d, at.connA, at.connB, at.spacing_m);
+    ok('monkey: geometri findes', !!g && g.rungs.length === g.count);
+    near('monkey: trinlængde = bar-afstand (0,8 m)', g.rungLen, 0.8, 1e-6);
+    ok('monkey: parallelle barer (cross = 0)', g.cross <= 1e-9);
+    ok('monkey: gyldig placering', monkeyPlacementValid(g) === true);
+    // trin ligger inden for overlappet med 12 cm endemargin
+    const sp = at.spacing_m || 0.33;
+    ok('monkey: trin med korrekt afstand', g.count >= 2
+      && approx(Math.hypot(g.rungs[1].ax - g.rungs[0].ax, g.rungs[1].az - g.rungs[0].az), sp, 1e-6));
+    // grebshøjde = laveste bar
+    const ca = d.connections.find(c => c.id === at.connA), cb = d.connections.find(c => c.id === at.connB);
+    near('monkey: grebshøjde = laveste bar', g.y, Math.min(ca.height_m, cb.height_m), 1e-9);
+    // maks-højde = laveste af de 4 bærende stolper
+    near('monkeyMaxHeight = laveste stolpe (2,5)', monkeyMaxHeight(d, at), 2.5, 1e-9);
+    d.posts[0].height_m = 1.9;
+    near('monkeyMaxHeight følger sænket stolpe', monkeyMaxHeight(d, at), 1.9, 1e-9);
+    ok('monkeyMaxHeight: ukendt bar → null', monkeyMaxHeight(d, { connA: 'findes-ikke', connB: at.connB }) === null);
+    // ikke-parallelle barer afvises til placering
+    d.posts[0].height_m = 2.5;
+    const dTwist = JSON.parse(JSON.stringify(d));
+    dTwist.posts.find(q => q.id === 'p4').z_m = 3.0;   // vrid bar c3 langt væk fra parallel
+    const gT = monkeyGeometry(dTwist, at.connA, at.connB, at.spacing_m);
+    ok('monkey: skæve barer → ugyldig/ingen geometri', !monkeyPlacementValid(gT));
+  }
+
+  // ---- delte helpers: spanOfConn + effSpanOfConn (stige-aflastning) ----
+  {
+    const d = buildPreset('square4');
+    const c1 = d.connections.find(c => c.id === 'c1');
+    near('spanOfConn c1 = 2,4 m', spanOfConn(d, c1), 2.4, 1e-9);
+    // stigen (S1 på p1, angle 0 → langs c1) aflaster c1: eff = max(0,5, 2,4-0,5)
+    near('effSpanOfConn med stige = 1,9 m', effSpanOfConn(d, c1), 1.9, 1e-9);
+    const c2 = d.connections.find(c => c.id === 'c2');
+    near('effSpanOfConn uden stige = spænd', effSpanOfConn(d, c2), spanOfConn(d, c2), 1e-9);
+  }
 
   const passed = results.filter(r => r.ok).length;
   return { passed, failed: results.length - passed, results };

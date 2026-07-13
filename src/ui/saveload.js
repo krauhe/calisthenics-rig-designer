@@ -23,6 +23,9 @@ function fileBar(ctx) {
   const nameInp = el('input', { type: 'text', class: 'name-inp', value: design.meta.name || '', title: tt('file.name') });
   nameInp.addEventListener('input', () => store.update(d => { d.meta.name = nameInp.value; }));
 
+  // Skeln "filen er fra en nyere appversion" fra "ugyldig fil" i fejlbeskeden.
+  const importError = e => alert(tt(e && e.message === 'newer-schema' ? 'file.errorNewer' : 'file.error'));
+
   const fileInput = el('input', { type: 'file', accept: '.json,application/json', style: 'display:none' });
   fileInput.addEventListener('change', () => {
     const f = fileInput.files[0];
@@ -31,12 +34,14 @@ function fileBar(ctx) {
     r.onload = () => {
       try {
         const d = deserialize(String(r.result));
+        if (typeof tabSite !== 'undefined') tabSite.fitNext = true;   // tilpas kortet til den importerede rig
         store.replace(d);
         ctx.rerenderAll();
       } catch (e) {
-        alert(tt('file.error'));
+        importError(e);
       }
     };
+    r.onerror = () => alert(tt('file.error'));
     r.readAsText(f);
     fileInput.value = '';
   });
@@ -59,7 +64,9 @@ function fileBar(ctx) {
   function doSaveLocal() {
     const d = store.getDesign();
     const name = (d.meta.name || '').trim() || 'rig';
-    const list = readSaved().filter(s => s.name !== name);
+    const existing = readSaved();
+    if (existing.some(s => s.name === name) && !confirm(`${tt('file.overwriteConfirm')} "${name}"?`)) return;
+    const list = existing.filter(s => s.name !== name);
     list.unshift({ name, savedAt: Date.now(), data: serialize(d) });
     if (writeSaved(list)) {
       saveBtn.textContent = '✓ ' + tt('file.savedAs') + ' "' + name + '"';
@@ -89,7 +96,7 @@ function fileBar(ctx) {
           if (typeof tabSite !== 'undefined') tabSite.fitNext = true;
           store.replace(d);
           ctx.rerenderAll();
-        } catch (e) { alert(tt('file.error')); }
+        } catch (e) { importError(e); }
       });
       row.querySelector('.save-menu-del').addEventListener('click', () => {
         if (!confirm(`${tt('file.deleteConfirm')} "${s.name}"?`)) return;

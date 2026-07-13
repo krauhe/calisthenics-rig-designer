@@ -38,13 +38,8 @@ function computeMaterials(design) {
   // barer / overliggere
   design.connections.forEach(c => addCut(connMat(c.material), spanOf(c), connLbl(c)));
 
-  // stiger (binder sig til den højeste bar på stolpen — som i 3D/Kort)
-  const ladderBar = at => {
-    const conns = design.connections.filter(c => c.a === at.postId || c.b === at.postId);
-    if (!conns.length) return null;
-    let best = conns[0]; for (const c of conns) if (c.height_m > best.height_m) best = c;
-    return best;
-  };
+  // stiger — bar-valget deles med Kort/3D/Print (model.js), så alle fire faner
+  // fakturerer den SAMME bar (før valgte materialelisten altid den højeste).
   // ladderMat kan være null (intet rør-bibliotek) — addCut no-opper stille når mat er null,
   // så stige-/armgangs-tællere (ladVert, ladRungCount osv.) opgøres stadig, men uden skæreliste-stykker.
   const ladderMat = design.library.find(m => m.id === 'pipe-1') || design.library.find(m => m.kind === 'pipe') || null;
@@ -52,14 +47,15 @@ function computeMaterials(design) {
   design.attachments.forEach(at => {
     if (at.type !== 'ladder') return;
     ladderCount++;
-    const bar = ladderBar(at);
-    const barY = Math.max(0, bar ? bar.height_m : (design.site.connHeight_m || 2.2));
+    const lbl = ladderLabelOf(design, at);
+    const bar = ladderBarOf(design, at);
+    const barY = Math.max(0, bar ? bar.height : (design.site.connHeight_m || 2.2));
     const width = Math.max(0.05, at.width_m || 0.5);
     const vert = barY + 0.5;
     const rc = Math.max(0, Math.floor((barY - 0.25) / 0.40));
     ladVert += vert; ladRungCount += rc; ladRungLen += rc * width; ladKee += 1 + rc * 2;
-    addCut(ladderMat, vert, 'stige');
-    for (let k = 0; k < rc; k++) addCut(ladderMat, width, 't' + (k + 1));
+    addCut(ladderMat, vert, lbl);
+    for (let k = 0; k < rc; k++) addCut(ladderMat, width, lbl + 't' + (k + 1));
   });
 
   // armgange (monkey bars): 1"-trin mellem to barer + 2 klemmer pr. trin
@@ -69,8 +65,9 @@ function computeMaterials(design) {
     const g = monkeyGeometry(design, at.connA, at.connB, at.spacing_m);
     if (!g || !g.rungs.length) return;
     monkeyCount++;
+    const lbl = monkeyLabelOf(design, at);
     monRungCount += g.count; monRungLen += g.count * g.rungLen; monKee += g.count * 2;
-    for (let k = 0; k < g.count; k++) addCut(ladderMat, g.rungLen, 'g' + (k + 1));
+    for (let k = 0; k < g.count; k++) addCut(ladderMat, g.rungLen, lbl + 'g' + (k + 1));
   });
 
   // fundament — pr. stolpe (egen dybde + hul fra Kort)
@@ -80,7 +77,8 @@ function computeMaterials(design) {
     const dP = postDepthOf(p), hP = postHoleM(p);
     concVol += (hP * hP - postSide * postSide) * Math.max(0, dP - GRAVEL_H);
     gravelVol += hP * hP * GRAVEL_H;
-    tarArea += 4 * postSide * (TAR_TOP - Math.max(TAR_BOTTOM, -dP)) + postSide * postSide;
+    // tjære-zone = hele den nedgravede del + TAR_TOP over jord (matcher print.step3)
+    tarArea += 4 * postSide * (TAR_TOP + dP) + postSide * postSide;
   });
   concVol += footVol * ladderCount;
   gravelVol += 0.22 * 0.22 * GRAVEL_H * ladderCount;
@@ -104,7 +102,10 @@ const tabMaterials = {
     const { design, store } = ctx;
     const lang = ctx.lang;
     const tt = k => ctx.t(k, lang);
-    const fm = v => fmt(v, 2, lang) + ' m';
+    // længder vises i kortets valgte enhed (m eller fod), som på Kort-fanen
+    const su = (design.units.site && design.units.site.len) || 'm';
+    const suTxt = su === 'ft' ? tt('unit.ft') : tt('unit.m');
+    const fm = v => `${fmt(lenFromSI(v, su), 2, lang)} ${suTxt}`;
 
     container.append(el('h2', {}, tt('tab.materials')), el('p', { class: 'intro' }, tt('mats.intro')));
     if (!design.posts.length) {
@@ -171,35 +172,36 @@ const tabMaterials = {
       const matCol = materialColor(grp.mat);
       const shades = segShades(grp.mat);
 
-      // pr. materiale: redigerbar købslængde (gemmes i design.stock[matId]) — opdateres på stedet
-      const stockInp = el('input', { type: 'number', step: '0.5', min: '0.5', class: 'cl-stock-inp' });
+      // pr. materiale: redigerbar købslængde (gemmes i design.stock[matId] i meter,
+      // vises/redigeres i kortets enhed) — opdateres på stedet
+      const stockInp = el('input', { type: 'number', step: '0.5', min: String(round(lenFromSI(0.5, su))), class: 'cl-stock-inp' });
       const titleB = el('b', {}, el('span', { class: 'cl-dot', style: `background:${matCol}` }), el('span', { class: 'cl-name' }));
       const body = el('div', { class: 'cl-body' });
       const warnHost = el('div', {});
       const grpEl = el('div', { class: 'cl-grp', style: `border-left-color:${matCol}` },
         el('div', { class: 'cl-grp-h' }, titleB,
-          el('label', { class: 'cl-stock' }, `${tt('mats.stockLen')} (m)`, stockInp)));
+          el('label', { class: 'cl-stock' }, `${tt('mats.stockLen')} (${suTxt})`, stockInp)));
       grpEl.append(body, warnHost);
 
       const refresh = () => {
         const stockLen = (design.stock && design.stock[id]) || (grp.mat.kind === 'wood' ? 4.8 : STOCK);
-        stockInp.value = String(round(stockLen));
+        stockInp.value = String(round(lenFromSI(stockLen, su)));
         const { bars, count } = packPieces(grp.pieces, stockLen, KERF);
         counts[id] = count;
         const oversize = grp.pieces.some(p => p.len > stockLen + 1e-9);
-        titleB.querySelector('.cl-name').textContent = ` ${grp.mat.name}: ${count} × ${fmt(stockLen, stockLen % 1 ? 2 : 0, lang)} m`;
+        titleB.querySelector('.cl-name').textContent = ` ${grp.mat.name}: ${count} × ${fm(stockLen)}`;
         clear(body);
         bars.forEach(b => {
           const barEl = el('div', { class: 'cl-bar' });
           b.pieces.forEach((p, pi) => {
             barEl.append(el('span', { class: 'cl-seg', title: `${p.label}: ${fm(p.len)}`,
               style: `width:${Math.min(100, p.len / stockLen * 100).toFixed(2)}%;background:${shades[pi % shades.length]}` },
-              el('span', { class: 'cl-seg-lbl' }, p.label), fmt(p.len, 2, lang)));
+              el('span', { class: 'cl-seg-lbl' }, p.label), fmt(lenFromSI(p.len, su), 2, lang)));
           });
           if (b.waste > 0.01) barEl.append(el('span', { class: 'cl-waste', title: `${tt('mats.waste')} ${fm(b.waste)}`,
-            style: `width:${(b.waste / stockLen * 100).toFixed(2)}%` }, fmt(b.waste, 2, lang)));
+            style: `width:${(b.waste / stockLen * 100).toFixed(2)}%` }, fmt(lenFromSI(b.waste, su), 2, lang)));
           body.append(barEl);
-          const list = b.pieces.map(p => `${p.label} ${fmt(p.len, 2, lang)}`).join('  ·  ');
+          const list = b.pieces.map(p => `${p.label} ${fmt(lenFromSI(p.len, su), 2, lang)}`).join('  ·  ');
           body.append(el('div', { class: 'cl-list' }, `${list}${b.waste > 0.01 ? `  ·  ${tt('mats.waste')} ${fm(b.waste)}` : ''}`));
         });
         clear(warnHost);
@@ -208,9 +210,9 @@ const tabMaterials = {
       };
       stockInp.addEventListener('input', () => {
         const v = parseFloat(stockInp.value);
-        if (!isNaN(v)) { store.update(d => { d.stock = d.stock || {}; d.stock[id] = Math.max(v, 0.5); }); refresh(); }
+        if (!isNaN(v)) { store.update(d => { d.stock = d.stock || {}; d.stock[id] = Math.max(lenToSI(v, su), 0.5); }); refresh(); }
       });
-      stockInp.addEventListener('change', () => { stockInp.value = String(Math.max(parseFloat(stockInp.value) || 0, 0.5)); });
+      stockInp.addEventListener('change', () => { stockInp.value = String(Math.max(parseFloat(stockInp.value) || 0, round(lenFromSI(0.5, su)))); });
       refresh();
       cutHost.append(grpEl);
     }

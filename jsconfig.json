@@ -3,9 +3,8 @@
     "module": "ESNext",
     "target": "ES2022",
     "moduleResolution": "Bundler",
-    "checkJs": true,
-    "noEmit": true,
-    "strict": true
+    "checkJs": false,
+    "noEmit": true
   },
   "include": ["src/**/*.js", "tests/**/*.js"],
   "exclude": ["node_modules", "dist"]
