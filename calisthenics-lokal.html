@@ -3683,8 +3683,11 @@ const tabView3d = {
     host.append(status);
 
     ensureThree()
-      .then(THREE => { status.remove(); build3d(THREE, host, design, ctx); })
-      .catch(() => {
+      // fjern først status når build3d er lykkedes — ellers ender fejlbeskeden
+      // i et element der allerede er ude af DOM'en (usynlig fejl)
+      .then(THREE => { build3d(THREE, host, design, ctx); status.remove(); })
+      .catch(err => {
+        console.error('3D-visning fejlede:', err);
         clear(status);
         status.append(
           el('p', {}, tt('view3d.failed')),
@@ -3917,8 +3920,10 @@ function build3d(THREE, host, design, ctx) {
 
   // ---- stiger: LODRET rør + vandrette trin, bundet til en vandret bar ----
   // Bar-valg og effektiv spændvidde deles med Kort/Materialer/Print (model.js).
-  const ladderBar = at => ladderBarOf(design, at);
-  const effSpan = c => effSpanOfConn(design, c);
+  // SKAL være function-deklarationer (hoistes): effSpan bruges af
+  // forbindelses-løkken længere oppe, før dette punkt i koden.
+  function ladderBar(at) { return ladderBarOf(design, at); }
+  function effSpan(c) { return effSpanOfConn(design, c); }
 
   for (const at of design.attachments) {
     if (at.type !== 'ladder') continue;
