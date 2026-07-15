@@ -215,6 +215,21 @@ function runTests() {
       const tb = (r.bx - b1.x_m) * vx + (r.bz - b1.z_m) * vz;
       return tb >= 0 && tb <= Lb;
     }));
+    // højdeforskel blokerer IKKE placering — den udlignes ved placering
+    const dH = JSON.parse(JSON.stringify(d));
+    dH.connections[0].height_m = 2.7; dH.connections[1].height_m = 1.5;
+    const gH = monkeyGeometry(dH, 'c1', 'c2', 0.33);
+    ok('højdeforskel: par kan stadig vælges/placeres', monkeyPairPlaceable(gH) === true);
+    ok('højdeforskel: men ikke "gyldig" før udligning', monkeyPlacementValid(gH) === false);
+    alignMonkeyBars(dH, 'c1', 'c2');
+    ok('alignMonkeyBars: begge barer på laveste højde', dH.connections[0].height_m === 1.5 && dH.connections[1].height_m === 1.5);
+    ok('efter udligning: gyldig placering', monkeyPlacementValid(monkeyGeometry(dH, 'c1', 'c2', 0.33)) === true);
+    // lille højdeforskel (≤ 0,3) røres ikke
+    const dS = JSON.parse(JSON.stringify(d));
+    dS.connections[0].height_m = 2.2; dS.connections[1].height_m = 2.0;
+    alignMonkeyBars(dS, 'c1', 'c2');
+    ok('alignMonkeyBars: lille forskel bevares', dS.connections[0].height_m === 2.2 && dS.connections[1].height_m === 2.0);
+
     // trin, hvis fodpunkt falder UDEN FOR bar B, droppes (kort bar B)
     const dShort = JSON.parse(JSON.stringify(d));
     dShort.posts.find(q => q.id === 'p4').x_m = 1.0;   // bar c2 er nu kun 0..1.0 i x

@@ -1128,6 +1128,25 @@ function monkeyPlacementValid(g) {
     && g.overlap >= 0.4 && g.hdiff <= 0.3;
 }
 
+// Kan et bar-par overhovedet BÆRE en armgang (til placering/par-vælger)?
+// Som monkeyPlacementValid men UDEN højdekravet: en højdeforskel blokerer
+// ikke — den udlignes automatisk ved placering (begge barer sættes til den
+// lavestes højde, samme regel som H-feltet i skemaet).
+function monkeyPairPlaceable(g) {
+  return !!g && g.lenMin >= 0.25 && g.lenMax <= 1.6 && g.overlap >= 0.4;
+}
+
+// Udlign de to barers højde til den laveste (bruges når en armgang placeres
+// eller flyttes til et par med højdeforskel — trinnene skal hæfte i samme kote).
+function alignMonkeyBars(design, connA, connB) {
+  const ca = design.connections.find(c => c.id === connA);
+  const cb = design.connections.find(c => c.id === connB);
+  if (!ca || !cb) return;
+  if (Math.abs((ca.height_m || 0) - (cb.height_m || 0)) <= 0.3) return;
+  const h = Math.min(ca.height_m || 0, cb.height_m || 0);
+  ca.height_m = h; cb.height_m = h;
+}
+
 // Armgangens maksimale grebshøjde: trinnene hæfter i BEGGE barer, så højden
 // er begrænset af den laveste af de fire bærende stolper (begge barers ender).
 // null hvis armgangens barer/stolper ikke kan slås op.
@@ -1635,7 +1654,8 @@ const da = {
   'site.help.post': 'Stolpe: klik på fladen for at sætte en stolpe (snapper til gitter).',
   'site.help.connect': 'Forbind: klik på to stolper for at lave en forbindelse imellem dem.',
   'site.help.ladder': 'Stige: hold knappen nede og træk stigen rundt — den klikker fast langs nærmeste bar; slip for at placere den. Rød = pladsen er optaget (kan ikke placeres oven på en anden stige).',
-  'site.help.monkey': 'Armgang: hold knappen nede og træk — trinnene klikker fast mellem to parallelle barer (i nogenlunde samme højde); slip for at placere. Rød = pladsen er optaget.',
+  'site.help.monkey': 'Armgang: hold knappen nede og træk — trinnene klikker fast mellem to nogenlunde parallelle barer; slip for at placere. Har barerne forskellig højde, sænkes de automatisk til samme (laveste) højde. Rød = pladsen er optaget.',
+  'site.monkey.nopair': 'Armgang: intet brugbart bar-par på tegningen — der kræves to nogenlunde parallelle barer (op til ~27° skævt) med 0,25–1,6 m imellem og mindst 0,4 m overlap. Tegn evt. en ekstra bar med Forbind først.',
   'site.help.avatar': 'Person: klik på fladen for at sætte en person ind (justér højden ved at vælge den). Vises i 3D med strakte arme.',
   'site.help.delete': 'Slet: klik på en stolpe, forbindelse, stige eller person for at fjerne den.',
   'site.persons.title': 'Personer',
@@ -1858,7 +1878,8 @@ const en = {
   'site.help.post': 'Post: click the canvas to place a post (snaps to grid).',
   'site.help.connect': 'Connect: click two posts to create a connection between them.',
   'site.help.ladder': 'Ladder: hold the button and drag the ladder around — it snaps along the nearest bar; release to place it. Red = spot taken (can\'t stack on another ladder).',
-  'site.help.monkey': 'Monkey bars: hold the button and drag — the rungs snap between two parallel bars (at roughly the same height); release to place. Red = spot taken.',
+  'site.help.monkey': 'Monkey bars: hold the button and drag — the rungs snap between two roughly parallel bars; release to place. If the bars differ in height, both are lowered to the same (lowest) height automatically. Red = spot taken.',
+  'site.monkey.nopair': 'Monkey bars: no usable pair of bars in the drawing — you need two roughly parallel bars (up to ~27° skewed) 0.25–1.6 m apart with at least 0.4 m overlap. Draw an extra bar with Connect first.',
   'site.help.avatar': 'Person: click the canvas to place a person (select it to set the height). Shown in 3D with arms raised.',
   'site.help.delete': 'Delete: click a post, connection, ladder or person to remove it.',
   'site.persons.title': 'Persons',
@@ -2763,13 +2784,14 @@ const tabSite = {
       return design.attachments.some(a => a.type === 'ladder' && a.id !== excludeId
         && ladderSlot({ postId: a.postId, angle_rad: a.angle_rad }) === slot);
     };
-    // ---- Armgang (monkey bars): snap til nærmeste GYLDIGE par af parallelle barer ----
+    // ---- Armgang (monkey bars): snap til nærmeste BRUGBARE par af barer.
+    // Højdeforskel blokerer ikke (udlignes ved placering) — kun geometri tæller.
     const monkeySnap = (wx, wz) => {
       let best = null, bd = Infinity;
       const cs = design.connections;
       for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++) {
         const g = monkeyGeometry(design, cs[i].id, cs[j].id, design.site.monkeySpacing_m);
-        if (!monkeyPlacementValid(g)) continue;
+        if (!monkeyPairPlaceable(g)) continue;
         const d = Math.hypot(g.mid.x - wx, g.mid.z - wz);
         if (d < bd) { bd = d; best = { connA: cs[i].id, connB: cs[j].id }; }
       }
@@ -3196,13 +3218,15 @@ const tabSite = {
         const rungMat = design.library.find(m => m.id === 'pipe-1')
           || design.library.find(m => m.kind === 'pipe')
           || { kind: 'pipe', od: 33.7, wall: 3.2, E: 210e9, sRe: 195e6, sRm: 320e6 };
-        // alle gyldige bar-par (til retnings-/par-vælgeren); optagede par filtreres pr. række
+        // alle brugbare bar-par (til retnings-/par-vælgeren); optagede par
+        // filtreres pr. række. Højdeforskel udelukker ikke et par — den
+        // udlignes automatisk, når parret vælges.
         const validPairs = [];
         for (let i = 0; i < design.connections.length; i++) {
           for (let j = i + 1; j < design.connections.length; j++) {
             const ci = design.connections[i], cj = design.connections[j];
             const g = monkeyGeometry(design, ci.id, cj.id, design.site.monkeySpacing_m);
-            if (monkeyPlacementValid(g)) validPairs.push([ci.id, cj.id]);
+            if (monkeyPairPlaceable(g)) validPairs.push([ci.id, cj.id]);
           }
         }
         const mhead = el('tr', {}, el('th', {}, '#'),
@@ -3259,7 +3283,11 @@ const tabSite = {
           };
           const pairSel = select(free.map(p => [p[0] + '|' + p[1], pairLbl(p)]), a.connA + '|' + a.connB, v => {
             const [x, y] = v.split('|');
-            store.update(d => { const m = d.attachments.find(o => o.id === a.id); if (m) { m.connA = x; m.connB = y; } });
+            store.update(d => {
+              const m = d.attachments.find(o => o.id === a.id); if (!m) return;
+              m.connA = x; m.connB = y;
+              alignMonkeyBars(d, x, y);   // trinnene hæfter i samme kote i begge sider
+            });
             redraw(); renderPanel();
           });
           // trinafstand
@@ -3354,10 +3382,11 @@ const tabSite = {
         redraw();
       }
       else if (tool === 'monkey') {
-        // start placering: armgangen snapper til nærmeste gyldige bar-par
+        // start placering: armgangen snapper til nærmeste brugbare bar-par
         const [wx, wz] = toWorld(ux, uy);
         const sp = monkeySnap(wx, wz);
         ghostMonkey = sp ? { ...sp, spacing_m: design.site.monkeySpacing_m, down: true, invalid: monkeySlotTaken(sp, null) } : null;
+        help.textContent = sp ? tt('site.help.monkey') : tt('site.monkey.nopair');
         drag = { mode: 'place-monkey', sux: ux, suy: uy, moved: false };
         try { mapBox.setPointerCapture(e.pointerId); } catch (_) {}
         redraw();
@@ -3380,10 +3409,12 @@ const tabSite = {
           ghostLadder = sp ? { ...sp, width_m: Math.max(design.site.ladderWidth_m, MIN_LADDER_WIDTH_M), down: false, invalid: ladderSlotTaken(sp, null) } : null;
           redraw();
         } else if (tool === 'monkey') {
-          // spøgelses-armgang følger musen og snapper til gyldige bar-par
+          // spøgelses-armgang følger musen og snapper til brugbare bar-par;
+          // findes der slet ingen, forklarer hjælpelinjen hvorfor
           const [wx, wz] = toWorld(ux, uy);
           const sp = monkeySnap(wx, wz);
           ghostMonkey = sp ? { ...sp, spacing_m: design.site.monkeySpacing_m, down: false, invalid: monkeySlotTaken(sp, null) } : null;
+          help.textContent = sp ? tt('site.help.monkey') : tt('site.monkey.nopair');
           redraw();
         } else if (guides || ghostLadder || ghostMonkey) { guides = null; ghostLadder = null; ghostMonkey = null; redraw(); }
         return;
@@ -3467,16 +3498,26 @@ const tabSite = {
         redraw(); renderPanel();
         return;
       }
-      // armgangs-værktøj: placér endeligt på det bar-par spøgelset snappede til
+      // armgangs-værktøj: placér endeligt på det bar-par spøgelset snappede til.
+      // Har barerne forskellig højde, udlignes de til den laveste — trinnene
+      // skal hæfte i samme kote i begge sider.
       if (mode === 'place-monkey') {
         const sp = ghostMonkey;
-        if (sp && !sp.invalid) store.update(d => d.attachments.push({ id: nextId(d.attachments, 'a'), type: 'monkey', connA: sp.connA, connB: sp.connB, spacing_m: d.site.monkeySpacing_m }));
+        if (sp && !sp.invalid) store.update(d => {
+          d.attachments.push({ id: nextId(d.attachments, 'a'), type: 'monkey', connA: sp.connA, connB: sp.connB, spacing_m: d.site.monkeySpacing_m });
+          alignMonkeyBars(d, sp.connA, sp.connB);
+        });
         drag = null; down = null; ghostMonkey = null;
         redraw(); renderPanel();
         return;
       }
       const wasDrag = drag && drag.moved;
       if (mode === 'pan') saveView();   // husk pan på tværs af refresh
+      // en armgang trukket til et par med højdeforskel: udlign før commit
+      if (wasDrag && mode === 'monkey') {
+        const at = design.attachments.find(a => a.id === drag.id);
+        if (at) alignMonkeyBars(design, at.connA, at.connB);
+      }
       if (wasDrag && (mode === 'move' || mode === 'ladder' || mode === 'monkey' || mode === 'avatar')) store.commit();
       drag = null; guides = null;
       if (wasDrag) redraw();                              // gentegn med bogstav-labels igen

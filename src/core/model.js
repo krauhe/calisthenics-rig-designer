@@ -249,6 +249,25 @@ function monkeyPlacementValid(g) {
     && g.overlap >= 0.4 && g.hdiff <= 0.3;
 }
 
+// Kan et bar-par overhovedet BÆRE en armgang (til placering/par-vælger)?
+// Som monkeyPlacementValid men UDEN højdekravet: en højdeforskel blokerer
+// ikke — den udlignes automatisk ved placering (begge barer sættes til den
+// lavestes højde, samme regel som H-feltet i skemaet).
+function monkeyPairPlaceable(g) {
+  return !!g && g.lenMin >= 0.25 && g.lenMax <= 1.6 && g.overlap >= 0.4;
+}
+
+// Udlign de to barers højde til den laveste (bruges når en armgang placeres
+// eller flyttes til et par med højdeforskel — trinnene skal hæfte i samme kote).
+function alignMonkeyBars(design, connA, connB) {
+  const ca = design.connections.find(c => c.id === connA);
+  const cb = design.connections.find(c => c.id === connB);
+  if (!ca || !cb) return;
+  if (Math.abs((ca.height_m || 0) - (cb.height_m || 0)) <= 0.3) return;
+  const h = Math.min(ca.height_m || 0, cb.height_m || 0);
+  ca.height_m = h; cb.height_m = h;
+}
+
 // Armgangens maksimale grebshøjde: trinnene hæfter i BEGGE barer, så højden
 // er begrænset af den laveste af de fire bærende stolper (begge barers ender).
 // null hvis armgangens barer/stolper ikke kan slås op.
