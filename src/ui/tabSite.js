@@ -636,10 +636,16 @@ const tabSite = {
           const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0' });
           const paintInfo = () => {
             const g = geo();
-            const weak = g && beam(Math.max(g.rungLen, 0.05), rungMat, 1, 0.25).pYield < refLoad;
+            // ved roteret samling varierer trinlængderne — vis interval + ↻,
+            // og bedøm styrken på det LÆNGSTE trin
+            const weak = g && beam(Math.max(g.lenMax, 0.05), rungMat, 1, 0.25).pYield < refLoad;
+            const lenTxt = !g ? '' : (g.angled
+              ? `${fmt(lenFromSI(g.lenMin, su), 2, lang)}–${fmt(lenFromSI(g.lenMax, su), 2, lang)} ${suTxt} ↻`
+              : `${fmt(lenFromSI(g.rungLen, su), 2, lang)} ${suTxt}`);
             clear(infoCell);
-            infoCell.append(g ? `${g.count} × ${fmt(lenFromSI(g.rungLen, su), 2, lang)} ${suTxt}${weak ? ' ⚠' : ''}` : '—');
-            infoCell.title = weak ? tt('site.monkey.weak') : '';
+            infoCell.append(g ? `${g.count} × ${lenTxt}${weak ? ' ⚠' : ''}` : '—');
+            infoCell.title = [weak ? tt('site.monkey.weak') : '', g && g.angled ? tt('site.monkey.angled') : '']
+              .filter(Boolean).join('\n');
             const mh = maxH();
             if (mh != null) { hInp.max = String(round(lenFromSI(mh, su))); hInp.title = `${tt('site.monkey.heightMax')} ${fmt(lenFromSI(mh, su), 2, lang)} ${suTxt}`; }
             if (document.activeElement !== hInp) hInp.value = g ? String(round(lenFromSI(g.y, su))) : '';

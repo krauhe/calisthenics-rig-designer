@@ -134,7 +134,8 @@ function printGuide(ctx) {
   }
   if (M.monkeyCount > 0) {
     rows.push([`${tt('mats.monkeyRungs')} (${M.monRungCount} ${tt('mats.pcs')})`, fm(M.monRungLen)]);
-    rows.push([tt('mats.monkeyKee'), `${M.monKee} ${tt('mats.pcs')}`]);
+    if (M.monKee > 0) rows.push([tt('mats.monkeyKee'), `${M.monKee} ${tt('mats.pcs')}`]);
+    if (M.monSwivel > 0) rows.push([tt('mats.monkeySwivel'), `${M.monSwivel} ${tt('mats.pcs')}`]);
   }
   rows.push([tt('mats.screws'), `~${32 + (M.ladRungCount + M.monRungCount) * 4} ${tt('mats.pcs')}`]);
   rows.push([tt('mats.gravel'), `${Math.round(M.gravelVol * 1000)} L`]);

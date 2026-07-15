@@ -181,12 +181,51 @@ function runTests() {
     d.posts[0].height_m = 1.9;
     near('monkeyMaxHeight følger sænket stolpe', monkeyMaxHeight(d, at), 1.9, 1e-9);
     ok('monkeyMaxHeight: ukendt bar → null', monkeyMaxHeight(d, { connA: 'findes-ikke', connB: at.connB }) === null);
-    // ikke-parallelle barer afvises til placering
+    ok('monkey: parallelle barer er ikke "roteret"', g.angled === false);
+    ok('monkey: parallelle trin har ens længde', g.rungs.every(r => approx(r.len, 0.8, 1e-6)));
+    // STÆRKT skæve barer (> ~27°) afvises stadig helt
     d.posts[0].height_m = 2.5;
     const dTwist = JSON.parse(JSON.stringify(d));
     dTwist.posts.find(q => q.id === 'p4').z_m = 3.0;   // vrid bar c3 langt væk fra parallel
     const gT = monkeyGeometry(dTwist, at.connA, at.connB, at.spacing_m);
-    ok('monkey: skæve barer → ugyldig/ingen geometri', !monkeyPlacementValid(gT));
+    ok('monkey: stærkt skæve barer → ugyldig/ingen geometri', !monkeyPlacementValid(gT));
+  }
+
+  // ---- armgang: ROTERET samling (let skæve barer) er konstruérbar ----
+  {
+    const d = defaultDesign();
+    d.posts = [
+      { id: 'p1', x_m: 0, z_m: 0, height_m: 2.5 }, { id: 'p2', x_m: 2.0, z_m: 0, height_m: 2.5 },
+      { id: 'p3', x_m: 0, z_m: 0.6, height_m: 2.5 }, { id: 'p4', x_m: 2.0, z_m: 1.0, height_m: 2.5 },
+    ];
+    d.connections = [
+      { id: 'c1', a: 'p1', b: 'p2', height_m: 2.2, material: { source: 'library', id: 'pipe-1' } },
+      { id: 'c2', a: 'p3', b: 'p4', height_m: 2.2, material: { source: 'library', id: 'pipe-1' } },
+    ];
+    const g = monkeyGeometry(d, 'c1', 'c2', 0.33);
+    ok('roteret: geometri findes', !!g && g.count >= 2);
+    ok('roteret: markeret som drejelig samling', g.angled === true);
+    ok('roteret: trinlængder varierer (min < max)', g.lenMin < g.lenMax - 1e-6);
+    ok('roteret: gyldig placering (drejelige beslag)', monkeyPlacementValid(g) === true);
+    // hvert trin skal hæfte PÅ bar B — fodpunktet ligger inden for barens segment
+    const b1 = d.posts[2], b2 = d.posts[3];
+    const Lb = Math.hypot(b2.x_m - b1.x_m, b2.z_m - b1.z_m);
+    const vx = (b2.x_m - b1.x_m) / Lb, vz = (b2.z_m - b1.z_m) / Lb;
+    ok('roteret: alle trin hæfter på begge barer', g.rungs.every(r => {
+      const tb = (r.bx - b1.x_m) * vx + (r.bz - b1.z_m) * vz;
+      return tb >= 0 && tb <= Lb;
+    }));
+    // trin, hvis fodpunkt falder UDEN FOR bar B, droppes (kort bar B)
+    const dShort = JSON.parse(JSON.stringify(d));
+    dShort.posts.find(q => q.id === 'p4').x_m = 1.0;   // bar c2 er nu kun 0..1.0 i x
+    const gS = monkeyGeometry(dShort, 'c1', 'c2', 0.33);
+    ok('roteret: trin uden fæste droppes', !gS || gS.rungs.every(r => {
+      const q1 = dShort.posts[2], q2 = dShort.posts[3];
+      const L2 = Math.hypot(q2.x_m - q1.x_m, q2.z_m - q1.z_m);
+      const wx = (q2.x_m - q1.x_m) / L2, wz = (q2.z_m - q1.z_m) / L2;
+      const tb = (r.bx - q1.x_m) * wx + (r.bz - q1.z_m) * wz;
+      return tb >= -1e-9 && tb <= L2 + 1e-9;
+    }));
   }
 
   // ---- delte helpers: spanOfConn + effSpanOfConn (stige-aflastning) ----

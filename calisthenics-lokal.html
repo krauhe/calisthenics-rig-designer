@@ -1094,12 +1094,24 @@ function monkeyGeometry(design, connA, connB, spacing_m) {
   for (let k = 0; k < n; k++) {
     const t = off + k * sp;
     const ax = a1.x_m + ux * t, az = a1.z_m + uz * t;
-    const q = nearestOnB(ax, az);
-    rungs.push({ ax, az, bx: q.x, bz: q.z });
+    // fodpunktet på bar B — trinnet skal HÆFTE på selve baren (ikke dens
+    // forlængelse), ellers tegnes/faktureres trin ud i den blå luft, når en
+    // stolpe trækkes og barerne ikke længere er parallelle
+    const tb = (ax - b1.x_m) * vx + (az - b1.z_m) * vz;
+    if (tb < margin - 1e-9 || tb > Lb - margin + 1e-9) continue;
+    const bx = b1.x_m + vx * tb, bz = b1.z_m + vz * tb;
+    rungs.push({ ax, az, bx, bz, len: Math.hypot(bx - ax, bz - az) });
   }
+  if (!rungs.length) return null;
+  const lens = rungs.map(r => r.len);
   const hdiff = Math.abs((ca.height_m || 0) - (cb.height_m || 0));
   return {
-    ca, cb, rungs, count: n, rungLen: gap, gap, cross, hdiff,
+    ca, cb, rungs, count: rungs.length, rungLen: gap, gap, cross, hdiff,
+    lenMin: Math.min(...lens), lenMax: Math.max(...lens),
+    // roteret samling: barerne er ikke parallelle (> ~2°) — kan konstrueres
+    // med DREJELIGE beslag; trinlængderne varierer, og materialelisten skal
+    // fakturere svingbare koblinger i stedet for faste klemmer
+    angled: cross > 0.035,
     overlap: end - start,
     mid: { x: (pmx + qm.x) / 2, z: (pmz + qm.z) / 2 },
     y: Math.min(ca.height_m || 0, cb.height_m || 0),   // grebshøjde = laveste bar
@@ -1108,8 +1120,11 @@ function monkeyGeometry(design, connA, connB, spacing_m) {
 
 // Streng gyldighed til PLACERING (visning er mere tolerant, så en placeret
 // armgang ikke forsvinder bare fordi en stolpe flyttes lidt).
+// Ikke-parallelle barer er TILLADT (op til geometriens ~27°) — de kræver
+// blot drejelige beslag (g.angled); men hvert trin skal være i grebs-venlig
+// længde, og barerne skal sidde i nogenlunde samme højde.
 function monkeyPlacementValid(g) {
-  return !!g && g.cross <= 0.22 && g.gap >= 0.25 && g.gap <= 1.6
+  return !!g && g.lenMin >= 0.25 && g.lenMax <= 1.6
     && g.overlap >= 0.4 && g.hdiff <= 0.3;
 }
 
@@ -1635,6 +1650,7 @@ const da = {
   'site.monkey.heightMax': 'Maks (laveste bærende stolpe):',
   'site.monkey.swap': 'Byt retning (A↔B)',
   'site.monkey.weak': '⚠ Trinnene er for spinkle til designlasten — kortere trin eller kraftigere rør',
+  'site.monkey.angled': '↻ Roteret samling: barerne er ikke parallelle, så trinnene sidder skævt og i varierende længder. Kan bygges med drejelige beslag — fremgår af materialelisten.',
   'site.soil': 'Jordtype',
   'site.soil.hint': 'Hvor fast er jorden på stedet? Skalerer fundamentets stivhed i "blød stolpe"-vurderingen og Stolpe-analysen.',
   'site.soil.soft': 'Blød (muld/tørv)',
@@ -1671,6 +1687,7 @@ const da = {
   'mats.ladderKee': 'Stige: Kee-fittings (+ quick)',
   'mats.monkeyRungs': 'Armgang: 1" trin',
   'mats.monkeyKee': 'Armgang: klemme-beslag',
+  'mats.monkeySwivel': 'Armgang: drejelige beslag (roteret samling)',
   'mats.screws': 'Rustfri skruer / bolte',
   'mats.gravel': 'Småsten / ærtesten (bund)',
   'mats.gravelShort': 'småsten',
@@ -1856,6 +1873,7 @@ const en = {
   'site.monkey.heightMax': 'Max (lowest supporting post):',
   'site.monkey.swap': 'Swap direction (A↔B)',
   'site.monkey.weak': '⚠ The rungs are too slim for the design load — shorter rungs or heavier pipe',
+  'site.monkey.angled': '↻ Rotated joint: the bars are not parallel, so the rungs sit at an angle with varying lengths. Buildable with swivel clamps — listed in the materials list.',
   'site.soil': 'Soil type',
   'site.soil.hint': 'How firm is the ground on site? Scales the foundation stiffness in the "soft post" assessment and the Post analysis.',
   'site.soil.soft': 'Soft (topsoil/peat)',
@@ -1892,6 +1910,7 @@ const en = {
   'mats.ladderKee': 'Ladder: Kee fittings (+ quick)',
   'mats.monkeyRungs': 'Monkey bars: 1" rungs',
   'mats.monkeyKee': 'Monkey bars: clamp fittings',
+  'mats.monkeySwivel': 'Monkey bars: swivel clamps (rotated joint)',
   'mats.screws': 'Stainless screws / bolts',
   'mats.gravel': 'Gravel / pea shingle (base)',
   'mats.gravelShort': 'gravel',
@@ -3201,10 +3220,16 @@ const tabSite = {
           const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0' });
           const paintInfo = () => {
             const g = geo();
-            const weak = g && beam(Math.max(g.rungLen, 0.05), rungMat, 1, 0.25).pYield < refLoad;
+            // ved roteret samling varierer trinlængderne — vis interval + ↻,
+            // og bedøm styrken på det LÆNGSTE trin
+            const weak = g && beam(Math.max(g.lenMax, 0.05), rungMat, 1, 0.25).pYield < refLoad;
+            const lenTxt = !g ? '' : (g.angled
+              ? `${fmt(lenFromSI(g.lenMin, su), 2, lang)}–${fmt(lenFromSI(g.lenMax, su), 2, lang)} ${suTxt} ↻`
+              : `${fmt(lenFromSI(g.rungLen, su), 2, lang)} ${suTxt}`);
             clear(infoCell);
-            infoCell.append(g ? `${g.count} × ${fmt(lenFromSI(g.rungLen, su), 2, lang)} ${suTxt}${weak ? ' ⚠' : ''}` : '—');
-            infoCell.title = weak ? tt('site.monkey.weak') : '';
+            infoCell.append(g ? `${g.count} × ${lenTxt}${weak ? ' ⚠' : ''}` : '—');
+            infoCell.title = [weak ? tt('site.monkey.weak') : '', g && g.angled ? tt('site.monkey.angled') : '']
+              .filter(Boolean).join('\n');
             const mh = maxH();
             if (mh != null) { hInp.max = String(round(lenFromSI(mh, su))); hInp.title = `${tt('site.monkey.heightMax')} ${fmt(lenFromSI(mh, su), 2, lang)} ${suTxt}`; }
             if (document.activeElement !== hInp) hInp.value = g ? String(round(lenFromSI(g.y, su))) : '';
@@ -4169,16 +4194,19 @@ function computeMaterials(design) {
     for (let k = 0; k < rc; k++) addCut(ladderMat, width, lbl + 't' + (k + 1));
   });
 
-  // armgange (monkey bars): 1"-trin mellem to barer + 2 klemmer pr. trin
-  let monRungCount = 0, monRungLen = 0, monKee = 0, monkeyCount = 0;
+  // armgange (monkey bars): 1"-trin mellem to barer + 2 beslag pr. trin.
+  // Trin skæres i deres FAKTISKE længde (varierer ved roteret samling), og
+  // ikke-parallelle barer kræver drejelige beslag i stedet for faste klemmer.
+  let monRungCount = 0, monRungLen = 0, monKee = 0, monSwivel = 0, monkeyCount = 0;
   design.attachments.forEach(at => {
     if (at.type !== 'monkey') return;
     const g = monkeyGeometry(design, at.connA, at.connB, at.spacing_m);
     if (!g || !g.rungs.length) return;
     monkeyCount++;
     const lbl = monkeyLabelOf(design, at);
-    monRungCount += g.count; monRungLen += g.count * g.rungLen; monKee += g.count * 2;
-    for (let k = 0; k < g.count; k++) addCut(ladderMat, g.rungLen, lbl + 'g' + (k + 1));
+    monRungCount += g.count;
+    g.rungs.forEach((r, k) => { monRungLen += r.len; addCut(ladderMat, r.len, lbl + 'g' + (k + 1)); });
+    if (g.angled) monSwivel += g.count * 2; else monKee += g.count * 2;
   });
 
   // fundament — pr. stolpe (egen dybde + hul fra Kort)
@@ -4201,7 +4229,7 @@ function computeMaterials(design) {
     postMat, postCount, postTotalLen, buriedTotal, depth, postSide, hole,
     barGroups, cut, pipeConnCount,
     ladderCount, ladVert, ladRungLen, ladRungCount, ladKee,
-    monkeyCount, monRungCount, monRungLen, monKee,
+    monkeyCount, monRungCount, monRungLen, monKee, monSwivel,
     concVol, gravelVol, bags25, tarLitre,
   };
 }
@@ -4251,7 +4279,8 @@ const tabMaterials = {
     }
     if (M.monkeyCount > 0) {
       rows.push({ l: `${tt('mats.monkeyRungs')} (${M.monRungCount} ${tt('mats.pcs')})`, q: fm(M.monRungLen) });
-      rows.push({ l: tt('mats.monkeyKee'), q: `${M.monKee} ${tt('mats.pcs')}` });
+      if (M.monKee > 0) rows.push({ l: tt('mats.monkeyKee'), q: `${M.monKee} ${tt('mats.pcs')}` });
+      if (M.monSwivel > 0) rows.push({ l: tt('mats.monkeySwivel'), q: `${M.monSwivel} ${tt('mats.pcs')}` });
     }
     rows.push({ l: tt('mats.screws'), q: `~${32 + (M.ladRungCount + M.monRungCount) * 4} ${tt('mats.pcs')}` });
     rows.push({ l: tt('mats.gravel'), q: `${Math.round(M.gravelVol * 1000)} L` });
@@ -4470,7 +4499,8 @@ function printGuide(ctx) {
   }
   if (M.monkeyCount > 0) {
     rows.push([`${tt('mats.monkeyRungs')} (${M.monRungCount} ${tt('mats.pcs')})`, fm(M.monRungLen)]);
-    rows.push([tt('mats.monkeyKee'), `${M.monKee} ${tt('mats.pcs')}`]);
+    if (M.monKee > 0) rows.push([tt('mats.monkeyKee'), `${M.monKee} ${tt('mats.pcs')}`]);
+    if (M.monSwivel > 0) rows.push([tt('mats.monkeySwivel'), `${M.monSwivel} ${tt('mats.pcs')}`]);
   }
   rows.push([tt('mats.screws'), `~${32 + (M.ladRungCount + M.monRungCount) * 4} ${tt('mats.pcs')}`]);
   rows.push([tt('mats.gravel'), `${Math.round(M.gravelVol * 1000)} L`]);

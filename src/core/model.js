@@ -215,12 +215,24 @@ function monkeyGeometry(design, connA, connB, spacing_m) {
   for (let k = 0; k < n; k++) {
     const t = off + k * sp;
     const ax = a1.x_m + ux * t, az = a1.z_m + uz * t;
-    const q = nearestOnB(ax, az);
-    rungs.push({ ax, az, bx: q.x, bz: q.z });
+    // fodpunktet på bar B — trinnet skal HÆFTE på selve baren (ikke dens
+    // forlængelse), ellers tegnes/faktureres trin ud i den blå luft, når en
+    // stolpe trækkes og barerne ikke længere er parallelle
+    const tb = (ax - b1.x_m) * vx + (az - b1.z_m) * vz;
+    if (tb < margin - 1e-9 || tb > Lb - margin + 1e-9) continue;
+    const bx = b1.x_m + vx * tb, bz = b1.z_m + vz * tb;
+    rungs.push({ ax, az, bx, bz, len: Math.hypot(bx - ax, bz - az) });
   }
+  if (!rungs.length) return null;
+  const lens = rungs.map(r => r.len);
   const hdiff = Math.abs((ca.height_m || 0) - (cb.height_m || 0));
   return {
-    ca, cb, rungs, count: n, rungLen: gap, gap, cross, hdiff,
+    ca, cb, rungs, count: rungs.length, rungLen: gap, gap, cross, hdiff,
+    lenMin: Math.min(...lens), lenMax: Math.max(...lens),
+    // roteret samling: barerne er ikke parallelle (> ~2°) — kan konstrueres
+    // med DREJELIGE beslag; trinlængderne varierer, og materialelisten skal
+    // fakturere svingbare koblinger i stedet for faste klemmer
+    angled: cross > 0.035,
     overlap: end - start,
     mid: { x: (pmx + qm.x) / 2, z: (pmz + qm.z) / 2 },
     y: Math.min(ca.height_m || 0, cb.height_m || 0),   // grebshøjde = laveste bar
@@ -229,8 +241,11 @@ function monkeyGeometry(design, connA, connB, spacing_m) {
 
 // Streng gyldighed til PLACERING (visning er mere tolerant, så en placeret
 // armgang ikke forsvinder bare fordi en stolpe flyttes lidt).
+// Ikke-parallelle barer er TILLADT (op til geometriens ~27°) — de kræver
+// blot drejelige beslag (g.angled); men hvert trin skal være i grebs-venlig
+// længde, og barerne skal sidde i nogenlunde samme højde.
 function monkeyPlacementValid(g) {
-  return !!g && g.cross <= 0.22 && g.gap >= 0.25 && g.gap <= 1.6
+  return !!g && g.lenMin >= 0.25 && g.lenMax <= 1.6
     && g.overlap >= 0.4 && g.hdiff <= 0.3;
 }
 

@@ -58,16 +58,19 @@ function computeMaterials(design) {
     for (let k = 0; k < rc; k++) addCut(ladderMat, width, lbl + 't' + (k + 1));
   });
 
-  // armgange (monkey bars): 1"-trin mellem to barer + 2 klemmer pr. trin
-  let monRungCount = 0, monRungLen = 0, monKee = 0, monkeyCount = 0;
+  // armgange (monkey bars): 1"-trin mellem to barer + 2 beslag pr. trin.
+  // Trin skæres i deres FAKTISKE længde (varierer ved roteret samling), og
+  // ikke-parallelle barer kræver drejelige beslag i stedet for faste klemmer.
+  let monRungCount = 0, monRungLen = 0, monKee = 0, monSwivel = 0, monkeyCount = 0;
   design.attachments.forEach(at => {
     if (at.type !== 'monkey') return;
     const g = monkeyGeometry(design, at.connA, at.connB, at.spacing_m);
     if (!g || !g.rungs.length) return;
     monkeyCount++;
     const lbl = monkeyLabelOf(design, at);
-    monRungCount += g.count; monRungLen += g.count * g.rungLen; monKee += g.count * 2;
-    for (let k = 0; k < g.count; k++) addCut(ladderMat, g.rungLen, lbl + 'g' + (k + 1));
+    monRungCount += g.count;
+    g.rungs.forEach((r, k) => { monRungLen += r.len; addCut(ladderMat, r.len, lbl + 'g' + (k + 1)); });
+    if (g.angled) monSwivel += g.count * 2; else monKee += g.count * 2;
   });
 
   // fundament — pr. stolpe (egen dybde + hul fra Kort)
@@ -90,7 +93,7 @@ function computeMaterials(design) {
     postMat, postCount, postTotalLen, buriedTotal, depth, postSide, hole,
     barGroups, cut, pipeConnCount,
     ladderCount, ladVert, ladRungLen, ladRungCount, ladKee,
-    monkeyCount, monRungCount, monRungLen, monKee,
+    monkeyCount, monRungCount, monRungLen, monKee, monSwivel,
     concVol, gravelVol, bags25, tarLitre,
   };
 }
@@ -140,7 +143,8 @@ const tabMaterials = {
     }
     if (M.monkeyCount > 0) {
       rows.push({ l: `${tt('mats.monkeyRungs')} (${M.monRungCount} ${tt('mats.pcs')})`, q: fm(M.monRungLen) });
-      rows.push({ l: tt('mats.monkeyKee'), q: `${M.monKee} ${tt('mats.pcs')}` });
+      if (M.monKee > 0) rows.push({ l: tt('mats.monkeyKee'), q: `${M.monKee} ${tt('mats.pcs')}` });
+      if (M.monSwivel > 0) rows.push({ l: tt('mats.monkeySwivel'), q: `${M.monSwivel} ${tt('mats.pcs')}` });
     }
     rows.push({ l: tt('mats.screws'), q: `~${32 + (M.ladRungCount + M.monRungCount) * 4} ${tt('mats.pcs')}` });
     rows.push({ l: tt('mats.gravel'), q: `${Math.round(M.gravelVol * 1000)} L` });
