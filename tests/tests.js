@@ -243,6 +243,35 @@ function runTests() {
     }));
   }
 
+  // ---- materialeoptælling (computeMaterials — nu i kernen) ----
+  {
+    const d = buildPreset('square4');   // 4 stolper (2,5 m, dybde 1,0, hul 20), stige S1, avatar
+    const M = computeMaterials(d);
+    ok('mats: 4 stolper', M.postCount === 4);
+    near('mats: stolpelængde = 4 × (2,5 + 1,0)', M.postTotalLen, 14.0, 1e-9);
+    near('mats: nedgravet = 4 × 1,0', M.buriedTotal, 4.0, 1e-9);
+    // stigen binder til SAMME bar som Kort/3D (angle 0 → c1 i 2,4 m — ikke "den højeste")
+    near('mats: stige-rør = barhøjde + 0,5', M.ladVert, 2.9, 1e-9);
+    ok('mats: 5 stigetrin (hver 40 cm op til 2,4 m-baren)', M.ladRungCount === 5);
+    // beton: pr. stolpe (hul² − stolpe²)·(dybde − grus) + stigefod
+    const conc = 4 * (0.2 * 0.2 - 0.125 * 0.125) * (1.0 - GRAVEL_H) + 0.22 * 0.22 * 0.5;
+    near('mats: betonvolumen', M.concVol, conc, 1e-9);
+    // tjære: hele nedgravningen + TAR_TOP over jord (matcher print-vejledningen)
+    const tar = 4 * (4 * 0.125 * (TAR_TOP + 1.0) + 0.125 * 0.125);
+    near('mats: tjæremængde (L)', M.tarLitre, tar * 0.35, 1e-9);
+    ok('mats: skæreliste indeholder stolper og stige', !!M.cut['wood-125'] && !!M.cut['pipe-1']);
+  }
+  {
+    // armgangs-beslag: parallel → kryds-klemmer (crossover); roteret → justerbare
+    const d = buildPreset('long6');
+    const M = computeMaterials(d);
+    ok('mats: parallel armgang → kryds-klemmer', M.monKee > 0 && M.monSwivel === 0);
+    ok('mats: trin-længdesum = antal × 0,8', approx(M.monRungLen, M.monRungCount * 0.8, 1e-9));
+    d.posts.find(p => p.id === 'p4').z_m = 1.2;   // vrid c3 let → roteret samling
+    const M2 = computeMaterials(d);
+    ok('mats: roteret armgang → justerbare beslag', M2.monSwivel > 0);
+  }
+
   // ---- delte helpers: spanOfConn + effSpanOfConn (stige-aflastning) ----
   {
     const d = buildPreset('square4');

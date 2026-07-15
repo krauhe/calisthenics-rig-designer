@@ -84,7 +84,8 @@ calisthenics-rig-designer/
                       (labels, ladderBarOf, effSpanOfConn, monkeyGeometry,
                       monkeyMaxHeight — deles af Kort/3D/Materialer/Print)
       cutplan.js      skæreplan (bin-packing, stock-længde som parameter)
-      materials.js    materialekataloget (CATALOG) + sortering/farver
+      materials.js    materialekataloget (CATALOG) + computeMaterials()
+                      (indkøbs-/skæreliste — testet i tests/)
       presets.js      forslags-rigge (pull-up, firkant, lang/armgang)
       store.js        samlet tilstand + autosave + fortryd/gentag
       schema.js       schema-version + migrate()/fill() til gem/load
@@ -103,9 +104,7 @@ calisthenics-rig-designer/
 ```
 
 Ca. 25 små filer i stedet for én på 780 linjer. Hver fane kan forstås for sig.
-(Vite blev droppet igen — appen er build-fri; `build.py` er hele "byggetrinnet".
-Materialeoptællingen bor pt. i `ui/tabMaterials.js` (computeMaterials) — flyt til
-kernen hvis den skal testes.)
+(Vite blev droppet igen — appen er build-fri; `build.py` er hele "byggetrinnet".)
 
 ---
 
@@ -266,7 +265,9 @@ Du behøver ikke kunne koden – men nogle valg er dine:
 - [x] **Vite droppet** (2026-07-13): `src/` er klassiske scripts og appen er build-fri; `python build.py` genererer `index.html` + enkelt-filen. Node bruges kun til `npm test`.
 - [x] **Testsuiten genoplivet** (2026-07-13): kernen køres i en vm-kontekst (`npm test`, 81/81) og i browseren via `tests/run-tests.html` — begge fungerer med de klassiske scripts.
 - [x] **Code-review-fixes + armgangs-forbedringer** (2026-07-13): se `docs/code-review-2026-07-13.md` og `docs/plan-horisontal-stige.md` — bl.a. korrekt rør-gods pr. katalogmateriale, XSS-fix, delte helpers i `model.js`, M/S-labels, redigerbar armgangs-højde (klampet til laveste bærende stolpe), valgbart bar-par/retning, tjære-zone der matcher vejledningen, SW-cacheoprydning.
-- [ ] **Idéer/tilbage:** skrå armgang (progression), forskudte trin, PNG-ikoner (192/512) til iOS/Android-install, materialeoptælling flyttet til kernen + testet, tastaturadgang på kortet.
+- [x] **Materialeoptælling i kernen** (2026-07-15): `computeMaterials()` bor nu i `src/core/materials.js` og er dækket af tests (stolper, beton, tjære, stige-bar-valg, armgangs-beslag).
+- [x] **PWA-ikoner** (2026-07-15): `icon-192.png`/`icon-512.png` (genereret fra icon.svg) + maskable-entry i manifestet + `apple-touch-icon` — installation virker nu også på iOS/Android.
+- [ ] **Idéer/tilbage:** skrå armgang (progression), forskudte trin, tastaturadgang på kortet.
 
 **Live:** https://krauhe.github.io/calisthenics-rig-designer/ — `index.html` ER appen (genereres af build.py); `app.html` er kun en redirect-stub for gamle bogmærker.
 

@@ -2,14 +2,18 @@
 
 **Dato:** 2026-07-13 · **Omfang:** hele kodebasen (src/core, src/ui, build/test/PWA/infrastruktur) · **Metode:** tre parallelle, uafhængige gennemgange (kerne, UI, infrastruktur); alle fund er verificeret ved genlæsning af koden, og testkørslen er reproduceret.
 
-> **STATUS (2026-07-13, senere samme dag): UDBEDRET.** K1, alle Høj-fund, alle Mellem-fund
-> (undtagen M4's fundamentmodel-forbehold, som er accepteret som planlægningsoverslag, og
-> M9's PNG-ikoner, som kræver rasterisering) samt hovedparten af Lav-fundene er rettet.
-> Testsuiten kører igen: `npm test` og `tests/run-tests.html` — 81/81 består.
+> **STATUS (2026-07-13, senere samme dag): UDBEDRET.** K1, alle Høj-fund og alle
+> Mellem-fund (undtagen M4's fundamentmodel-forbehold, som er accepteret som
+> planlægningsoverslag) samt hovedparten af Lav-fundene er rettet.
+> Testsuiten kører igen: `npm test` og `tests/run-tests.html`.
 > Undtagelser/bevidste fravalg: M6's "render muterer uden commit" er afbødet via
 > input-sanering i `fill()` frem for commit-i-render; tilgængelighed er kun løftet
 > minimalt (aria-live på hjælpelinjen); PLAN.md's historiske afsnit står som historik
 > med korrigeret status-afsnit.
+>
+> **Opdatering 2026-07-15:** M9 lukket (PNG-ikoner 192/512 + maskable + apple-touch-icon);
+> testdæknings-punkt 9 lukket (computeMaterials flyttet til kernen og testet); Three.js
+> bundlet lokalt (vendor/) så 3D ikke afhænger af CDN. Suiten er nu 105/105.
 
 ## Resumé
 
