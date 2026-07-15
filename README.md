@@ -36,11 +36,12 @@ file, and **autosave** to `localStorage`.
 
 - **From the web (recommended):** open <https://krauhe.github.io/calisthenics-rig-designer/>.
   It's served by GitHub Pages straight from this repo's `main` branch — every push
-  redeploys automatically (~1 min). Three.js loads from a CDN, so you need to be online
-  the first time.
+  redeploys automatically (~1 min). Three.js is bundled in the repo
+  (`vendor/three.module.js`), so the 3D tab has no CDN dependency.
 - **Offline, single file:** double‑click [`calisthenics-lokal.html`](calisthenics-lokal.html)
-  — all HTML/CSS/JS bundled into one file. **Exception:** the 3D tab loads Three.js from a
-  CDN, so it needs internet the first time; everything else works fully offline.
+  — all HTML/CSS/JS bundled into one file. **Exception:** if the file is shared alone
+  (without the `vendor/` folder next to it), the 3D tab falls back to loading Three.js
+  from a CDN and needs internet; everything else works fully offline.
 - **Locally, multi‑file:** open [`index.html`](index.html) (loads the `src/` scripts).
 
 ## Develop
@@ -84,8 +85,8 @@ warranty disclaimer in the [GPLv3](LICENSE).)
 
 ## Tech
 
-Vanilla JS (framework‑free classic scripts) + Three.js (loaded from a CDN). No build step
-required to run.
+Vanilla JS (framework‑free classic scripts) + Three.js (bundled in `vendor/`, MIT‑licensed,
+with a CDN fallback). No build step required to run.
 
 ## License
 

@@ -3629,27 +3629,25 @@ function nextId(list, prefix) {
 // i ægte 3D — bygget til at ligne den oprindelige enkelt-fil-app
 // (calisthenics-3d.html): halvgennemsigtig jord så fundamentet ses (småsten,
 // beton, tjære-zone), Kee-beslag på rørene, og en LODRET stige der binder sig
-// til en vandret bar. Three.js hentes som ES-modul fra et CDN (kun når fanen
-// åbnes) og lægges på window, så det passer ind i den klassiske
+// til en vandret bar. Three.js hentes som ES-modul — FØRST fra den lokale
+// kopi (vendor/three.module.js, virker offline og uafhængigt af CDN),
+// dernæst fra unpkg-CDN som reserve (fx for den delte enkelt-fil uden
+// vendor-mappen). Lægges på window, så det passer ind i den klassiske
 // script-arkitektur. Egen lille bane-styring bruges i stedet for OrbitControls
 // (som ville kræve et importmap).
 
+const THREE_CDN = 'https://unpkg.com/three@0.160.0/build/three.module.js';
 let _threeP = null;
 function ensureThree() {
   if (window.__rigTHREE) return Promise.resolve(window.__rigTHREE);
   if (_threeP) return _threeP;
-  _threeP = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.type = 'module';
-    s.textContent =
-      "import * as T from 'https://unpkg.com/three@0.160.0/build/three.module.js';" +
-      "window.__rigTHREE = T; window.dispatchEvent(new Event('rig-three-ready'));";
-    window.addEventListener('rig-three-ready', () => resolve(window.__rigTHREE), { once: true });
-    s.addEventListener('error', () => reject(new Error('load')));
-    document.head.appendChild(s);
-    setTimeout(() => { if (!window.__rigTHREE) reject(new Error('timeout')); }, 20000);
-  });
-  // Fejlet/timet-out load må ikke caches for evigt — glem promisen, så næste
+  // absolut URL relativt til SIDEN (ikke scriptet), så det virker både for
+  // index.html, enkelt-filen og GitHub Pages' undermappe
+  const local = new URL('vendor/three.module.js', document.baseURI).href;
+  _threeP = import(local)
+    .catch(() => import(THREE_CDN))
+    .then(T => (window.__rigTHREE = T));
+  // Fejlet load må ikke caches for evigt — glem promisen, så næste
   // fanebesøg prøver igen (fx når nettet er tilbage).
   _threeP.catch(() => { _threeP = null; });
   return _threeP;
