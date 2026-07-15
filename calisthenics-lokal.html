@@ -1670,7 +1670,8 @@ const da = {
   'site.monkey.heightMax': 'Maks (laveste bærende stolpe):',
   'site.monkey.swap': 'Byt retning (A↔B)',
   'site.monkey.weak': '⚠ Trinnene er for spinkle til designlasten — kortere trin eller kraftigere rør',
-  'site.monkey.angled': '↻ Roteret samling: barerne er ikke parallelle, så trinnene sidder skævt og i varierende længder. Kan bygges med drejelige beslag — fremgår af materialelisten.',
+  'site.monkey.angled': '↻ Roteret samling: barerne er ikke parallelle, så trinnene sidder skævt og i varierende længder. Kan bygges med justerbare kryds-beslag — fremgår af materialelisten.',
+  'site.monkey.wood': '⚠ Mindst én af barerne er træ — kryds-klemmer (Kee) passer kun på rør. Brug rørbøjler/franske skruer i træet i stedet.',
   'site.soil': 'Jordtype',
   'site.soil.hint': 'Hvor fast er jorden på stedet? Skalerer fundamentets stivhed i "blød stolpe"-vurderingen og Stolpe-analysen.',
   'site.soil.soft': 'Blød (muld/tørv)',
@@ -1706,8 +1707,8 @@ const da = {
   'mats.ladderRungs': 'Stige: 1" trin',
   'mats.ladderKee': 'Stige: Kee-fittings (+ quick)',
   'mats.monkeyRungs': 'Armgang: 1" trin',
-  'mats.monkeyKee': 'Armgang: klemme-beslag',
-  'mats.monkeySwivel': 'Armgang: drejelige beslag (roteret samling)',
+  'mats.monkeyKee': 'Armgang: kryds-klemmer (crossover — trin i ens højde på rør)',
+  'mats.monkeySwivel': 'Armgang: justerbare kryds-beslag (roteret samling)',
   'mats.screws': 'Rustfri skruer / bolte',
   'mats.gravel': 'Småsten / ærtesten (bund)',
   'mats.gravelShort': 'småsten',
@@ -1894,7 +1895,8 @@ const en = {
   'site.monkey.heightMax': 'Max (lowest supporting post):',
   'site.monkey.swap': 'Swap direction (A↔B)',
   'site.monkey.weak': '⚠ The rungs are too slim for the design load — shorter rungs or heavier pipe',
-  'site.monkey.angled': '↻ Rotated joint: the bars are not parallel, so the rungs sit at an angle with varying lengths. Buildable with swivel clamps — listed in the materials list.',
+  'site.monkey.angled': '↻ Rotated joint: the bars are not parallel, so the rungs sit at an angle with varying lengths. Buildable with adjustable crossover clamps — listed in the materials list.',
+  'site.monkey.wood': '⚠ At least one of the bars is wood — crossover (Kee) clamps only fit pipes. Use pipe straps/coach screws in the wood instead.',
   'site.soil': 'Soil type',
   'site.soil.hint': 'How firm is the ground on site? Scales the foundation stiffness in the "soft post" assessment and the Post analysis.',
   'site.soil.soft': 'Soft (topsoil/peat)',
@@ -1930,8 +1932,8 @@ const en = {
   'mats.ladderRungs': 'Ladder: 1" rungs',
   'mats.ladderKee': 'Ladder: Kee fittings (+ quick)',
   'mats.monkeyRungs': 'Monkey bars: 1" rungs',
-  'mats.monkeyKee': 'Monkey bars: clamp fittings',
-  'mats.monkeySwivel': 'Monkey bars: swivel clamps (rotated joint)',
+  'mats.monkeyKee': 'Monkey bars: crossover clamps (rungs level on pipes)',
+  'mats.monkeySwivel': 'Monkey bars: adjustable crossover clamps (rotated joint)',
   'mats.screws': 'Stainless screws / bolts',
   'mats.gravel': 'Gravel / pea shingle (base)',
   'mats.gravelShort': 'gravel',
@@ -3251,9 +3253,12 @@ const tabSite = {
               ? `${fmt(lenFromSI(g.lenMin, su), 2, lang)}–${fmt(lenFromSI(g.lenMax, su), 2, lang)} ${suTxt} ↻`
               : `${fmt(lenFromSI(g.rungLen, su), 2, lang)} ${suTxt}`);
             clear(infoCell);
-            infoCell.append(g ? `${g.count} × ${lenTxt}${weak ? ' ⚠' : ''}` : '—');
-            infoCell.title = [weak ? tt('site.monkey.weak') : '', g && g.angled ? tt('site.monkey.angled') : '']
-              .filter(Boolean).join('\n');
+            // kryds-klemmer (Kee) passer kun på RØR — advar hvis en bar er træ
+            const woodSide = g && [g.ca, g.cb].some(c => connMat(c.material).kind === 'wood');
+            infoCell.append(g ? `${g.count} × ${lenTxt}${weak || woodSide ? ' ⚠' : ''}` : '—');
+            infoCell.title = [weak ? tt('site.monkey.weak') : '',
+              g && g.angled ? tt('site.monkey.angled') : '',
+              woodSide ? tt('site.monkey.wood') : ''].filter(Boolean).join('\n');
             const mh = maxH();
             if (mh != null) { hInp.max = String(round(lenFromSI(mh, su))); hInp.title = `${tt('site.monkey.heightMax')} ${fmt(lenFromSI(mh, su), 2, lang)} ${suTxt}`; }
             if (document.activeElement !== hInp) hInp.value = g ? String(round(lenFromSI(g.y, su))) : '';

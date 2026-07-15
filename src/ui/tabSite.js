@@ -646,9 +646,12 @@ const tabSite = {
               ? `${fmt(lenFromSI(g.lenMin, su), 2, lang)}–${fmt(lenFromSI(g.lenMax, su), 2, lang)} ${suTxt} ↻`
               : `${fmt(lenFromSI(g.rungLen, su), 2, lang)} ${suTxt}`);
             clear(infoCell);
-            infoCell.append(g ? `${g.count} × ${lenTxt}${weak ? ' ⚠' : ''}` : '—');
-            infoCell.title = [weak ? tt('site.monkey.weak') : '', g && g.angled ? tt('site.monkey.angled') : '']
-              .filter(Boolean).join('\n');
+            // kryds-klemmer (Kee) passer kun på RØR — advar hvis en bar er træ
+            const woodSide = g && [g.ca, g.cb].some(c => connMat(c.material).kind === 'wood');
+            infoCell.append(g ? `${g.count} × ${lenTxt}${weak || woodSide ? ' ⚠' : ''}` : '—');
+            infoCell.title = [weak ? tt('site.monkey.weak') : '',
+              g && g.angled ? tt('site.monkey.angled') : '',
+              woodSide ? tt('site.monkey.wood') : ''].filter(Boolean).join('\n');
             const mh = maxH();
             if (mh != null) { hInp.max = String(round(lenFromSI(mh, su))); hInp.title = `${tt('site.monkey.heightMax')} ${fmt(lenFromSI(mh, su), 2, lang)} ${suTxt}`; }
             if (document.activeElement !== hInp) hInp.value = g ? String(round(lenFromSI(g.y, su))) : '';
