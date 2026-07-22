@@ -14,6 +14,61 @@ const tabMaterials = {
     const fm = v => `${fmt(lenFromSI(v, su), 2, lang)} ${suTxt}`;
 
     container.append(el('h2', {}, tt('tab.materials')), el('p', { class: 'intro' }, tt('mats.intro')));
+
+    // Godstykkelsen er en egenskab ved rørtypen og ændres derfor ét sted for
+    // hele designet. Standardrør starter med katalogets dokumenterede værdi.
+    const pipes = sortLibrary(design.library).filter(m => m.kind === 'pipe');
+    if (pipes.length) {
+      const body = el('tbody', {});
+      pipes.forEach(pipe => {
+        const standard = findMaterial(pipe.id);
+        const maxWall = maxPipeWallMm(pipe);
+        const wallInp = el('input', {
+          type: 'number', step: '0.1', min: String(MIN_PIPE_WALL_MM), max: String(maxWall),
+          value: String(pipe.wall), class: 'pipe-wall-input',
+          title: `${MIN_PIPE_WALL_MM}–${fmt(maxWall, 1, lang)} mm`,
+          'aria-label': `${pipe.name}: ${tt('mat.wall')} (mm)`,
+        });
+        const updateWall = value => {
+          const wall = clampPipeWallMm(pipe, value, standard ? standard.wall : pipe.wall);
+          store.update(d => {
+            const m = d.library.find(x => x.id === pipe.id); if (!m) return;
+            m.wall = wall;
+            if (standard && Math.abs(wall - standard.wall) < 1e-9) delete m.wallCustom;
+            else m.wallCustom = true;
+          });
+          wallInp.value = String(wall);
+        };
+        wallInp.addEventListener('input', () => {
+          const value = parseFloat(wallInp.value);
+          if (!isNaN(value)) updateWall(value);
+        });
+        wallInp.addEventListener('change', () => updateWall(parseFloat(wallInp.value)));
+        const reset = standard
+          ? el('button', {
+              class: 'pipe-wall-reset', type: 'button',
+              title: tt('mats.pipeReset'), 'aria-label': tt('mats.pipeReset'),
+              onclick: () => { updateWall(standard.wall); ctx.rerender(); },
+            }, '↺')
+          : el('span', { class: 'pipe-wall-custom' }, tt('mats.pipeCustom'));
+        body.append(el('tr', {},
+          el('td', { class: 'pipe-spec-name' }, pipe.name),
+          el('td', { class: 'numc' }, `${fmt(pipe.od, 1, lang)} mm`),
+          el('td', { class: 'pipe-wall-cell' }, wallInp, el('span', {}, 'mm')),
+          el('td', { class: 'pipe-standard-cell' }, standard ? `${fmt(standard.wall, 1, lang)} mm` : '–', reset)));
+      });
+      container.append(el('section', { class: 'pipe-specs' },
+        el('div', { class: 'pipe-specs-head' },
+          el('h3', {}, tt('mats.pipeTitle')),
+          el('p', { class: 'mat-note' }, tt('mats.pipeHint'))),
+        el('div', { class: 'pipe-specs-scroll' }, el('table', { class: 'pipe-spec-table' },
+          el('thead', {}, el('tr', {},
+            el('th', {}, tt('mats.pipeName')),
+            el('th', {}, tt('mats.pipeOd')),
+            el('th', {}, tt('mat.wall')),
+            el('th', {}, tt('mats.pipeStandard')))), body))));
+    }
+
     if (!design.posts.length) {
       container.append(el('div', { class: 'empty-state empty-mats' },
         el('div', { class: 'material-ghost', 'aria-hidden': 'true' },
@@ -36,7 +91,7 @@ const tabMaterials = {
     for (const id of Object.keys(M.barGroups)) {
       const g = M.barGroups[id];
       const kind = g.mat.kind === 'wood' ? tt('mat.kind.wood') : tt('mat.kind.pipe');
-      rows.push({ l: `${g.mat.name} — ${kind}`, q: `${g.count} ${tt('mats.pcs')} · ${fm(g.totalLen)} ${tt('mats.total')}`, c: materialColor(g.mat) });
+      rows.push({ l: `${matLabel(g.mat, 'mm', lang)} — ${kind}`, q: `${g.count} ${tt('mats.pcs')} · ${fm(g.totalLen)} ${tt('mats.total')}`, c: materialColor(g.mat) });
     }
     if (M.pipeConnCount > 0) rows.push({ l: tt('mats.fittings'), q: `${M.pipeConnCount * 2} ${tt('mats.pcs')}` });
     if (M.ladderCount > 0) {

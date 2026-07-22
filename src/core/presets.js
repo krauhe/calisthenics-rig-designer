@@ -13,6 +13,7 @@ function buildPreset(id) {
   const d = defaultDesign();
   const pipe = { source: 'library', id: 'pipe-1' };
   const pipeBig = { source: 'library', id: 'pipe-1-4' };
+  const wood10 = { source: 'library', id: 'wood-10' };
   const post = (pid, x, z) => ({ id: pid, x_m: x, z_m: z, height_m: 2.5, depth_m: 1.0, hole_mm: 200, override: null });
   const conn = (cid, a, b, h, mat) => ({ id: cid, a, b, height_m: h, material: mat || pipe, onTop: false });
   const avatar = (x, z) => ({ id: 'av1', type: 'avatar', x_m: x, z_m: z, height_m: 1.8 });
@@ -24,12 +25,13 @@ function buildPreset(id) {
     d.connections = [conn('c1', 'p1', 'p2', 2.4)];
     d.attachments = [avatar(0.8, 0.6)];
   } else if (id === 'square4') {
-    // Firkant-rig: fire stolper, overliggere hele vejen rundt, dyp-bar lavt + stige.
-    d.posts = [post('p1', 0, 0), post('p2', 2.4, 0), post('p3', 2.4, 1.6), post('p4', 0, 1.6)];
+    // Firkant-rig fra eksempelfilen "Firkant-rig 4 stolper.json".
+    d.posts = [post('p1', 0, 0), post('p2', 2.1, 0), post('p3', 2.1, 1.6), post('p4', 0, 1.6)];
+    d.posts.forEach(p => { p.height_m = 3.0; });
     d.connections = [
-      conn('c1', 'p1', 'p2', 2.4),
-      conn('c2', 'p2', 'p3', 2.0),
-      conn('c3', 'p4', 'p3', 2.4, pipeBig),
+      conn('c1', 'p1', 'p2', 2.7),
+      conn('c2', 'p2', 'p3', 1.8),
+      conn('c3', 'p4', 'p3', 3.0, wood10),
       conn('c4', 'p1', 'p4', 1.3),
     ];
     d.attachments = [ladder('p1'), avatar(1.2, 0.8)];

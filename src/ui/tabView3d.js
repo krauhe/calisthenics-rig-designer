@@ -89,7 +89,14 @@ function build3d(THREE, host, design, ctx) {
   // Stolpe-label ligger fladt på jorden uden for stolpen og er STATISK.
   // Teksten vender UDAD (væk fra centrum), så den læses fra kameraet, der
   // altid ser riggen udefra. (dx,dz) = udadgående retning fra centrum.
-  const outwardLabelYawFor = (dx, dz) => Math.atan2(dx, dz);
+  const outwardLabelYawFor = (dx, dz) => Math.atan2(dx, dz) + Math.PI;
+  const connectionLabelYawFor = (dx, dz, outX, outZ) => {
+    const len = Math.hypot(dx, dz) || 1;
+    let yaw = Math.atan2(-dz, dx);                 // langside parallel med forbindelsen
+    const topX = dz / len, topZ = -dx / len;      // labelens top i grundretningen
+    if (topX * outX + topZ * outZ < 0) yaw += Math.PI;
+    return yaw;
+  };
   const postLabelDir = (p, idx) => postLabelDirOf(design, p, idx);   // delt med Kort (model.js)
   const pm = resolveMaterial(design, design.defaults.post.materialId);
   const POST = ((pm && (pm.side || pm.od)) || 125) / 1000;
@@ -283,11 +290,11 @@ function build3d(THREE, host, design, ctx) {
     const hl = makeLabel(fmtH(c.height_m));
     hl.position.set((A.x + B.x) / 2 + out.x * 0.3, c.height_m + 0.16, (A.z + B.z) / 2 + out.z * 0.3);
     group.add(hl);
-    // fast forbindelses-label på jorden (blå, par-navn). Statisk og vendt
-    // UDAD som stolpe-labels (samme helper), så den læses fra kameraet.
+    // Fast forbindelses-label på jorden (blå, par-navn). Langsiden følger
+    // forbindelsen; blandt de to parallelle retninger vælges den udadvendte.
     const fl = makeFlatLabel(connLabel(c), '#0b66c3', '#0b3a66', { shape: 'pill' });
     fl.position.set((A.x + B.x) / 2, 0.02, (A.z + B.z) / 2);
-    fl.rotation.y = outwardLabelYawFor(out.x, out.z);
+    fl.rotation.y = connectionLabelYawFor(B.x - A.x, B.z - A.z, out.x, out.z);
     group.add(fl);
   });
 

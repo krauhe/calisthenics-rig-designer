@@ -142,6 +142,7 @@ body { background: linear-gradient(180deg, #1b1d18 0%, #111310 44%, #0c0d0c 100%
 
 .map { flex: 1; min-width: 0; max-width: 500px; aspect-ratio: 520 / 440; display: block; background: #131c28; border: 1px solid var(--line); border-radius: 10px; touch-action: none; cursor: crosshair; overflow: hidden; }
 .map svg { display: block; width: 100%; height: 100%; }
+.map:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .map-help { margin-top: 8px; font-size: 12px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
 
 .sel-hint { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
@@ -175,6 +176,11 @@ body { background: linear-gradient(180deg, #1b1d18 0%, #111310 44%, #0c0d0c 100%
 .pdot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #b6986a; border: 1px solid #6b4f2a; vertical-align: middle; margin-right: 4px; }
 .adot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #8fa3c9; vertical-align: middle; margin-right: 4px; }
 .persons-tab { max-width: 320px; }
+.ladders-tab { max-width: 400px; }
+.ladder-dot { display: inline-block; width: 9px; height: 9px; border: 1px solid #0e7490; background: #67d3e8; vertical-align: middle; margin-right: 4px; }
+.conntab.full.dense th.delete-col, .conntab.full.dense td.delete-col { width: 30px; min-width: 30px; padding-inline: 2px; text-align: center; }
+.row-delete { width: 26px; height: 26px; display: inline-grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); font: 700 18px/1 system-ui, sans-serif; cursor: pointer; }
+.row-delete:hover, .row-delete:focus-visible { color: var(--danger); border-color: var(--danger-line); background: var(--danger-soft); outline: none; }
 .conntab { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 4px; }
 .conntab th { text-align: left; color: var(--muted); font-weight: 600; font-size: 10.5px; padding: 3px 4px; border-bottom: 1px solid var(--line); }
 .conntab td { padding: 4px 4px; border-bottom: 1px solid var(--line); }
@@ -199,6 +205,22 @@ body { background: linear-gradient(180deg, #1b1d18 0%, #111310 44%, #0c0d0c 100%
 .mat-list tr.sub td:first-child { padding-left: 24px; }
 .mat-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; vertical-align: baseline; box-shadow: 0 0 0 1px rgba(255,255,255,.14); }
 .mat-note { margin: 8px 0 4px; font-size: 11.5px; color: var(--muted); line-height: 1.45; max-width: 640px; }
+.pipe-specs { margin: 16px 0 22px; padding: 14px 16px; border-block: 1px solid var(--line); background: rgba(255,255,255,.018); }
+.pipe-specs-head { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.pipe-specs-head h3 { margin: 0; }
+.pipe-specs-head .mat-note { margin: 0; text-align: right; }
+.pipe-specs-scroll { overflow-x: auto; }
+.pipe-spec-table { width: 100%; margin-top: 10px; border-collapse: collapse; }
+.pipe-spec-table th, .pipe-spec-table td { padding: 7px 10px; border-top: 1px solid rgba(166,224,216,.1); text-align: left; white-space: nowrap; }
+.pipe-spec-table th { color: var(--muted); font-size: 11px; font-weight: 700; }
+.pipe-spec-name { font-weight: 700; }
+.pipe-wall-cell .pipe-wall-input { margin-right: 6px; }
+.pipe-wall-input { width: 76px; }
+.pipe-standard-cell { color: var(--muted); }
+.pipe-standard-cell .pipe-wall-reset { margin-left: 8px; }
+.pipe-wall-reset { width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--ink); cursor: pointer; }
+.pipe-wall-reset:hover { border-color: var(--accent); color: var(--accent); }
+.pipe-wall-custom { font-size: 11px; color: var(--muted); }
 .cut-h { margin-top: 22px; }
 .cutlist { max-width: 720px; }
 .cl-grp { margin-bottom: 14px; padding: 10px 12px 8px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; background: var(--surface-2); }
@@ -586,6 +608,9 @@ body { background: linear-gradient(180deg, #1b1d18 0%, #111310 44%, #0c0d0c 100%
 .save-menu-date { color: var(--muted); font-size: 11px; }
 .save-menu-del { font: inherit; font-size: 15px; line-height: 1; color: var(--muted); background: none; border: 0; border-radius: 7px; padding: 0 9px; cursor: pointer; }
 .save-menu-del:hover { color: #ff6b6b; background: rgba(225,29,29,.12); }
+.startup-warning { margin: 10px 0 0; padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid var(--danger-line); border-left: 4px solid var(--danger); border-radius: 7px; background: var(--danger-soft); color: var(--ink); font-size: 12.5px; line-height: 1.4; }
+.startup-warning button { flex: 0 0 28px; width: 28px; height: 28px; padding: 0; border: 0; background: transparent; color: var(--muted); font: 700 18px/1 system-ui, sans-serif; cursor: pointer; }
+.startup-warning button:hover { color: var(--danger); }
 
 /* ---- Print: byggevejledningen (#print-root) ---- */
 #print-root { display: none; }
@@ -596,6 +621,11 @@ body { background: linear-gradient(180deg, #1b1d18 0%, #111310 44%, #0c0d0c 100%
   #print-root h1 { font-size: 22px; margin: 0 0 2px; }
   #print-root h2 { font-size: 15px; margin: 14px 0 6px; border-bottom: 1.5px solid #333; padding-bottom: 3px; break-after: avoid; }
   #print-root .pr-sub { color: #444; margin: 0 0 10px; }
+  #print-root .pr-visuals { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 5mm; align-items: start; break-inside: avoid; }
+  #print-root .pr-visual { min-width: 0; }
+  #print-root .pr-visual h2 { margin-top: 0; }
+  #print-root .pr-map svg, #print-root .pr-3d-img { display: block; width: 100%; height: auto; max-height: 78mm; object-fit: contain; object-position: top left; border: 1px solid #999; border-radius: 4px; box-sizing: border-box; }
+  #print-root .pr-map svg { border: 0; }
   #print-root .pr-tab { width: 100%; border-collapse: collapse; break-inside: avoid; }
   #print-root .pr-tab th, #print-root .pr-tab td { border: 1px solid #999; padding: 4px 8px; text-align: left; font-size: 12px; }
   #print-root .pr-tab th { background: #eee; }

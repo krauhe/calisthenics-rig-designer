@@ -14,6 +14,13 @@
 > **Opdatering 2026-07-15:** M9 lukket (PNG-ikoner 192/512 + maskable + apple-touch-icon);
 > testdæknings-punkt 9 lukket (computeMaterials flyttet til kernen og testet); Three.js
 > bundlet lokalt (vendor/) så 3D ikke afhænger af CDN. Suiten er nu 105/105.
+>
+> **Opdatering 2026-07-22:** De resterende render-mutationer i Kort-, Stolpe- og
+> Bar-fanerne er fjernet; normalisering sker nu ved import eller som en eksplicit
+> brugerændring. Korrupt autosave vises som en advarsel efter sikkerhedskopiering,
+> Gem-menuen kan lukkes med Escape, og faner/kort/vigtige tabelinput har fået
+> tastatur- og ARIA-understøttelse. Bygningen stopper nu tydeligt ved utilsigtet ESM
+> i stedet for at generere to forskelligt defekte appvarianter. Suiten er 118/118.
 
 ## Resumé
 

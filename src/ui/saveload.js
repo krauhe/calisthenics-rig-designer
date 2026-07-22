@@ -20,7 +20,7 @@ function fileBar(ctx) {
   const { design, store } = ctx;
   const tt = k => ctx.t(k, ctx.lang);
 
-  const nameInp = el('input', { type: 'text', class: 'name-inp', value: design.meta.name || '', title: tt('file.name') });
+  const nameInp = el('input', { type: 'text', class: 'name-inp', value: design.meta.name || '', title: tt('file.name'), 'aria-label': tt('file.name') });
   nameInp.addEventListener('input', () => store.update(d => { d.meta.name = nameInp.value; }));
 
   // Skeln "filen er fra en nyere appversion" fra "ugyldig fil" i fejlbeskeden.
@@ -75,19 +75,29 @@ function fileBar(ctx) {
   }
 
   let menu = null;
-  function closeMenu() { if (menu) { menu.remove(); menu = null; document.removeEventListener('pointerdown', onDocDown, true); } }
+  function closeMenu() {
+    if (!menu) return;
+    menu.remove(); menu = null;
+    document.removeEventListener('pointerdown', onDocDown, true);
+    document.removeEventListener('keydown', onMenuKeyDown);
+    openBtn.setAttribute('aria-expanded', 'false');
+  }
   function onDocDown(e) { if (menu && !menu.contains(e.target) && e.target !== openBtn) closeMenu(); }
+  function onMenuKeyDown(e) {
+    if (e.key !== 'Escape' || !menu) return;
+    e.preventDefault(); closeMenu(); openBtn.focus();
+  }
   function toggleMenu() {
     if (menu) { closeMenu(); return; }
     const list = readSaved();
-    menu = el('div', { class: 'save-menu' });
+    menu = el('div', { class: 'save-menu', role: 'menu' });
     if (!list.length) menu.append(el('div', { class: 'save-menu-empty' }, tt('file.noSaved')));
     list.forEach(s => {
       const when = new Date(s.savedAt || 0);
       const row = el('div', { class: 'save-menu-row' },
-        el('button', { class: 'save-menu-name', type: 'button', title: when.toLocaleString() },
+        el('button', { class: 'save-menu-name', type: 'button', role: 'menuitem', title: when.toLocaleString() },
           s.name, el('span', { class: 'save-menu-date' }, when.toLocaleDateString())),
-        el('button', { class: 'save-menu-del', type: 'button', title: `${tt('file.deleteConfirm')} "${s.name}"` }, '×'));
+        el('button', { class: 'save-menu-del', type: 'button', role: 'menuitem', title: `${tt('file.deleteConfirm')} "${s.name}"`, 'aria-label': `${tt('file.deleteConfirm')} "${s.name}"` }, '×'));
       row.querySelector('.save-menu-name').addEventListener('click', () => {
         if (!confirm(`${tt('file.openConfirm')}\n\n"${s.name}"`)) return;
         try {
@@ -109,7 +119,9 @@ function fileBar(ctx) {
     const r = openBtn.getBoundingClientRect(), pr = openBtn.parentElement.getBoundingClientRect();
     menu.style.left = (r.left - pr.left) + 'px';
     menu.style.top = (r.bottom - pr.top + 4) + 'px';
+    openBtn.setAttribute('aria-expanded', 'true');
     document.addEventListener('pointerdown', onDocDown, true);
+    document.addEventListener('keydown', onMenuKeyDown);
   }
 
   // ---- Forslags-/skabelon-vælger: erstatter tegningen med en færdig rig ----
@@ -130,7 +142,7 @@ function fileBar(ctx) {
   });
 
   const saveBtn = el('button', { class: 'btn-sm', type: 'button', title: tt('file.saveLocalHint'), onclick: doSaveLocal }, tt('file.saveLocal'));
-  const openBtn = el('button', { class: 'btn-sm', type: 'button', title: tt('file.openLocalHint'), onclick: toggleMenu }, tt('file.openLocal'));
+  const openBtn = el('button', { class: 'btn-sm', type: 'button', title: tt('file.openLocalHint'), 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: toggleMenu }, tt('file.openLocal'));
 
   return el('div', { class: 'filebar' },
     nameInp,

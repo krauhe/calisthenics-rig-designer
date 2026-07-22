@@ -37,7 +37,7 @@ function defaultDesign() {
       avatarHeight_m: 1.80,  // standard personhøjde (for nye avatarer)
       ladderWidth_m: 0.5,
       refLoad_kg: 120,    // designlast pr. bar (til kritisk-markering på kortet)
-      pipeWall_mm: 3.2,   // antaget rør-godstykkelse for ALLE rør (alm. galv. vandrør, EN10255 medium)
+      pipeWall_mm: 3.2,   // legacy-fallback for importerede specialrør uden egen godstykkelse
       monkeySpacing_m: 0.33,  // trinafstand for armgang (monkey bars)
       soil: 'normal',     // jordtype: 'soft' | 'normal' | 'firm' — skalerer fundamentstivheden
     },
@@ -125,6 +125,43 @@ function ladderBarOf(design, at) {
   }
   const a = dirTo(best);
   return { conn: best, height: best.height_m, dx: Math.cos(a), dz: Math.sin(a) };
+}
+
+// Beregn hele konsekvensen af en sletning, inden modellen ændres. Det gør det
+// muligt at advare brugeren og sikrer, at ingen attachments efterlades uden
+// deres bærende stolpe eller forbindelse.
+function deletionPlan(design, kind, id) {
+  const postIds = new Set();
+  const connectionIds = new Set();
+  const attachmentIds = new Set();
+
+  if (kind === 'post' && design.posts.some(p => p.id === id)) postIds.add(id);
+  else if (kind === 'conn' && design.connections.some(c => c.id === id)) connectionIds.add(id);
+  else if (['ladder', 'monkey', 'avatar'].includes(kind)
+    && design.attachments.some(a => a.id === id && a.type === kind)) attachmentIds.add(id);
+
+  for (const c of design.connections) {
+    if (postIds.has(c.a) || postIds.has(c.b)) connectionIds.add(c.id);
+  }
+  for (const at of design.attachments) {
+    if (postIds.has(at.postId)) attachmentIds.add(at.id);
+    if (at.type === 'monkey' && (connectionIds.has(at.connA) || connectionIds.has(at.connB))) attachmentIds.add(at.id);
+    if (at.type === 'ladder') {
+      const bar = ladderBarOf(design, at);
+      if (bar && connectionIds.has(bar.conn.id)) attachmentIds.add(at.id);
+    }
+  }
+  return { kind, id, postIds: [...postIds], connectionIds: [...connectionIds], attachmentIds: [...attachmentIds] };
+}
+
+function applyDeletion(design, plan) {
+  const posts = new Set(plan.postIds || []);
+  const connections = new Set(plan.connectionIds || []);
+  const attachments = new Set(plan.attachmentIds || []);
+  design.posts = design.posts.filter(p => !posts.has(p.id));
+  design.connections = design.connections.filter(c => !connections.has(c.id));
+  design.attachments = design.attachments.filter(a => !attachments.has(a.id));
+  return design;
 }
 
 // Effektiv (bærende) spændvidde: en stige der binder til baren virker som et

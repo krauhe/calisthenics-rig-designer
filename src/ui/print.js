@@ -64,13 +64,36 @@ function printMapSvg(design) {
   return `<svg viewBox="0 0 ${Wp} ${Hp}" width="100%" xmlns="http://www.w3.org/2000/svg" style="background:#fff;border:1px solid #999;border-radius:4px">${svg}</svg>`;
 }
 
-function printGuide(ctx) {
+// Render den samme scene som 3D-fanen i et midlertidigt offscreen-element og
+// frys den som PNG. preserveDrawingBuffer er allerede slået til i build3d().
+async function print3dPng(design, ctx) {
+  let host = null;
+  try {
+    const THREE = await ensureThree();
+    host = el('div', { class: 'print-3d-render-host' });
+    host.style.cssText = 'position:fixed;left:-12000px;top:0;width:1200px;height:750px;pointer-events:none;z-index:-1;';
+    document.body.append(host);
+    build3d(THREE, host, design, ctx);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const canvas = host.querySelector('canvas');
+    if (!canvas || canvas.width < 2 || canvas.height < 2) throw new Error('3D-canvas blev ikke renderet');
+    return canvas.toDataURL('image/png');
+  } catch (err) {
+    console.error('3D-printvisning fejlede:', err);
+    return '';
+  } finally {
+    if (host) host.remove();
+  }
+}
+
+async function printGuide(ctx) {
   // Hent designet fra store'en — ctx.design kan være et løsrevet (stale)
   // objekt efter fortryd/gentag, der erstatter selve design-objektet.
   const design = ctx.store.getDesign(), lang = ctx.lang;
   const tt = k => ctx.t(k, lang);
   if (!design.posts.length) { alert(tt('mats.empty')); return; }
   const M = computeMaterials(design);
+  const view3dPng = await print3dPng(design, ctx);
   // længder i kortets valgte enhed (som på Kort/Materialer)
   const su = (design.units.site && design.units.site.len) || 'm';
   const suTxt = su === 'ft' ? tt('unit.ft') : tt('unit.m');
@@ -85,8 +108,17 @@ function printGuide(ctx) {
     el('h1', {}, design.meta.name || tt('app.title')),
     el('p', { class: 'pr-sub' }, `${tt('app.title')} — ${tt('print.subtitle')} · ${tt('print.date')}: ${new Date().toLocaleDateString()}`));
 
-  // ---- tegning ----
-  root.append(el('h2', {}, tt('print.mapTitle')), el('div', { html: printMapSvg(design) }));
+  // ---- tegninger: grundplan og fast 3D-kameravinkel ----
+  const visuals = el('div', { class: 'pr-visuals' },
+    el('section', { class: 'pr-visual' },
+      el('h2', {}, tt('print.mapTitle')),
+      el('div', { class: 'pr-map', html: printMapSvg(design) })),
+    el('section', { class: 'pr-visual' },
+      el('h2', {}, tt('print.3dTitle')),
+      view3dPng
+        ? el('img', { class: 'pr-3d-img', src: view3dPng, alt: tt('print.3dTitle') })
+        : el('p', { class: 'pr-note' }, tt('print.3dFailed'))));
+  root.append(visuals);
 
   // ---- stolpetabel ----
   const postHeightOf = p => postHeightOfD(design, p);
@@ -115,7 +147,7 @@ function printGuide(ctx) {
         const span = (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0;
         return el('tr', {},
           el('td', {}, [postLetter(c.a), postLetter(c.b)].sort().join('–')),
-          el('td', {}, connMat(c.material).name),
+          el('td', {}, matLabel(connMat(c.material), 'mm', lang)),
           el('td', {}, fm(c.height_m)), el('td', {}, fm(span)));
       }))));
 
@@ -124,7 +156,7 @@ function printGuide(ctx) {
   rows.push([`${M.postMat.name} (${tt('mats.posts')})`, `${M.postCount} ${tt('mats.pcs')} · ${fm(M.postTotalLen)} ${tt('mats.total')}`]);
   for (const id of Object.keys(M.barGroups)) {
     const g = M.barGroups[id];
-    rows.push([g.mat.name, `${g.count} ${tt('mats.pcs')} · ${fm(g.totalLen)} ${tt('mats.total')}`]);
+    rows.push([matLabel(g.mat, 'mm', lang), `${g.count} ${tt('mats.pcs')} · ${fm(g.totalLen)} ${tt('mats.total')}`]);
   }
   if (M.pipeConnCount > 0) rows.push([tt('mats.fittings'), `${M.pipeConnCount * 2} ${tt('mats.pcs')}`]);
   if (M.ladderCount > 0) {
@@ -168,6 +200,10 @@ function printGuide(ctx) {
   root.append(el('p', { class: 'pr-note' }, tt('disclaimer')));
 
   document.body.append(root);
+  const printImg = root.querySelector('.pr-3d-img');
+  if (printImg && printImg.decode) {
+    try { await printImg.decode(); } catch (_) {}
+  }
   const cleanup = () => { root.remove(); window.removeEventListener('afterprint', cleanup); };
   window.addEventListener('afterprint', cleanup);
   window.print();

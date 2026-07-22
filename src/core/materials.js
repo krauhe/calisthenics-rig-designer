@@ -17,6 +17,19 @@ const CATALOG = [
   { id: 'wood-15',  name: '15×15 træ',     kind: 'wood', side: 150,       E: 10e9,  sRe: 10e6,  sRm: 24e6  },
 ];
 
+const MIN_PIPE_WALL_MM = 0.5;
+
+// Et rør skal have en positiv indvendig diameter. Bruges både ved import og
+// i materiale-editoren, så en tastefejl ikke bliver regnet som en massiv stang.
+function maxPipeWallMm(material) {
+  return Math.max(MIN_PIPE_WALL_MM, (material.od || 0) / 2 - 0.1);
+}
+
+function clampPipeWallMm(material, value, fallback) {
+  const v = Number.isFinite(Number(value)) ? Number(value) : fallback;
+  return Math.min(maxPipeWallMm(material), Math.max(MIN_PIPE_WALL_MM, v));
+}
+
 // Slå et katalog-/bibliotekselement op på id.
 function findMaterial(id, library = CATALOG) {
   return library.find(m => m.id === id) || null;

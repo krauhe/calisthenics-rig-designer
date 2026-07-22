@@ -99,11 +99,15 @@ function fill(d) {
   merged.site.avatarHeight_m = atLeast(merged.site.avatarHeight_m, 0.3, base.site.avatarHeight_m);
   merged.site.ladderWidth_m = atLeast(merged.site.ladderWidth_m, 0.05, base.site.ladderWidth_m);
   merged.site.refLoad_kg = atLeast(merged.site.refLoad_kg, 0, base.site.refLoad_kg);
-  // Global rør-godstykkelse er en RESERVE-antagelse: den udfylder kun rør
-  // UDEN eget gods. Katalogets dokumenterede værdier (fx 2,6 mm for 3/4",
-  // EN 10255 medium) og brugerens egne rør bevares.
+  // Den gamle globale værdi beholdes som migreringsfallback for importerede
+  // specialrør uden gods. Standardrør har egne dokumenterede værdier.
   merged.site.pipeWall_mm = atLeast(merged.site.pipeWall_mm, 0.5, base.site.pipeWall_mm);
-  merged.library.forEach(m => { if (m.kind === 'pipe' && !(m.wall > 0)) m.wall = merged.site.pipeWall_mm; });
+  merged.library.forEach(m => {
+    if (m.kind !== 'pipe') return;
+    const standard = findMaterial(m.id);
+    const fallback = standard ? standard.wall : merged.site.pipeWall_mm;
+    m.wall = clampPipeWallMm(m, m.wall, fallback);
+  });
   merged.site.monkeySpacing_m = atLeast(merged.site.monkeySpacing_m, 0.15, base.site.monkeySpacing_m);
   if (!SOIL_FACTORS[merged.site.soil]) merged.site.soil = base.site.soil;
   // hul/betonklods kan aldrig være mindre end stolpens eget tværsnit
@@ -123,7 +127,12 @@ function fill(d) {
   // forbindelser skal pege på eksisterende stolper
   const postIds = new Set(merged.posts.map(p => p.id));
   merged.connections = merged.connections.filter(c => postIds.has(c.a) && postIds.has(c.b) && c.id != null);
-  merged.connections.forEach(c => { c.height_m = atLeast(c.height_m, 0, merged.site.connHeight_m); });
+  const postById = Object.fromEntries(merged.posts.map(p => [p.id, p]));
+  const postHeight = p => p.height_m != null ? p.height_m : merged.site.postHeight_m;
+  merged.connections.forEach(c => {
+    const maxHeight = Math.min(postHeight(postById[c.a]), postHeight(postById[c.b]));
+    c.height_m = Math.min(atLeast(c.height_m, 0, merged.site.connHeight_m), maxHeight);
+  });
   // attachments: stiger/personer skal pege på noget der findes
   merged.attachments = merged.attachments.filter(a =>
     a.type !== 'ladder' || postIds.has(a.postId));
@@ -148,7 +157,15 @@ function mergeCatalog(lib) {
   for (const c of CATALOG) {
     const i = out.findIndex(m => m.id === c.id);
     if (i < 0) out.push({ ...c, builtin: true });
-    else if (out[i].builtin) out[i] = { ...c, builtin: true };
+    else if (out[i].builtin) {
+      // En eksplicit bruger-overstyring af gods skal overleve genindlæsning,
+      // mens alle øvrige data på indbyggede materialer fortsat følger kataloget.
+      const customWall = out[i].wallCustom === true
+        ? clampPipeWallMm(c, out[i].wall, c.wall)
+        : c.wall;
+      out[i] = { ...c, builtin: true, wall: customWall };
+      if (customWall !== c.wall) out[i].wallCustom = true;
+    }
   }
   return out;
 }

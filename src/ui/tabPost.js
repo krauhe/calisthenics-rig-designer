@@ -19,7 +19,6 @@ const tabPost = {
     // Hullets sidemål kan ikke være mindre end stolpens sidemål/diameter.
     const matPost = resolveMaterial(design, a.materialId);
     const postSideMm = matPost.kind === 'wood' ? matPost.side : matPost.od;
-    if (a.hole_mm < postSideMm) a.hole_mm = postSideMm;
     const holeToMm = v => u.dim === 'in' ? v * 25.4 : v * 10;
     const holeFromMm = mm => Math.round((u.dim === 'in' ? mm / 25.4 : mm / 10) * 100) / 100;
     const holeInp = el('input', { type: 'number', step: u.dim === 'in' ? '0.5' : '1',

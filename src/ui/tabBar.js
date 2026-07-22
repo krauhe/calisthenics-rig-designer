@@ -23,8 +23,6 @@ const tabBar = {
     const legend = el('div', { class: 'legend' });
 
     const MIN_SPAN = 0.1;
-    if (!(a.span_m >= MIN_SPAN)) a.span_m = MIN_SPAN;
-    a.fixity = Math.min(1, Math.max(0, a.fixity));
     const spanToSI = v => lenToSI(v, u.len);
     const spanFromSI = m => round(lenFromSI(m, u.len));
     const spanInp = el('input', {

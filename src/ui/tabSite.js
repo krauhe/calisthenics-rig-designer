@@ -7,8 +7,6 @@ const W = 520, H = 440;
 const MIN_K = 12, MAX_K = 400;
 const MIN_SITE_GRID_M = 0.01;
 const MIN_LADDER_WIDTH_M = 0.05;
-const MIN_POST_HEIGHT_M = 0.1;
-const MIN_AVATAR_HEIGHT_M = 0.3;
 
 let tool = 'select';
 let selectedPost = null;
@@ -28,41 +26,6 @@ const TOOLS = [
   ['avatar', '🧍', 'tool.avatar'],
   ['delete', '🗑', 'tool.delete'],
 ];
-
-function nonNegativeNumber(v, fallback = 0) {
-  return typeof v === 'number' && isFinite(v) ? Math.max(0, v) : fallback;
-}
-
-function sanitizeSiteDesign(design) {
-  design.site.grid_m = Math.max(nonNegativeNumber(design.site.grid_m, 0.125), MIN_SITE_GRID_M);
-  design.site.connHeight_m = nonNegativeNumber(design.site.connHeight_m, 2.0);
-  design.site.postHeight_m = Math.max(nonNegativeNumber(design.site.postHeight_m, 3.0), MIN_POST_HEIGHT_M);
-  design.site.avatarHeight_m = Math.max(nonNegativeNumber(design.site.avatarHeight_m, 1.8), MIN_AVATAR_HEIGHT_M);
-  design.site.ladderWidth_m = Math.max(nonNegativeNumber(design.site.ladderWidth_m, 0.5), MIN_LADDER_WIDTH_M);
-  design.site.refLoad_kg = nonNegativeNumber(design.site.refLoad_kg, 120);
-  design.site.pipeWall_mm = Math.max(nonNegativeNumber(design.site.pipeWall_mm, 3.2), 0.5);
-  // reserve-antagelse: kun rør UDEN eget gods — katalogets dokumenterede værdier bevares
-  design.library.forEach(m => { if (m.kind === 'pipe' && !(m.wall > 0)) m.wall = design.site.pipeWall_mm; });
-  design.site.monkeySpacing_m = Math.max(nonNegativeNumber(design.site.monkeySpacing_m, 0.33), 0.15);
-  if (!SOIL_FACTORS[design.site.soil]) design.site.soil = 'normal';
-  const pmS = resolveMaterial(design, design.defaults.post.materialId);
-  const postSideMmS = pmS ? (pmS.kind === 'wood' ? pmS.side : pmS.od) : 125;
-  design.posts.forEach(p => {
-    if (p.height_m != null) p.height_m = Math.max(nonNegativeNumber(p.height_m, design.site.postHeight_m), MIN_POST_HEIGHT_M);
-    if (p.depth_m != null) p.depth_m = Math.max(nonNegativeNumber(p.depth_m, design.defaults.post.depth_m), 0.1);
-    if (p.hole_mm != null) p.hole_mm = Math.max(nonNegativeNumber(p.hole_mm, design.defaults.post.hole_mm), postSideMmS);
-  });
-  design.connections.forEach(c => {
-    c.height_m = nonNegativeNumber(c.height_m, design.site.connHeight_m);
-  });
-  design.attachments.forEach(a => {
-    if (a.type === 'ladder') a.width_m = Math.max(nonNegativeNumber(a.width_m, design.site.ladderWidth_m), MIN_LADDER_WIDTH_M);
-    if (a.type === 'avatar') a.height_m = Math.max(nonNegativeNumber(a.height_m, design.site.avatarHeight_m), MIN_AVATAR_HEIGHT_M);
-    if (a.type === 'monkey') a.spacing_m = Math.max(nonNegativeNumber(a.spacing_m, design.site.monkeySpacing_m), 0.15);
-  });
-  design.attachments = design.attachments.filter(a => a.type !== 'monkey'
-    || (design.connections.some(c => c.id === a.connA) && design.connections.some(c => c.id === a.connB)));
-}
 
 // Knap-ikon der matcher musecursoren for hvert værktøj (lille inline-SVG).
 function toolIcon(t) {
@@ -105,9 +68,7 @@ const tabSite = {
     }
     const su = (design.units.site && design.units.site.len) || 'm';
     const suTxt = su === 'ft' ? tt('unit.ft') : tt('unit.m');
-    sanitizeSiteDesign(design);
-
-    const mapBox = el('div', { class: 'map' });
+    const mapBox = el('div', { class: 'map', role: 'application', tabindex: '0', 'aria-label': tt('site.map.aria') });
     const selPanel = el('div', { class: 'conntable-area side' });
     const help = el('div', { class: 'map-help', 'aria-live': 'polite' });
 
@@ -121,6 +82,7 @@ const tabSite = {
     const postSideM = () => { const m = resolveMaterial(design, design.defaults.post.materialId); return (m.kind === 'wood' ? m.side : m.od) / 1000; };
     const connMat = ref => connMatOf(design, ref);
     const colorOf = ref => materialColor(connMat(ref));   // blå = rør, brun = træ
+    // Hold Kort-tabellen kompakt; fulde rørdata vises/redigeres under Materialer.
     const libOpts = () => sortLibrary(design.library).map(m => [m.id, m.name]);
     const byPost = () => Object.fromEntries(design.posts.map(p => [p.id, p]));
     const postLetter = id => postLetterOf(design, id);
@@ -459,6 +421,49 @@ const tabSite = {
       });
     }
     const stopProp = e => e.stopPropagation();
+    const clearDeletedSelections = () => {
+      if (selectedPost && !design.posts.some(p => p.id === selectedPost)) selectedPost = null;
+      if (selectedConn && !design.connections.some(c => c.id === selectedConn)) selectedConn = null;
+      if (selectedLadder && !design.attachments.some(a => a.id === selectedLadder)) selectedLadder = null;
+      if (selectedMonkey && !design.attachments.some(a => a.id === selectedMonkey)) selectedMonkey = null;
+      if (selectedAvatar && !design.attachments.some(a => a.id === selectedAvatar)) selectedAvatar = null;
+    };
+    const deleteLabel = (kind, id) => {
+      if (kind === 'post') return `${tt('site.delete.post')} ${postLetter(id)}`;
+      if (kind === 'conn') { const c = design.connections.find(x => x.id === id); return `${tt('site.delete.connection')} ${c ? connLabel(c) : '?'}`; }
+      const at = design.attachments.find(a => a.id === id);
+      if (kind === 'ladder') return `${tt('site.delete.ladder')} ${at ? ladderLabelOf(design, at) : '?'}`;
+      if (kind === 'monkey') return `${tt('site.delete.monkey')} ${at ? monkeyLabelOf(design, at) : '?'}`;
+      const avatars = design.attachments.filter(a => a.type === 'avatar');
+      return `${tt('site.delete.person')} ${Math.max(1, avatars.findIndex(a => a.id === id) + 1)}`;
+    };
+    const countText = (n, one, many) => `${n} ${tt(n === 1 ? one : many)}`;
+    function deleteElement(kind, id) {
+      const plan = deletionPlan(design, kind, id);
+      if (!plan.postIds.length && !plan.connectionIds.length && !plan.attachmentIds.length) return;
+      const removedAttachments = design.attachments.filter(a => plan.attachmentIds.includes(a.id));
+      const details = [];
+      if (kind === 'post' && plan.connectionIds.length) details.push(countText(plan.connectionIds.length, 'site.delete.connection.one', 'site.delete.connection.many'));
+      const dependentAttachments = removedAttachments.filter(a => !(a.id === id && a.type === kind));
+      for (const type of ['ladder', 'monkey', 'avatar']) {
+        const n = dependentAttachments.filter(a => a.type === type).length;
+        if (n) details.push(countText(n, `site.delete.${type}.one`, `site.delete.${type}.many`));
+      }
+      if (details.length) {
+        const message = `${tt('site.delete.confirm')} ${deleteLabel(kind, id)}?\n\n${tt('site.delete.also')}\n• ${details.join('\n• ')}\n\n${tt('site.delete.undo')}`;
+        if (!window.confirm(message)) return;
+      }
+      store.update(d => applyDeletion(d, deletionPlan(d, kind, id)));
+      clearDeletedSelections();
+      redraw(); renderPanel();
+    }
+    const deleteButton = (kind, id) => {
+      const label = deleteLabel(kind, id);
+      const btn = el('button', { class: 'row-delete', type: 'button', title: `${tt('site.delete.button')}: ${label}`, 'aria-label': `${tt('site.delete.button')}: ${label}` }, '×');
+      btn.addEventListener('click', e => { e.stopPropagation(); deleteElement(kind, id); });
+      btn.addEventListener('pointerdown', stopProp);
+      return btn;
+    };
     // Sat af renderPanel: opdaterer forbindelses-skemaet (L + last/nedbøjning)
     // live mens man trækker en stolpe, så man kan slippe på rette afstand.
     let liveConnUpdate = null;
@@ -469,9 +474,6 @@ const tabSite = {
       const byId = byPost();
       const postH = id => { const p = byId[id]; return p ? (p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0)) : (design.site.postHeight_m || 3.0); };
       const maxBarH = c => Math.min(postH(c.a), postH(c.b));
-      // håndhæv invarianter: bar-højde i [0, laveste stolpe]
-      design.connections.forEach(c => { const mh = maxBarH(c); if (c.height_m > mh) c.height_m = mh; else if (c.height_m < 0) c.height_m = 0; });
-
       // ---- Stolper (navn + højde + dybde + hul; rød hvis blød) ----
       if (design.posts.length) {
         selPanel.append(el('h3', {}, tt('site.posts.title')));
@@ -482,12 +484,13 @@ const tabSite = {
         const phead = el('tr', {}, el('th', {}, '#'),
           el('th', {}, `${tt('site.postheight')} (${suTxt})`),
           el('th', {}, `${tt('site.postdepth')} (${suTxt})`),
-          el('th', {}, `${tt('site.posthole')} (${holeUnitTxt})`));
+          el('th', {}, `${tt('site.posthole')} (${holeUnitTxt})`),
+          el('th', { class: 'delete-col' }, ''));
         const prows = design.posts.map((p, i) => {
           const tr = el('tr', {});
           const paintRow = () => { const soft = postSoft(p); tr.className = 'crow' + (p.id === selectedPost ? ' on' : '') + (soft ? ' crit' : ''); tr.title = soft ? tt('site.postsoft') : ''; };
           // højde (klamper også bar-højder på stolpen)
-          const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))), value: String(round(lenFromSI(postHeightOf(p), su))) });
+          const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))), value: String(round(lenFromSI(postHeightOf(p), su))), 'aria-label': `${tt('site.delete.post')} ${letterFor(i)}: ${tt('site.postheight')} (${suTxt})` });
           const clampPost = (v, commit) => {
             const m = Math.max(lenToSI(v, su), 0.1);
             store.update(d => {
@@ -501,7 +504,7 @@ const tabSite = {
           hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (!isNaN(v)) clampPost(v, false); });
           hInp.addEventListener('change', () => { hInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(hInp.value) || 0, su), 0.1), su))); clampPost(parseFloat(hInp.value), true); });
           // dybde (nedgravning) — pr. stolpe
-          const dInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))), value: String(round(lenFromSI(postDepthOf(p), su))) });
+          const dInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))), value: String(round(lenFromSI(postDepthOf(p), su))), 'aria-label': `${tt('site.delete.post')} ${letterFor(i)}: ${tt('site.postdepth')} (${suTxt})` });
           const setDepth = (v, commit) => {
             const m = Math.max(lenToSI(v, su), 0.1);
             store.update(d => { const q = d.posts.find(x => x.id === p.id); if (q) q.depth_m = m; });
@@ -512,7 +515,8 @@ const tabSite = {
           dInp.addEventListener('change', () => { dInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(dInp.value) || 0, su), 0.1), su))); setDepth(parseFloat(dInp.value), true); });
           // hul/betonklods — mindst stolpens sidemål
           const holeInp = el('input', { type: 'number', step: su === 'ft' ? '0.5' : '1', min: String(holeFromMm(postSideMm)),
-            value: String(holeFromMm(postHoleOf(p))), title: `${tt('post.holeMin')}: ${holeFromMm(postSideMm)} ${holeUnitTxt}` });
+            value: String(holeFromMm(postHoleOf(p))), title: `${tt('post.holeMin')}: ${holeFromMm(postSideMm)} ${holeUnitTxt}`,
+            'aria-label': `${tt('site.delete.post')} ${letterFor(i)}: ${tt('site.posthole')} (${holeUnitTxt})` });
           const setHole = (v, commit) => {
             const mm = Math.max(holeToMm(v), postSideMm);
             store.update(d => { const q = d.posts.find(x => x.id === p.id); if (q) q.hole_mm = mm; });
@@ -527,8 +531,9 @@ const tabSite = {
             el('td', {}, el('span', { class: 'pdot' }), letterFor(i)),
             el('td', { class: 'editc' }, hInp),
             el('td', { class: 'editc' }, dInp),
-            el('td', { class: 'editc' }, holeInp));
-          tr.addEventListener('click', e => { if (e.target.closest('input,select')) return; selectedPost = p.id; selectedConn = null; selectedLadder = null; selectedMonkey = null; selectedAvatar = null; redraw(); renderPanel(); });
+            el('td', { class: 'editc' }, holeInp),
+            el('td', { class: 'delete-col' }, deleteButton('post', p.id)));
+          tr.addEventListener('click', e => { if (e.target.closest('input,select,button')) return; selectedPost = p.id; selectedConn = null; selectedLadder = null; selectedMonkey = null; selectedAvatar = null; redraw(); renderPanel(); });
           return tr;
         });
         selPanel.append(el('table', { class: 'conntab full dense posts-tab' }, el('thead', {}, phead), el('tbody', {}, ...prows)));
@@ -546,7 +551,8 @@ const tabSite = {
           el('th', {}, `L (${suTxt})`),
           el('th', {}, `${tt('site.conn.th.load')} (kg)`),
           el('th', {}, `${tt('bar.res.ultimate')} (kg)`),
-          el('th', {}, `↓ ${Math.round(refLoad)}kg`));
+          el('th', {}, `↓ ${Math.round(refLoad)}kg`),
+          el('th', { class: 'delete-col' }, ''));
         const rowRefs = [];
         const rows = design.connections.map(c => {
           const mat = connMat(c.material), span = spanOf(c);
@@ -564,25 +570,29 @@ const tabSite = {
             store.update(d => { const cc = d.connections.find(x => x.id === c.id); if (cc) cc.material = { source: 'library', id: v }; });
             redraw(); renderPanel();
           });
+          matSel.setAttribute('aria-label', `${tt('site.delete.connection')} ${connLabel(c)}: ${tt('site.conn.th.mat')}`);
           // højde: 0 ≤ h ≤ laveste stolpe
           const mh = maxBarH(c);
           const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0', max: String(round(lenFromSI(mh, su))),
-            value: String(round(lenFromSI(c.height_m, su))), title: `${tt('site.barheight.max')} ${fmt(lenFromSI(mh, su), 2, lang)} ${suTxt}` });
+            value: String(round(lenFromSI(c.height_m, su))), title: `${tt('site.barheight.max')} ${fmt(lenFromSI(mh, su), 2, lang)} ${suTxt}`,
+            'aria-label': `${tt('site.delete.connection')} ${connLabel(c)}: H (${suTxt})` });
           hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (isNaN(v)) return; const m = Math.min(Math.max(lenToSI(v, su), 0), mh); store.update(d => { const cc = d.connections.find(x => x.id === c.id); if (cc) cc.height_m = m; }); redraw(); });
           hInp.addEventListener('change', () => { hInp.value = String(round(lenFromSI(Math.min(Math.max(lenToSI(parseFloat(hInp.value) || 0, su), 0), mh), su))); });
           // længde: ≥ 0,1 m; flytter stolpe c.b langs forbindelsen
           const lInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))),
-            value: String(round(lenFromSI(span, su))), title: `${tt('site.length.moves')} ${postLetter(c.b)}` });
+            value: String(round(lenFromSI(span, su))), title: `${tt('site.length.moves')} ${postLetter(c.b)}`,
+            'aria-label': `${tt('site.delete.connection')} ${connLabel(c)}: L (${suTxt})` });
           lInp.addEventListener('input', () => { const v = parseFloat(lInp.value); if (isNaN(v)) return; setSpan(c, Math.max(lenToSI(v, su), 0.1)); redraw(); paint(); });
           lInp.addEventListener('change', () => { lInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(lInp.value) || 0, su), 0.1), su))); redraw(); renderPanel(); });
           [matSel, hInp, lInp].forEach(x => x.addEventListener('pointerdown', stopProp));
-          tr.addEventListener('click', e => { if (e.target.closest('select,input')) return; selectedConn = c.id; selectedPost = null; selectedLadder = null; selectedMonkey = null; selectedAvatar = null; redraw(); renderPanel(); });
+          tr.addEventListener('click', e => { if (e.target.closest('select,input,button')) return; selectedConn = c.id; selectedPost = null; selectedLadder = null; selectedMonkey = null; selectedAvatar = null; redraw(); renderPanel(); });
           tr.append(
             el('td', { class: 'conn-name' }, el('span', { class: 'cdot', style: `background:${colorOf(c.material)}` }), el('span', { class: 'conn-name-text' }, connLabel(c))),
             el('td', { class: 'editc' }, matSel),
             el('td', { class: 'editc' }, hInp),
             el('td', { class: 'editc' }, lInp),
-            safeCell, ultCell, deflCell);
+            safeCell, ultCell, deflCell,
+            el('td', { class: 'delete-col' }, deleteButton('conn', c.id)));
           paint();
           rowRefs.push({ c, lInp, paint });
           return tr;
@@ -600,6 +610,32 @@ const tabSite = {
         sw('#a06a32', tt('site.legend.wood')),
         sw('#e11d1d', tt('site.legend.crit'), 6)));
       selPanel.append(el('p', { class: 'encnote' }, tt('site.conn.encoding')));
+
+      // ---- Stiger: vis og redigér de attachments, som før kun fandtes på kortet ----
+      const laddersList = design.attachments.filter(a => a.type === 'ladder');
+      if (laddersList.length) {
+        selPanel.append(el('h3', { class: 'posts-h' }, tt('site.ladders.title')));
+        const lhead = el('tr', {},
+          el('th', {}, '#'), el('th', {}, tt('site.ladder.post')),
+          el('th', {}, tt('site.ladder.bar')), el('th', {}, `${tt('site.ladderwidth')} (${suTxt})`),
+          el('th', { class: 'delete-col' }, ''));
+        const lrows = laddersList.map(a => {
+          const bar = ladderBarOf(design, a);
+          const widthInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(MIN_LADDER_WIDTH_M, su))), value: String(round(lenFromSI(a.width_m || design.site.ladderWidth_m, su))), 'aria-label': `${tt('site.delete.ladder')} ${ladderLabelOf(design, a)}: ${tt('site.ladderwidth')} (${suTxt})` });
+          widthInp.addEventListener('input', () => { const v = parseFloat(widthInp.value); if (isNaN(v)) return; store.update(d => { const at = d.attachments.find(x => x.id === a.id); if (at) at.width_m = Math.max(lenToSI(v, su), MIN_LADDER_WIDTH_M); }); redraw(); });
+          widthInp.addEventListener('change', () => { widthInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(widthInp.value) || 0, su), MIN_LADDER_WIDTH_M), su))); });
+          widthInp.addEventListener('pointerdown', stopProp);
+          const tr = el('tr', { class: 'crow' + (a.id === selectedLadder ? ' on' : '') },
+            el('td', {}, el('span', { class: 'ladder-dot' }), ladderLabelOf(design, a)),
+            el('td', { class: 'numc' }, postLetter(a.postId)),
+            el('td', { class: 'numc' }, bar ? connLabel(bar.conn) : '—'),
+            el('td', { class: 'editc' }, widthInp),
+            el('td', { class: 'delete-col' }, deleteButton('ladder', a.id)));
+          tr.addEventListener('click', e => { if (e.target.closest('input,select,button')) return; selectedLadder = a.id; selectedPost = null; selectedConn = null; selectedMonkey = null; selectedAvatar = null; redraw(); renderPanel(); });
+          return tr;
+        });
+        selPanel.append(el('table', { class: 'conntab full dense ladders-tab' }, el('thead', {}, lhead), el('tbody', {}, ...lrows)));
+      }
 
       // ---- Armgange: bar-par, retning, trinafstand og højde er redigerbare;
       // trin-antal/-længde beregnes, og for spinkle trin markeres med ⚠ ----
@@ -629,6 +665,7 @@ const tabSite = {
           el('th', {}, `${tt('site.monkeyspacing')} (${spUnitTxt})`),
           el('th', {}, tt('site.monkey.rungs')),
           el('th', {}, `H (${suTxt})`),
+          el('th', {}, ''),
           el('th', {}, ''));
         const mrows = monkeysList.map(a => {
           const infoCell = el('td', { class: 'numc' }, '');
@@ -636,7 +673,7 @@ const tabSite = {
           const geo = () => monkeyGeometry(design, a.connA, a.connB, a.spacing_m);
           const maxH = () => monkeyMaxHeight(design, a);
           // højde: redigerbar; skriver til BEGGE barer, klampet til laveste bærende stolpe
-          const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0' });
+          const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0', 'aria-label': `${tt('site.delete.monkey')} ${monkeyLabelOf(design, a)}: H (${suTxt})` });
           const paintInfo = () => {
             const g = geo();
             // ved roteret samling varierer trinlængderne — vis interval + ↻,
@@ -688,8 +725,9 @@ const tabSite = {
             });
             redraw(); renderPanel();
           });
+          pairSel.setAttribute('aria-label', `${tt('site.delete.monkey')} ${monkeyLabelOf(design, a)}: ${tt('site.monkey.pair')}`);
           // trinafstand
-          const spInp = el('input', { type: 'number', step: su === 'ft' ? '0.5' : '1', min: String(spFromM(0.15)), value: String(spFromM(a.spacing_m || design.site.monkeySpacing_m)) });
+          const spInp = el('input', { type: 'number', step: su === 'ft' ? '0.5' : '1', min: String(spFromM(0.15)), value: String(spFromM(a.spacing_m || design.site.monkeySpacing_m)), 'aria-label': `${tt('site.delete.monkey')} ${monkeyLabelOf(design, a)}: ${tt('site.monkeyspacing')} (${spUnitTxt})` });
           spInp.addEventListener('input', () => { const v = parseFloat(spInp.value); if (isNaN(v)) return; const m = Math.max(spToM(v), 0.15); store.update(d => { const x = d.attachments.find(y => y.id === a.id); if (x) x.spacing_m = m; }); paintInfo(); redraw(); });
           spInp.addEventListener('change', () => { spInp.value = String(spFromM(Math.max(spToM(parseFloat(spInp.value) || 0), 0.15))); });
           // byt retning: A↔B (spejler trin-nummerering/margen for skæve par)
@@ -706,7 +744,8 @@ const tabSite = {
             el('td', { class: 'editc' }, spInp),
             infoCell,
             el('td', { class: 'editc' }, hInp),
-            el('td', {}, swapBtn));
+            el('td', {}, swapBtn),
+            el('td', { class: 'delete-col' }, deleteButton('monkey', a.id)));
           paintInfo();
           tr.addEventListener('click', e => { if (e.target.closest('input,select,button')) return; selectedMonkey = a.id; selectedPost = null; selectedConn = null; selectedLadder = null; selectedAvatar = null; redraw(); renderPanel(); });
           return tr;
@@ -718,18 +757,19 @@ const tabSite = {
       const avatars = design.attachments.filter(a => a.type === 'avatar');
       if (avatars.length) {
         selPanel.append(el('h3', { class: 'posts-h' }, tt('site.persons.title')));
-        const ahead = el('tr', {}, el('th', {}, '#'), el('th', {}, `${tt('site.avatarheight')} (${suTxt})`), el('th', {}, `${tt('site.avatar.reach')} (${suTxt})`));
+        const ahead = el('tr', {}, el('th', {}, '#'), el('th', {}, `${tt('site.avatarheight')} (${suTxt})`), el('th', {}, `${tt('site.avatar.reach')} (${suTxt})`), el('th', { class: 'delete-col' }, ''));
         const arows = avatars.map((a, i) => {
           const h = a.height_m || 1.8;
           const reachCell = el('td', { class: 'numc' }, fmt(lenFromSI(h * 1.25, su), 2, lang));
-          const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.3, su))), value: String(round(lenFromSI(h, su))) });
+          const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.3, su))), value: String(round(lenFromSI(h, su))), 'aria-label': `${tt('site.delete.person')} ${i + 1}: ${tt('site.avatarheight')} (${suTxt})` });
           hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (isNaN(v)) return; const m = Math.max(lenToSI(v, su), 0.3); store.update(d => { const x = d.attachments.find(y => y.id === a.id); if (x) x.height_m = m; }); clear(reachCell); reachCell.append(fmt(lenFromSI(m * 1.25, su), 2, lang)); redraw(); });
           hInp.addEventListener('change', () => { hInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(hInp.value) || 0, su), 0.3), su))); });
           hInp.addEventListener('pointerdown', stopProp);
           const tr = el('tr', { class: 'crow' + (a.id === selectedAvatar ? ' on' : '') },
             el('td', {}, el('span', { class: 'adot' }), i + 1),
-            el('td', { class: 'editc' }, hInp), reachCell);
-          tr.addEventListener('click', e => { if (e.target.closest('input,select')) return; selectedAvatar = a.id; selectedPost = null; selectedConn = null; selectedLadder = null; selectedMonkey = null; redraw(); renderPanel(); });
+            el('td', { class: 'editc' }, hInp), reachCell,
+            el('td', { class: 'delete-col' }, deleteButton('avatar', a.id)));
+          tr.addEventListener('click', e => { if (e.target.closest('input,select,button')) return; selectedAvatar = a.id; selectedPost = null; selectedConn = null; selectedLadder = null; selectedMonkey = null; redraw(); renderPanel(); });
           return tr;
         });
         selPanel.append(el('table', { class: 'conntab full dense persons-tab' }, el('thead', {}, ahead), el('tbody', {}, ...arows)));
@@ -955,17 +995,7 @@ const tabSite = {
         }
         redraw(); renderPanel();
       } else if (tool === 'delete') {
-        // armgange der mister en af deres barer skal også væk
-        const dropOrphanMonkeys = d => { d.attachments = d.attachments.filter(at => at.type !== 'monkey' || (d.connections.some(c => c.id === at.connA) && d.connections.some(c => c.id === at.connB))); };
-        if (kind === 'post') store.update(d => { d.posts = d.posts.filter(p => p.id !== id); d.connections = d.connections.filter(c => c.a !== id && c.b !== id); d.attachments = d.attachments.filter(at => at.postId !== id); dropOrphanMonkeys(d); });
-        else if (kind === 'conn') store.update(d => { d.connections = d.connections.filter(c => c.id !== id); d.attachments = d.attachments.filter(at => at.connectionId !== id); dropOrphanMonkeys(d); });
-        else if (kind === 'ladder' || kind === 'monkey' || kind === 'avatar') store.update(d => { d.attachments = d.attachments.filter(at => at.id !== id); });
-        if (selectedPost && !design.posts.some(p => p.id === selectedPost)) selectedPost = null;
-        if (selectedConn && !design.connections.some(c => c.id === selectedConn)) selectedConn = null;
-        if (selectedLadder && !design.attachments.some(a => a.id === selectedLadder)) selectedLadder = null;
-        if (selectedMonkey && !design.attachments.some(a => a.id === selectedMonkey)) selectedMonkey = null;
-        if (selectedAvatar && !design.attachments.some(a => a.id === selectedAvatar)) selectedAvatar = null;
-        redraw(); renderPanel();
+        deleteElement(kind, id);
       }
     }
 
@@ -990,9 +1020,13 @@ const tabSite = {
 
     const palette = el('div', { class: 'toolpalette' },
       ...TOOLS.map(([id, icon, key]) =>
-        el('button', { class: 'toolbtn' + (tool === id ? ' on' : ''), type: 'button', title: tt(key), 'data-tool': id,
+        el('button', { class: 'toolbtn' + (tool === id ? ' on' : ''), type: 'button', title: tt(key), 'data-tool': id, 'aria-pressed': tool === id ? 'true' : 'false',
           onclick: () => { tool = id; connectFrom = null; selectedPost = null; selectedConn = null; selectedLadder = null; selectedMonkey = null; selectedAvatar = null; guides = null; ghostLadder = null; ghostMonkey = null; setHelp();
-            palette.querySelectorAll('.toolbtn').forEach(b => b.classList.toggle('on', b.getAttribute('data-tool') === id));
+            palette.querySelectorAll('.toolbtn').forEach(b => {
+              const selected = b.getAttribute('data-tool') === id;
+              b.classList.toggle('on', selected);
+              b.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
             redraw(); renderPanel(); } },
           el('span', { class: 'toolbtn-i', html: toolIcon(id) }), el('span', { class: 'toolbtn-t' }, tt(key)))),
       el('div', { class: 'zoombar' },
@@ -1013,21 +1047,25 @@ const tabSite = {
       redraw(); saveView();
     }
 
+    mapBox.addEventListener('keydown', e => {
+      if (e.target !== mapBox) return;
+      if (e.key === '+' || e.key === '=') { e.preventDefault(); zoom(1.2); return; }
+      if (e.key === '-' || e.key === '_') { e.preventDefault(); zoom(1 / 1.2); return; }
+      if (e.key === '0') { e.preventDefault(); fit(); return; }
+      const pan = 24;
+      if (e.key === 'ArrowLeft') view.tx += pan;
+      else if (e.key === 'ArrowRight') view.tx -= pan;
+      else if (e.key === 'ArrowUp') view.ty += pan;
+      else if (e.key === 'ArrowDown') view.ty -= pan;
+      else return;
+      e.preventDefault();
+      redraw(); saveView();
+    });
+
     const gridCm = Math.round((design.site.grid_m || 0.125) * 1000) / 10;
     const gridInp = el('input', { type: 'number', step: '0.5', min: '1', value: String(gridCm), style: 'width:70px' });
     gridInp.addEventListener('input', () => { const v = parseFloat(gridInp.value); if (!isNaN(v)) { store.update(d => { d.site.grid_m = Math.max(v / 100, MIN_SITE_GRID_M); }); redraw(); } });
     gridInp.addEventListener('change', () => { gridInp.value = String(Math.max(parseFloat(gridInp.value) || 0, MIN_SITE_GRID_M * 100)); });
-
-    // Global rør-godstykkelse — RESERVE-antagelse for rør uden eget gods.
-    // Katalogets dokumenterede værdier (fx 2,6 mm for 3/4") overskrives ikke.
-    const wallInp = el('input', { type: 'number', step: '0.1', min: '0.5', value: String(design.site.pipeWall_mm || 3.2), style: 'width:70px' });
-    wallInp.addEventListener('input', () => {
-      const v = parseFloat(wallInp.value); if (isNaN(v)) return;
-      const w = Math.max(v, 0.5);
-      store.update(d => { d.site.pipeWall_mm = w; d.library.forEach(m => { if (m.kind === 'pipe' && !(m.wall > 0)) m.wall = w; }); });
-      redraw(); renderPanel();
-    });
-    wallInp.addEventListener('change', () => { wallInp.value = String(Math.max(parseFloat(wallInp.value) || 0, 0.5)); });
 
     const settings = el('div', { class: 'site-settings' },
       unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], su,
@@ -1035,7 +1073,6 @@ const tabSite = {
       el('label', { class: 'fld inline' }, el('span', { class: 'fld-l' }, `${tt('site.grid')} (cm)`), gridInp),
       el('label', { class: 'fld inline' }, el('span', { class: 'fld-l' }, `${tt('site.ladderwidth')} (${suTxt})`),
         lenInput(design.site.ladderWidth_m, su, v => { store.update(d => { d.site.ladderWidth_m = Math.max(v, MIN_LADDER_WIDTH_M); }); redraw(); }, { minSI: MIN_LADDER_WIDTH_M })),
-      el('label', { class: 'fld inline', title: tt('site.pipewall.hint') }, el('span', { class: 'fld-l' }, `${tt('site.pipewall')} (mm)`), wallInp),
       el('label', { class: 'fld inline', title: tt('site.refload.hint') }, el('span', { class: 'fld-l' }, `${tt('site.refload')} (kg)`),
         numInput(design.site.refLoad_kg || 120, 5, v => { store.update(d => { d.site.refLoad_kg = Math.max(v, 0); }); redraw(); renderPanel(); }, { min: 0 })),
       el('label', { class: 'fld inline', title: tt('site.soil.hint') }, el('span', { class: 'fld-l' }, tt('site.soil')),

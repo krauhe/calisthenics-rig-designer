@@ -4,6 +4,7 @@
 
 const KEY = 'calisthenics-rig-designer';
 
+let loadWarning = null;
 let design = loadDesign();
 let saveTimer = null;
 
@@ -17,6 +18,7 @@ let redoStack = [];
 let lastCommitAt = 0;
 
 function getDesign() { return design; }
+function consumeLoadWarning() { const warning = loadWarning; loadWarning = null; return warning; }
 
 // Kald efter en ændring i design: opdatér historik + gem (debounced).
 function commit() {
@@ -105,6 +107,7 @@ function loadDesign() {
       const cur = localStorage.getItem(KEY);
       if (cur && !localStorage.getItem(KEY + '-corrupt')) localStorage.setItem(KEY + '-corrupt', cur);
     } catch (_) { /* localStorage fuld/utilgængelig — kan ikke reddes */ }
+    loadWarning = 'corrupt-autosave';
   }
   // 2) importér automatisk fra den oprindelige app, hvis den findes
   try {

@@ -69,6 +69,15 @@ function runTests() {
     const d2 = fill({ schemaVersion: 1, library: [{ id: 'u1', kind: 'pipe', od: 40, E: 210e9, sRe: 195e6, sRm: 320e6 }] });
     const u1 = d2.library.find(m => m.id === 'u1');
     ok('fill udfylder manglende gods fra reserve-antagelsen', u1 && u1.wall === d2.site.pipeWall_mm);
+    const d3 = defaultDesign();
+    const pCustom = d3.library.find(m => m.id === 'pipe-1');
+    pCustom.wall = 2.9; pCustom.wallCustom = true;
+    const d4 = fill(JSON.parse(JSON.stringify(d3)));
+    const pCustomRoundTrip = d4.library.find(m => m.id === 'pipe-1');
+    ok('brugerens gods-overstyring overlever fill()', pCustomRoundTrip.wall === 2.9 && pCustomRoundTrip.wallCustom === true);
+    const d5 = fill({ schemaVersion: 1, library: [{ id: 'custom-thick', name: 'X', kind: 'pipe', od: 20, wall: 99, E: 210e9, sRe: 195e6, sRm: 320e6 }] });
+    const pTooThick = d5.library.find(m => m.id === 'custom-thick');
+    ok('umuligt rør-gods klampes under radius', pTooThick.wall < pTooThick.od / 2);
   }
 
   // ---- foundation: parity m. nuværende postSpec (0,125 m stolpe) ----
@@ -130,6 +139,17 @@ function runTests() {
     ok('fill: hul ≥ stolpens sidemål', d.defaults.post.hole_mm >= 125);
     ok('fill-resultat er gyldigt', validate(d) === true);
   }
+  {
+    const d = fill({
+      schemaVersion: 1,
+      posts: [
+        { id: 'p1', x_m: 0, z_m: 0, height_m: 1.4 },
+        { id: 'p2', x_m: 1, z_m: 0, height_m: 2.0 },
+      ],
+      connections: [{ id: 'c1', a: 'p1', b: 'p2', height_m: 99, material: { source: 'library', id: 'pipe-1' } }],
+    });
+    ok('fill: barhøjde klampes til laveste stolpe', d.connections[0].height_m === 1.4);
+  }
 
   // ---- legacy-import (gammelt fast-firkant format) ----
   const leg = fromLegacy({ lenLong: 2.4, lenShort: 1.2, sideSizes: [0, 1, 2, 3],
@@ -148,6 +168,31 @@ function runTests() {
     ok(`preset ${pr.id}: gyldigt design`, validate(d) === true);
     ok(`preset ${pr.id}: overlever fill()`, validate(fill(JSON.parse(JSON.stringify(d)))) === true);
   });
+  {
+    const d = buildPreset('square4');
+    near('preset square4: bredde fra eksempelfil', spanOfConn(d, d.connections[0]), 2.1, 1e-9);
+    ok('preset square4: fire 3 m stolper', d.posts.every(p => p.height_m === 3));
+    ok('preset square4: træforbindelse C–D', d.connections[2].material.id === 'wood-10');
+  }
+
+  // ---- sletning: afhængige elementer planlægges og fjernes samlet ----
+  {
+    const d = buildPreset('square4');
+    const plan = deletionPlan(d, 'post', 'p1');
+    ok('delete post: finder to afhængige forbindelser', plan.connectionIds.length === 2);
+    ok('delete post: finder den afhængige stige', plan.attachmentIds.includes('la1'));
+    applyDeletion(d, plan);
+    ok('delete post: ingen forbindelser til slettet stolpe', d.connections.every(c => c.a !== 'p1' && c.b !== 'p1'));
+    ok('delete post: person bevares', d.attachments.some(a => a.type === 'avatar'));
+  }
+  {
+    const d = buildPreset('long6');
+    const plan = deletionPlan(d, 'conn', 'c1');
+    ok('delete connection: finder afhængig armgang', plan.attachmentIds.includes('mb1'));
+    ok('delete connection: finder stige på baren', plan.attachmentIds.includes('la1'));
+    applyDeletion(d, plan);
+    ok('delete connection: ingen forældreløse attachments', !d.attachments.some(a => a.id === 'mb1' || a.id === 'la1'));
+  }
 
   // ---- labels: stolpe-bogstaver, forbindelses- og attachment-labels ----
   ok('letterFor: A, Z, #27', letterFor(0) === 'A' && letterFor(25) === 'Z' && letterFor(26) === '#27');
@@ -245,14 +290,14 @@ function runTests() {
 
   // ---- materialeoptælling (computeMaterials — nu i kernen) ----
   {
-    const d = buildPreset('square4');   // 4 stolper (2,5 m, dybde 1,0, hul 20), stige S1, avatar
+    const d = buildPreset('square4');   // 4 stolper (3,0 m, dybde 1,0, hul 20), stige S1, avatar
     const M = computeMaterials(d);
     ok('mats: 4 stolper', M.postCount === 4);
-    near('mats: stolpelængde = 4 × (2,5 + 1,0)', M.postTotalLen, 14.0, 1e-9);
+    near('mats: stolpelængde = 4 × (3,0 + 1,0)', M.postTotalLen, 16.0, 1e-9);
     near('mats: nedgravet = 4 × 1,0', M.buriedTotal, 4.0, 1e-9);
-    // stigen binder til SAMME bar som Kort/3D (angle 0 → c1 i 2,4 m — ikke "den højeste")
-    near('mats: stige-rør = barhøjde + 0,5', M.ladVert, 2.9, 1e-9);
-    ok('mats: 5 stigetrin (hver 40 cm op til 2,4 m-baren)', M.ladRungCount === 5);
+    // stigen binder til SAMME bar som Kort/3D (angle 0 → c1 i 2,7 m — ikke "den højeste")
+    near('mats: stige-rør = barhøjde + 0,5', M.ladVert, 3.2, 1e-9);
+    ok('mats: 6 stigetrin (hver 40 cm op til 2,7 m-baren)', M.ladRungCount === 6);
     // beton: pr. stolpe (hul² − stolpe²)·(dybde − grus) + stigefod
     const conc = 4 * (0.2 * 0.2 - 0.125 * 0.125) * (1.0 - GRAVEL_H) + 0.22 * 0.22 * 0.5;
     near('mats: betonvolumen', M.concVol, conc, 1e-9);
@@ -276,9 +321,9 @@ function runTests() {
   {
     const d = buildPreset('square4');
     const c1 = d.connections.find(c => c.id === 'c1');
-    near('spanOfConn c1 = 2,4 m', spanOfConn(d, c1), 2.4, 1e-9);
-    // stigen (S1 på p1, angle 0 → langs c1) aflaster c1: eff = max(0,5, 2,4-0,5)
-    near('effSpanOfConn med stige = 1,9 m', effSpanOfConn(d, c1), 1.9, 1e-9);
+    near('spanOfConn c1 = 2,1 m', spanOfConn(d, c1), 2.1, 1e-9);
+    // stigen (S1 på p1, angle 0 → langs c1) aflaster c1: eff = max(0,5, 2,1-0,5)
+    near('effSpanOfConn med stige = 1,6 m', effSpanOfConn(d, c1), 1.6, 1e-9);
     const c2 = d.connections.find(c => c.id === 'c2');
     near('effSpanOfConn uden stige = spænd', effSpanOfConn(d, c2), spanOfConn(d, c2), 1e-9);
   }

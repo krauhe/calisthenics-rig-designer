@@ -36,19 +36,14 @@ SW = '''<script>
 </script>'''
 
 
-def strip_module(js):
-    # src/ er klassiske scripts, saa dette er en sikkerhedsline hvis nogen
-    # genindfoerer ESM: fjern imports (ogsaa side-effekt-imports) og export-
-    # praefikser. 'export default x' bliver 'x' (ikke 'default x' = syntaksfejl).
-    out = []
-    for line in js.splitlines():
-        s = line.strip()
-        if s.startswith('import ') and (' from ' in s or re.match(r"import\s+['\"]", s)):
-            continue
-        line = re.sub(r'^(\s*)export\s+default\s+', r'\1', line)
-        line = re.sub(r'^(\s*)export\s+', r'\1', line)
-        out.append(line)
-    return '\n'.join(out)
+def classic_source(path):
+    js = path.read_text(encoding='utf-8')
+    # index.html indlæser src/ som klassiske scripts. At fjerne import/export
+    # kun i enkeltfilen ville derfor skjule en fejl og efterlade index.html
+    # defekt. Stop bygningen med en tydelig besked i stedet.
+    if re.search(r'^\s*(?:import\s|export\s)', js, re.MULTILINE):
+        raise SystemExit('FEJL: %s indeholder ESM import/export, men src/ skal være klassiske scripts.' % path.relative_to(root))
+    return js
 
 
 # ---- 1) index.html (klassiske scripts) ----
@@ -76,7 +71,7 @@ index = '''<!DOCTYPE html>
 
 # ---- 2) calisthenics-lokal.html (alt i én fil) ----
 bundle = '\n\n'.join(
-    '// ===== {} =====\n{}'.format(f, strip_module((root / f).read_text(encoding='utf-8')))
+    '// ===== {} =====\n{}'.format(f, classic_source(root / f))
     for f in ORDER
 )
 # Skabelonen kan ikke baere disse tokens i kildekoden — fang det ved build-tid.

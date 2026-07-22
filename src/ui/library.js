@@ -4,7 +4,7 @@
 
 function matLabel(m, dimUnit, lang) {
   if (m.kind === 'wood') return `${m.name} · ${fmtDim(m.side, dimUnit, lang)}`;
-  return `${m.name} · Ø ${fmtDim(m.od, dimUnit, lang)}`;
+  return `${m.name} · Ø ${fmtDim(m.od, dimUnit, lang)} · ${t('mat.wall', lang)} ${fmtDim(m.wall, dimUnit, lang, dimUnit === 'in' ? 3 : 1)}`;
 }
 
 function materialControl(ctx, scope) {
@@ -16,7 +16,14 @@ function materialControl(ctx, scope) {
   const sel = select(
     sortLibrary(design.library).map(m => [m.id, matLabel(m, dimUnit, lang)]),
     current.id,
-    id => store.update(d => { d.analysis[scope].materialId = id; }) || rerender());
+    id => store.update(d => {
+      d.analysis[scope].materialId = id;
+      if (scope === 'post') {
+        const mat = resolveMaterial(d, id);
+        const minHole = mat.kind === 'wood' ? mat.side : mat.od;
+        d.analysis.post.hole_mm = Math.max(d.analysis.post.hole_mm, minHole);
+      }
+    }) || rerender());
 
   // Stolpe- og Bar-fanerne er KUN til analyse — materialer oprettes/redigeres
   // ikke her; man vælger blot fra biblioteket (alt designes på Kort).

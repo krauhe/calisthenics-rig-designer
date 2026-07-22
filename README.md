@@ -18,12 +18,13 @@ stiffness) plus a 3D view, a material list and a pipe/wood cutting plan.
   post, connect, ladder, person, delete), grid snapping, alignment guides, pan/zoom
   (remembered across reloads), and editable tables for posts, connections and persons.
   Per‑post **height, burial depth and hole size**; posts flagged **red** when too soft;
-  connections flagged red when under‑dimensioned. A global **pipe‑wall** assumption.
+  connections flagged red when under‑dimensioned.
 - **3D** — the same design rendered in Three.js (posts, bars, Kee‑fittings, ladders,
   foundations, a person), drag to rotate, scroll to zoom.
-- **Materialer (Materials)** — shopping list (posts, bars, fittings, concrete, gravel,
-  tar, screws) and a visual **cutting plan** that bin‑packs steel/wood into stock lengths,
-  all derived from the actual per‑post dimensions on the map.
+- **Materialer (Materials)** — editable pipe wall thicknesses (catalogue defaults),
+  shopping list (posts, bars, fittings, concrete, gravel, tar, screws) and a visual
+  **cutting plan** that bin‑packs steel/wood into stock lengths, all derived from the
+  actual per‑post dimensions on the map.
 
 **Analysis** (calculators, independent of the drawing)
 - **Stolpe (Post)** — foundation/sway analysis for a single post vs. burial depth.
@@ -63,9 +64,8 @@ Simplified hand‑calculation models for planning, **not** a substitute for a st
 engineer:
 
 - Steel water pipe: E = 210 GPa, yield ≈ 195 MPa, ultimate ≈ 320 MPa (EN 10255 S195T);
-  catalogue pipes use their documented wall thickness (2.6 mm for 3/4", 3.2 mm for 1"
-  and up, EN 10255 medium); the adjustable "pipe wall" setting is only a fallback for
-  custom pipes without their own value.
+  catalogue pipes start with their documented wall thickness (2.6 mm for 3/4", 3.2 mm
+  for 1" and up, EN 10255 medium); each value can be overridden under Materials.
 - Wood (C24 pine): E ≈ 10 GPa, bending strength ≈ 24 MPa.
 - Kee‑clamp end fixity estimated at 25 % (between pinned and fixed); a bound ladder
   relieves its bar as an extra support.
