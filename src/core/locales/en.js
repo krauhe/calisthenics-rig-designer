@@ -32,7 +32,7 @@ const en = {
   'file.presetHint': 'Start from a ready-made example rig (replaces the current design).',
   'preset.pullup2': 'Pull-up (2 posts)',
   'preset.square4': 'Square rig (4 posts)',
-  'preset.long6': 'Long rig / monkey bars (6 posts)',
+  'preset.long6': 'Large rig / double monkey bars',
   'file.error': 'Could not read the file — is it a valid .json design?',
   'file.errorNewer': 'The file was saved with a NEWER version of the app — reload/update the app and try again.',
   'file.overwriteConfirm': 'Overwrite the saved design',

@@ -32,7 +32,7 @@ const da = {
   'file.presetHint': 'Start fra en færdig eksempel-rig (erstatter den nuværende tegning).',
   'preset.pullup2': 'Pull-up (2 stolper)',
   'preset.square4': 'Firkant-rig (4 stolper)',
-  'preset.long6': 'Lang rig / armgang (6 stolper)',
+  'preset.long6': 'Stor rig / dobbelt armgang',
   'file.error': 'Kunne ikke læse filen — er det en gyldig .json-tegning?',
   'file.errorNewer': 'Filen er gemt med en NYERE version af appen — genindlæs/opdatér appen og prøv igen.',
   'file.overwriteConfirm': 'Overskriv den gemte tegning',

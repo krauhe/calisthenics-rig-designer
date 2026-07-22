@@ -174,6 +174,17 @@ function runTests() {
     ok('preset square4: fire 3 m stolper', d.posts.every(p => p.height_m === 3));
     ok('preset square4: træforbindelse C–D', d.connections[2].material.id === 'wood-10');
   }
+  {
+    const d = buildPreset('long6');
+    ok('preset long6: importfilens 10 stolper', d.posts.length === 10);
+    ok('preset long6: importfilens 7 forbindelser', d.connections.length === 7);
+    ok('preset long6: lave side-stolper er 1,3 m', ['p8', 'p9'].every(id => d.posts.find(p => p.id === id).height_m === 1.3));
+    ok('preset long6: ekstra barer har korrekte endepunkter',
+      d.connections.some(c => c.id === 'c5' && c.a === 'p7' && c.b === 'p8')
+      && d.connections.some(c => c.id === 'c7' && c.a === 'p10' && c.b === 'p2'));
+    const av = d.attachments.find(a => a.type === 'avatar');
+    ok('preset long6: person står som i importfilen', av.x_m === 2.75 && av.z_m === -0.75);
+  }
 
   // ---- sletning: afhængige elementer planlægges og fjernes samlet ----
   {
