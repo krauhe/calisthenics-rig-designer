@@ -183,7 +183,7 @@ async function printGuide(ctx) {
     const grp = M.cut[id];
     const stockLen = (design.stock && design.stock[id]) || (grp.mat.kind === 'wood' ? 4.8 : STOCK);
     const { bars, count } = packPieces(grp.pieces, stockLen, KERF);
-    root.append(el('p', { class: 'pr-cut-h' }, `${grp.mat.name}: ${count} × ${fm(stockLen)} (${tt('mats.stockLen').toLowerCase()})`));
+    root.append(el('p', { class: 'pr-cut-h' }, `${matLabel(grp.mat, 'mm', lang)}: ${count} × ${fm(stockLen)} (${tt('mats.stockLen').toLowerCase()})`));
     const ul = el('ul', { class: 'pr-cut' });
     bars.forEach((b, bi) => {
       const list = b.pieces.map(p => `${p.label} ${fmt(p.len, 2, lang)}`).join(' · ');

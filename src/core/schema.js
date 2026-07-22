@@ -132,6 +132,16 @@ function fill(d) {
   merged.connections.forEach(c => {
     const maxHeight = Math.min(postHeight(postById[c.a]), postHeight(postById[c.b]));
     c.height_m = Math.min(atLeast(c.height_m, 0, merged.site.connHeight_m), maxHeight);
+    if (c.material && typeof c.material === 'object') {
+      const baseMat = resolveMaterial(merged, c.material.id);
+      if (baseMat.kind === 'pipe' && c.material.wall != null) {
+        const wall = clampPipeWallMm(baseMat, c.material.wall, baseMat.wall);
+        if (Math.abs(wall - baseMat.wall) < 1e-9) delete c.material.wall;
+        else c.material.wall = wall;
+      } else {
+        delete c.material.wall;
+      }
+    }
   });
   // attachments: stiger/personer skal pege på noget der findes
   merged.attachments = merged.attachments.filter(a =>

@@ -61,6 +61,8 @@ function segShades(m) {
 function computeMaterials(design) {
   const connMat = ref => connMatOf(design, ref);
   const spanOf = c => spanOfConn(design, c);
+  const materialKey = mat => mat.kind === 'pipe' && mat._wallOverride
+    ? `${mat.id}@${Number(mat.wall).toFixed(3)}` : mat.id;
 
   const depth = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
   const hole = ((design.defaults.post && design.defaults.post.hole_mm) || 200) / 1000;
@@ -78,13 +80,18 @@ function computeMaterials(design) {
   design.connections.forEach(c => {
     const span = spanOf(c); if (span <= 0) return;
     const mat = connMat(c.material);
-    const g = barGroups[mat.id] = barGroups[mat.id] || { mat, totalLen: 0, count: 0 };
+    const key = materialKey(mat);
+    const g = barGroups[key] = barGroups[key] || { mat, totalLen: 0, count: 0 };
     g.totalLen += span; g.count++;
   });
 
   // skære-stykker pr. materiale: stolper + barer/overliggere (rør OG træ) + stige-rør
   const cut = {};         // id -> { mat, pieces:[{len,label}] }
-  const addCut = (mat, len, label) => { if (!mat || len <= 0) return; (cut[mat.id] = cut[mat.id] || { mat, pieces: [] }).pieces.push({ len, label }); };
+  const addCut = (mat, len, label) => {
+    if (!mat || len <= 0) return;
+    const key = materialKey(mat);
+    (cut[key] = cut[key] || { mat, pieces: [] }).pieces.push({ len, label });
+  };
   // stolper (lodrette) — hver: egen højde over jord + egen nedgravning (fra Kort)
   let postTotalLen = 0, buriedTotal = 0;
   design.posts.forEach((p, i) => { const lenP = postHeightOf(p) + postDepthOf(p); postTotalLen += lenP; buriedTotal += postDepthOf(p); addCut(postMat, lenP, letterFor(i)); });

@@ -177,6 +177,7 @@ const en = {
   'site.conn.tableTitle': 'Connections',
   'site.conn.empty': 'No connections yet — use the Connect tool.',
   'site.conn.th.mat': 'Material',
+  'site.conn.wallHint': 'Applies only to this connection. Change the pipe type default under Materials.',
   'site.conn.th.load': 'Safe',
   'site.conn.encoding': 'Thickness = size · colour = material type',
   'site.legend.pipe': 'Pipe',

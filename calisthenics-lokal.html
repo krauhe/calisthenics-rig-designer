@@ -180,6 +180,17 @@ body { background: linear-gradient(180deg, #1b1d18 0%, #111310 44%, #0c0d0c 100%
 .conntab.full.dense select, .conntab.full.dense input[type=number] { font-size: 11.5px; padding: 2px 3px; border-radius: 5px; }
 .conntab.full.dense input[type=number] { width: 56px; min-width: 0; max-width: 64px; }
 .conntab.full.dense select { width: 100%; min-width: 98px; max-width: 130px; }
+.connections-tab { table-layout: fixed; width: 100%; }
+.connections-tab .conn-name-col, .connections-tab td.conn-name { width: 44px; min-width: 44px; }
+.connections-tab .conn-mat-col, .connections-tab td.conn-mat { width: 92px; }
+.connections-tab .conn-wall-col, .connections-tab td.conn-wall { width: 46px; }
+.connections-tab .conn-measure-col, .connections-tab td.conn-measure { width: 46px; }
+.connections-tab .conn-result-col, .connections-tab td.conn-result { width: 42px; }
+.connections-tab .conn-defl-col, .connections-tab td.conn-defl { width: 56px; }
+.connections-tab select { min-width: 0 !important; max-width: none !important; padding-inline: 2px !important; }
+.connections-tab input[type=number] { width: 100% !important; min-width: 0; max-width: none; padding-inline: 2px !important; }
+.connections-tab th, .connections-tab td { overflow: hidden; text-overflow: ellipsis; }
+.connections-tab .not-applicable { display: block; text-align: center; color: var(--muted); }
 .posts-h { margin-top: 12px !important; }
 .posts-tab { max-width: 380px; }
 .pdot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #b6986a; border: 1px solid #6b4f2a; vertical-align: middle; margin-right: 4px; }
@@ -932,6 +943,8 @@ function segShades(m) {
 function computeMaterials(design) {
   const connMat = ref => connMatOf(design, ref);
   const spanOf = c => spanOfConn(design, c);
+  const materialKey = mat => mat.kind === 'pipe' && mat._wallOverride
+    ? `${mat.id}@${Number(mat.wall).toFixed(3)}` : mat.id;
 
   const depth = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
   const hole = ((design.defaults.post && design.defaults.post.hole_mm) || 200) / 1000;
@@ -949,13 +962,18 @@ function computeMaterials(design) {
   design.connections.forEach(c => {
     const span = spanOf(c); if (span <= 0) return;
     const mat = connMat(c.material);
-    const g = barGroups[mat.id] = barGroups[mat.id] || { mat, totalLen: 0, count: 0 };
+    const key = materialKey(mat);
+    const g = barGroups[key] = barGroups[key] || { mat, totalLen: 0, count: 0 };
     g.totalLen += span; g.count++;
   });
 
   // skære-stykker pr. materiale: stolper + barer/overliggere (rør OG træ) + stige-rør
   const cut = {};         // id -> { mat, pieces:[{len,label}] }
-  const addCut = (mat, len, label) => { if (!mat || len <= 0) return; (cut[mat.id] = cut[mat.id] || { mat, pieces: [] }).pieces.push({ len, label }); };
+  const addCut = (mat, len, label) => {
+    if (!mat || len <= 0) return;
+    const key = materialKey(mat);
+    (cut[key] = cut[key] || { mat, pieces: [] }).pieces.push({ len, label });
+  };
   // stolper (lodrette) — hver: egen højde over jord + egen nedgravning (fra Kort)
   let postTotalLen = 0, buriedTotal = 0;
   design.posts.forEach((p, i) => { const lenP = postHeightOf(p) + postDepthOf(p); postTotalLen += lenP; buriedTotal += postDepthOf(p); addCut(postMat, lenP, letterFor(i)); });
@@ -1111,7 +1129,11 @@ function ladderLabelOf(design, at) { return attachmentLabelOf(design, at, 'ladde
 // Slå forbindelsens materiale op (ref kan være {source:'library', id} eller en ren id).
 function connMatOf(design, ref) {
   const id = ref && ref.source === 'library' ? ref.id : ref;
-  return design.library.find(m => m.id === id) || design.library[0];
+  const base = design.library.find(m => m.id === id) || design.library[0];
+  if (base && base.kind === 'pipe' && ref && typeof ref === 'object' && ref.wall != null) {
+    return { ...base, wall: clampPipeWallMm(base, ref.wall, base.wall), _wallOverride: true };
+  }
+  return base;
 }
 
 // Stolpens højde over jord, dybde og hul/betonklods (mm) — egne værdier pr.
@@ -1367,7 +1389,7 @@ function buildPreset(id) {
   const pipeBig = { source: 'library', id: 'pipe-1-4' };
   const wood10 = { source: 'library', id: 'wood-10' };
   const post = (pid, x, z, height = 2.5, depth = 1.0) => ({ id: pid, x_m: x, z_m: z, height_m: height, depth_m: depth, hole_mm: 200, override: null });
-  const conn = (cid, a, b, h, mat) => ({ id: cid, a, b, height_m: h, material: mat || pipe, onTop: false });
+  const conn = (cid, a, b, h, mat) => ({ id: cid, a, b, height_m: h, material: { ...(mat || pipe) }, onTop: false });
   const avatar = (x, z) => ({ id: 'av1', type: 'avatar', x_m: x, z_m: z, height_m: 1.8 });
   const ladder = (postId) => ({ id: 'la1', type: 'ladder', postId, width_m: 0.5, angle_rad: 0 });
 
@@ -1550,6 +1572,16 @@ function fill(d) {
   merged.connections.forEach(c => {
     const maxHeight = Math.min(postHeight(postById[c.a]), postHeight(postById[c.b]));
     c.height_m = Math.min(atLeast(c.height_m, 0, merged.site.connHeight_m), maxHeight);
+    if (c.material && typeof c.material === 'object') {
+      const baseMat = resolveMaterial(merged, c.material.id);
+      if (baseMat.kind === 'pipe' && c.material.wall != null) {
+        const wall = clampPipeWallMm(baseMat, c.material.wall, baseMat.wall);
+        if (Math.abs(wall - baseMat.wall) < 1e-9) delete c.material.wall;
+        else c.material.wall = wall;
+      } else {
+        delete c.material.wall;
+      }
+    }
   });
   // attachments: stiger/personer skal pege på noget der findes
   merged.attachments = merged.attachments.filter(a =>
@@ -1928,6 +1960,7 @@ const da = {
   'site.conn.tableTitle': 'Forbindelser',
   'site.conn.empty': 'Ingen forbindelser endnu — brug Forbind-værktøjet.',
   'site.conn.th.mat': 'Materiale',
+  'site.conn.wallHint': 'Gælder kun denne forbindelse. Standardgodset for rørtypen ændres under Materialer.',
   'site.conn.th.load': 'Sikker',
   'site.conn.encoding': 'Tykkelse = dimension · farve = materialetype',
   'site.legend.pipe': 'Rør',
@@ -2186,6 +2219,7 @@ const en = {
   'site.conn.tableTitle': 'Connections',
   'site.conn.empty': 'No connections yet — use the Connect tool.',
   'site.conn.th.mat': 'Material',
+  'site.conn.wallHint': 'Applies only to this connection. Change the pipe type default under Materials.',
   'site.conn.th.load': 'Safe',
   'site.conn.encoding': 'Thickness = size · colour = material type',
   'site.legend.pipe': 'Pipe',
@@ -3459,19 +3493,20 @@ const tabSite = {
         selPanel.append(el('p', { class: 'sel-hint' }, tt('site.conn.empty')));
       } else {
         const head = el('tr', {},
-          el('th', {}, '#'),
-          el('th', {}, tt('site.conn.th.mat')),
-          el('th', {}, `H (${suTxt})`),
-          el('th', {}, `L (${suTxt})`),
-          el('th', {}, `${tt('site.conn.th.load')} (kg)`),
-          el('th', {}, `${tt('bar.res.ultimate')} (kg)`),
-          el('th', {}, `↓ ${Math.round(refLoad)}kg`),
+          el('th', { class: 'conn-name-col' }, '#'),
+          el('th', { class: 'conn-mat-col' }, tt('site.conn.th.mat')),
+          el('th', { class: 'conn-wall-col', title: tt('site.conn.wallHint') }, `${tt('mat.wall')} (mm)`),
+          el('th', { class: 'conn-measure-col' }, `H (${suTxt})`),
+          el('th', { class: 'conn-measure-col' }, `L (${suTxt})`),
+          el('th', { class: 'conn-result-col' }, `${tt('site.conn.th.load')} (kg)`),
+          el('th', { class: 'conn-result-col' }, `${tt('bar.res.ultimate')} (kg)`),
+          el('th', { class: 'conn-defl-col' }, `↓ ${Math.round(refLoad)}kg`),
           el('th', { class: 'delete-col' }, ''));
         const rowRefs = [];
         const rows = design.connections.map(c => {
           const mat = connMat(c.material), span = spanOf(c);
           const res = () => beam(Math.max(effSpanOf(c), 0.05), connMat(c.material), refLoad, 0.25);
-          const safeCell = el('td', { class: 'numc' }, ''), ultCell = el('td', { class: 'numc' }, ''), deflCell = el('td', { class: 'numc' }, '');
+          const safeCell = el('td', { class: 'numc conn-result' }, ''), ultCell = el('td', { class: 'numc conn-result' }, ''), deflCell = el('td', { class: 'numc conn-defl' }, '');
           const tr = el('tr', {});
           const paint = () => {
             const r = res(), crit = r.pYield < refLoad;
@@ -3485,6 +3520,32 @@ const tabSite = {
             redraw(); renderPanel();
           });
           matSel.setAttribute('aria-label', `${tt('site.delete.connection')} ${connLabel(c)}: ${tt('site.conn.th.mat')}`);
+          let wallControl;
+          if (mat.kind === 'pipe') {
+            const baseMat = resolveMaterial(design, mat.id);
+            const wallInp = el('input', {
+              type: 'number', step: '0.1', min: String(MIN_PIPE_WALL_MM), max: String(maxPipeWallMm(baseMat)),
+              value: String(mat.wall), title: tt('site.conn.wallHint'),
+              'aria-label': `${tt('site.delete.connection')} ${connLabel(c)}: ${tt('mat.wall')} (mm)`,
+            });
+            const updateWall = value => {
+              const wall = clampPipeWallMm(baseMat, value, baseMat.wall);
+              store.update(d => {
+                const cc = d.connections.find(x => x.id === c.id); if (!cc) return;
+                const ref = cc.material && typeof cc.material === 'object' ? cc.material : { source: 'library', id: mat.id };
+                cc.material = { ...ref, source: 'library', id: mat.id };
+                if (Math.abs(wall - baseMat.wall) < 1e-9) delete cc.material.wall;
+                else cc.material.wall = wall;
+              });
+              wallInp.value = String(wall);
+              redraw(); paint();
+            };
+            wallInp.addEventListener('input', () => { const v = parseFloat(wallInp.value); if (!isNaN(v)) updateWall(v); });
+            wallInp.addEventListener('change', () => updateWall(parseFloat(wallInp.value)));
+            wallControl = wallInp;
+          } else {
+            wallControl = el('span', { class: 'not-applicable', title: tt('site.conn.wallHint') }, '–');
+          }
           // højde: 0 ≤ h ≤ laveste stolpe
           const mh = maxBarH(c);
           const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0', max: String(round(lenFromSI(mh, su))),
@@ -3498,20 +3559,21 @@ const tabSite = {
             'aria-label': `${tt('site.delete.connection')} ${connLabel(c)}: L (${suTxt})` });
           lInp.addEventListener('input', () => { const v = parseFloat(lInp.value); if (isNaN(v)) return; setSpan(c, Math.max(lenToSI(v, su), 0.1)); redraw(); paint(); });
           lInp.addEventListener('change', () => { lInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(lInp.value) || 0, su), 0.1), su))); redraw(); renderPanel(); });
-          [matSel, hInp, lInp].forEach(x => x.addEventListener('pointerdown', stopProp));
+          [matSel, wallControl, hInp, lInp].forEach(x => x.addEventListener('pointerdown', stopProp));
           tr.addEventListener('click', e => { if (e.target.closest('select,input,button')) return; selectedConn = c.id; selectedPost = null; selectedLadder = null; selectedMonkey = null; selectedAvatar = null; redraw(); renderPanel(); });
           tr.append(
             el('td', { class: 'conn-name' }, el('span', { class: 'cdot', style: `background:${colorOf(c.material)}` }), el('span', { class: 'conn-name-text' }, connLabel(c))),
-            el('td', { class: 'editc' }, matSel),
-            el('td', { class: 'editc' }, hInp),
-            el('td', { class: 'editc' }, lInp),
+            el('td', { class: 'editc conn-mat' }, matSel),
+            el('td', { class: 'editc conn-wall' }, wallControl),
+            el('td', { class: 'editc conn-measure' }, hInp),
+            el('td', { class: 'editc conn-measure' }, lInp),
             safeCell, ultCell, deflCell,
             el('td', { class: 'delete-col' }, deleteButton('conn', c.id)));
           paint();
           rowRefs.push({ c, lInp, paint });
           return tr;
         });
-        selPanel.append(el('table', { class: 'conntab full dense' }, el('thead', {}, head), el('tbody', {}, ...rows)));
+        selPanel.append(el('table', { class: 'conntab full dense connections-tab' }, el('thead', {}, head), el('tbody', {}, ...rows)));
         // live-opdatering af L + last/nedbøjning mens en stolpe trækkes
         liveConnUpdate = () => rowRefs.forEach(({ c, lInp, paint }) => {
           if (document.activeElement !== lInp) lInp.value = String(round(lenFromSI(spanOf(c, byPost()), su)));
@@ -4686,7 +4748,7 @@ const tabMaterials = {
         const { bars, count } = packPieces(grp.pieces, stockLen, KERF);
         counts[id] = count;
         const oversize = grp.pieces.some(p => p.len > stockLen + 1e-9);
-        titleB.querySelector('.cl-name').textContent = ` ${grp.mat.name}: ${count} × ${fm(stockLen)}`;
+        titleB.querySelector('.cl-name').textContent = ` ${matLabel(grp.mat, 'mm', lang)}: ${count} × ${fm(stockLen)}`;
         clear(body);
         bars.forEach(b => {
           const barEl = el('div', { class: 'cl-bar' });
@@ -4906,7 +4968,7 @@ async function printGuide(ctx) {
     const grp = M.cut[id];
     const stockLen = (design.stock && design.stock[id]) || (grp.mat.kind === 'wood' ? 4.8 : STOCK);
     const { bars, count } = packPieces(grp.pieces, stockLen, KERF);
-    root.append(el('p', { class: 'pr-cut-h' }, `${grp.mat.name}: ${count} × ${fm(stockLen)} (${tt('mats.stockLen').toLowerCase()})`));
+    root.append(el('p', { class: 'pr-cut-h' }, `${matLabel(grp.mat, 'mm', lang)}: ${count} × ${fm(stockLen)} (${tt('mats.stockLen').toLowerCase()})`));
     const ul = el('ul', { class: 'pr-cut' });
     bars.forEach((b, bi) => {
       const list = b.pieces.map(p => `${p.label} ${fmt(p.len, 2, lang)}`).join(' · ');

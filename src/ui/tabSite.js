@@ -545,19 +545,20 @@ const tabSite = {
         selPanel.append(el('p', { class: 'sel-hint' }, tt('site.conn.empty')));
       } else {
         const head = el('tr', {},
-          el('th', {}, '#'),
-          el('th', {}, tt('site.conn.th.mat')),
-          el('th', {}, `H (${suTxt})`),
-          el('th', {}, `L (${suTxt})`),
-          el('th', {}, `${tt('site.conn.th.load')} (kg)`),
-          el('th', {}, `${tt('bar.res.ultimate')} (kg)`),
-          el('th', {}, `↓ ${Math.round(refLoad)}kg`),
+          el('th', { class: 'conn-name-col' }, '#'),
+          el('th', { class: 'conn-mat-col' }, tt('site.conn.th.mat')),
+          el('th', { class: 'conn-wall-col', title: tt('site.conn.wallHint') }, `${tt('mat.wall')} (mm)`),
+          el('th', { class: 'conn-measure-col' }, `H (${suTxt})`),
+          el('th', { class: 'conn-measure-col' }, `L (${suTxt})`),
+          el('th', { class: 'conn-result-col' }, `${tt('site.conn.th.load')} (kg)`),
+          el('th', { class: 'conn-result-col' }, `${tt('bar.res.ultimate')} (kg)`),
+          el('th', { class: 'conn-defl-col' }, `↓ ${Math.round(refLoad)}kg`),
           el('th', { class: 'delete-col' }, ''));
         const rowRefs = [];
         const rows = design.connections.map(c => {
           const mat = connMat(c.material), span = spanOf(c);
           const res = () => beam(Math.max(effSpanOf(c), 0.05), connMat(c.material), refLoad, 0.25);
-          const safeCell = el('td', { class: 'numc' }, ''), ultCell = el('td', { class: 'numc' }, ''), deflCell = el('td', { class: 'numc' }, '');
+          const safeCell = el('td', { class: 'numc conn-result' }, ''), ultCell = el('td', { class: 'numc conn-result' }, ''), deflCell = el('td', { class: 'numc conn-defl' }, '');
           const tr = el('tr', {});
           const paint = () => {
             const r = res(), crit = r.pYield < refLoad;
@@ -571,6 +572,32 @@ const tabSite = {
             redraw(); renderPanel();
           });
           matSel.setAttribute('aria-label', `${tt('site.delete.connection')} ${connLabel(c)}: ${tt('site.conn.th.mat')}`);
+          let wallControl;
+          if (mat.kind === 'pipe') {
+            const baseMat = resolveMaterial(design, mat.id);
+            const wallInp = el('input', {
+              type: 'number', step: '0.1', min: String(MIN_PIPE_WALL_MM), max: String(maxPipeWallMm(baseMat)),
+              value: String(mat.wall), title: tt('site.conn.wallHint'),
+              'aria-label': `${tt('site.delete.connection')} ${connLabel(c)}: ${tt('mat.wall')} (mm)`,
+            });
+            const updateWall = value => {
+              const wall = clampPipeWallMm(baseMat, value, baseMat.wall);
+              store.update(d => {
+                const cc = d.connections.find(x => x.id === c.id); if (!cc) return;
+                const ref = cc.material && typeof cc.material === 'object' ? cc.material : { source: 'library', id: mat.id };
+                cc.material = { ...ref, source: 'library', id: mat.id };
+                if (Math.abs(wall - baseMat.wall) < 1e-9) delete cc.material.wall;
+                else cc.material.wall = wall;
+              });
+              wallInp.value = String(wall);
+              redraw(); paint();
+            };
+            wallInp.addEventListener('input', () => { const v = parseFloat(wallInp.value); if (!isNaN(v)) updateWall(v); });
+            wallInp.addEventListener('change', () => updateWall(parseFloat(wallInp.value)));
+            wallControl = wallInp;
+          } else {
+            wallControl = el('span', { class: 'not-applicable', title: tt('site.conn.wallHint') }, '–');
+          }
           // højde: 0 ≤ h ≤ laveste stolpe
           const mh = maxBarH(c);
           const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0', max: String(round(lenFromSI(mh, su))),
@@ -584,20 +611,21 @@ const tabSite = {
             'aria-label': `${tt('site.delete.connection')} ${connLabel(c)}: L (${suTxt})` });
           lInp.addEventListener('input', () => { const v = parseFloat(lInp.value); if (isNaN(v)) return; setSpan(c, Math.max(lenToSI(v, su), 0.1)); redraw(); paint(); });
           lInp.addEventListener('change', () => { lInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(lInp.value) || 0, su), 0.1), su))); redraw(); renderPanel(); });
-          [matSel, hInp, lInp].forEach(x => x.addEventListener('pointerdown', stopProp));
+          [matSel, wallControl, hInp, lInp].forEach(x => x.addEventListener('pointerdown', stopProp));
           tr.addEventListener('click', e => { if (e.target.closest('select,input,button')) return; selectedConn = c.id; selectedPost = null; selectedLadder = null; selectedMonkey = null; selectedAvatar = null; redraw(); renderPanel(); });
           tr.append(
             el('td', { class: 'conn-name' }, el('span', { class: 'cdot', style: `background:${colorOf(c.material)}` }), el('span', { class: 'conn-name-text' }, connLabel(c))),
-            el('td', { class: 'editc' }, matSel),
-            el('td', { class: 'editc' }, hInp),
-            el('td', { class: 'editc' }, lInp),
+            el('td', { class: 'editc conn-mat' }, matSel),
+            el('td', { class: 'editc conn-wall' }, wallControl),
+            el('td', { class: 'editc conn-measure' }, hInp),
+            el('td', { class: 'editc conn-measure' }, lInp),
             safeCell, ultCell, deflCell,
             el('td', { class: 'delete-col' }, deleteButton('conn', c.id)));
           paint();
           rowRefs.push({ c, lInp, paint });
           return tr;
         });
-        selPanel.append(el('table', { class: 'conntab full dense' }, el('thead', {}, head), el('tbody', {}, ...rows)));
+        selPanel.append(el('table', { class: 'conntab full dense connections-tab' }, el('thead', {}, head), el('tbody', {}, ...rows)));
         // live-opdatering af L + last/nedbøjning mens en stolpe trækkes
         liveConnUpdate = () => rowRefs.forEach(({ c, lInp, paint }) => {
           if (document.activeElement !== lInp) lInp.value = String(round(lenFromSI(spanOf(c, byPost()), su)));

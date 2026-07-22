@@ -57,6 +57,14 @@ function runTests() {
   near('beam rør dReal = 36,39 mm', bp.dReal * 1000, 36.39, 5e-3);
   near('beam rør pYield = 81,0 kg', bp.pYield, 81.0, 8e-3);
   near('beam rør pUlt = 132,9 kg', bp.pUlt, 132.9, 8e-3);
+  {
+    const d = defaultDesign();
+    const ref = { source: 'library', id: 'pipe-1', wall: 2.0 };
+    const overridden = connMatOf(d, ref);
+    ok('forbindelse kan overstyre rør-gods', overridden.wall === 2.0 && overridden._wallOverride === true);
+    ok('gods-overstyring ændrer ikke bibliotekets standard', resolveMaterial(d, 'pipe-1').wall === 3.2);
+    ok('tyndere gods giver lavere brudlast', beam(2.4, overridden, 120, 0.25).pUlt < bp.pUlt);
+  }
 
   // ---- schema/fill: global rør-godstykkelse må IKKE overskrive katalogværdien ----
   {
@@ -78,6 +86,9 @@ function runTests() {
     const d5 = fill({ schemaVersion: 1, library: [{ id: 'custom-thick', name: 'X', kind: 'pipe', od: 20, wall: 99, E: 210e9, sRe: 195e6, sRm: 320e6 }] });
     const pTooThick = d5.library.find(m => m.id === 'custom-thick');
     ok('umuligt rør-gods klampes under radius', pTooThick.wall < pTooThick.od / 2);
+    const d6 = fill({ schemaVersion: 1, posts: [{ id: 'a', x_m: 0, z_m: 0 }, { id: 'b', x_m: 1, z_m: 0 }],
+      connections: [{ id: 'c', a: 'a', b: 'b', height_m: 1, material: { source: 'library', id: 'pipe-1', wall: 99 } }] });
+    ok('fill klamper gods-overstyring på forbindelse', d6.connections[0].material.wall < 33.7 / 2);
   }
 
   // ---- foundation: parity m. nuværende postSpec (0,125 m stolpe) ----
@@ -326,6 +337,15 @@ function runTests() {
     d.posts.find(p => p.id === 'p4').z_m = 1.2;   // vrid c3 let → roteret samling
     const M2 = computeMaterials(d);
     ok('mats: roteret armgang → justerbare beslag', M2.monSwivel > 0);
+  }
+  {
+    const d = buildPreset('square4');
+    d.connections[0].material.wall = 2.0;
+    const M = computeMaterials(d);
+    ok('mats: forskelligt gods opdeles som forskellige rørvarer',
+      !!M.barGroups['pipe-1'] && !!M.barGroups['pipe-1@2.000']);
+    ok('skæreliste: forskelligt gods blandes ikke på samme rør',
+      !!M.cut['pipe-1'] && !!M.cut['pipe-1@2.000']);
   }
 
   // ---- delte helpers: spanOfConn + effSpanOfConn (stige-aflastning) ----

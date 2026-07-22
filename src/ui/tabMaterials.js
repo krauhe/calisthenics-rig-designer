@@ -151,7 +151,7 @@ const tabMaterials = {
         const { bars, count } = packPieces(grp.pieces, stockLen, KERF);
         counts[id] = count;
         const oversize = grp.pieces.some(p => p.len > stockLen + 1e-9);
-        titleB.querySelector('.cl-name').textContent = ` ${grp.mat.name}: ${count} × ${fm(stockLen)}`;
+        titleB.querySelector('.cl-name').textContent = ` ${matLabel(grp.mat, 'mm', lang)}: ${count} × ${fm(stockLen)}`;
         clear(body);
         bars.forEach(b => {
           const barEl = el('div', { class: 'cl-bar' });

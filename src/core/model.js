@@ -84,7 +84,11 @@ function ladderLabelOf(design, at) { return attachmentLabelOf(design, at, 'ladde
 // Slå forbindelsens materiale op (ref kan være {source:'library', id} eller en ren id).
 function connMatOf(design, ref) {
   const id = ref && ref.source === 'library' ? ref.id : ref;
-  return design.library.find(m => m.id === id) || design.library[0];
+  const base = design.library.find(m => m.id === id) || design.library[0];
+  if (base && base.kind === 'pipe' && ref && typeof ref === 'object' && ref.wall != null) {
+    return { ...base, wall: clampPipeWallMm(base, ref.wall, base.wall), _wallOverride: true };
+  }
+  return base;
 }
 
 // Stolpens højde over jord, dybde og hul/betonklods (mm) — egne værdier pr.

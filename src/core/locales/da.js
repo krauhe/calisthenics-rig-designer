@@ -177,6 +177,7 @@ const da = {
   'site.conn.tableTitle': 'Forbindelser',
   'site.conn.empty': 'Ingen forbindelser endnu — brug Forbind-værktøjet.',
   'site.conn.th.mat': 'Materiale',
+  'site.conn.wallHint': 'Gælder kun denne forbindelse. Standardgodset for rørtypen ændres under Materialer.',
   'site.conn.th.load': 'Sikker',
   'site.conn.encoding': 'Tykkelse = dimension · farve = materialetype',
   'site.legend.pipe': 'Rør',

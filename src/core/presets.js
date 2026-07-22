@@ -15,7 +15,7 @@ function buildPreset(id) {
   const pipeBig = { source: 'library', id: 'pipe-1-4' };
   const wood10 = { source: 'library', id: 'wood-10' };
   const post = (pid, x, z, height = 2.5, depth = 1.0) => ({ id: pid, x_m: x, z_m: z, height_m: height, depth_m: depth, hole_mm: 200, override: null });
-  const conn = (cid, a, b, h, mat) => ({ id: cid, a, b, height_m: h, material: mat || pipe, onTop: false });
+  const conn = (cid, a, b, h, mat) => ({ id: cid, a, b, height_m: h, material: { ...(mat || pipe) }, onTop: false });
   const avatar = (x, z) => ({ id: 'av1', type: 'avatar', x_m: x, z_m: z, height_m: 1.8 });
   const ladder = (postId) => ({ id: 'la1', type: 'ladder', postId, width_m: 0.5, angle_rad: 0 });
 
