@@ -8,7 +8,7 @@
 //        (dybden tæller mest — vokser med D³)
 //     b) lodret basetryk UNDER betonklodsen:                   k·b⁴/12
 //        (klodsens bredde tæller — vokser med b⁴; vigtig for brede/lave klodser)
-//   Kθ = k·(b·D³/3 + b⁴/12).  Bredere/dybere betonklods ⇒ stivere fundament.
+//   Kθ = k·(d·D³/3 + π·d⁴/64).  Større diameter/dybde ⇒ stivere fundament.
 //
 // Alle længder i meter. Parametriseret, så hver enkelt stolpe kan have
 // egne mål (sidemål, dybde, hul, højde) — den gamle udgave hardcodede
@@ -16,7 +16,7 @@
 //
 //   postSide   stolpens sidemål (m)        — fx 0.125
 //   depth      nedgravningsdybde (m)
-//   hole       betonhullets sidemål (m)
+//   hole       det runde betonhuls diameter (m)
 //   topHeight  højde til øverste bar = momentarm (m)
 //   Ipost      pælens inertimoment (m⁴), valgfri — fx for rør-stolper.
 //              Hvis udeladt antages massiv kvadrat: postSide⁴/12.
@@ -27,8 +27,8 @@
 
 function foundation({ postSide, depth, hole, topHeight, Ipost,
                              E = E_WOOD, kSoil = K_SOIL, refKg = 50 }) {
-  const Ktheta = kSoil * (hole * depth ** 3 / 3      // siderne langs dybden (∝ b·D³)
-                        + hole ** 4 / 12);           // basetryk under klodsen (∝ b⁴)
+  const Ktheta = kSoil * (hole * depth ** 3 / 3      // projiceret bredde langs dybden
+                        + Math.PI * hole ** 4 / 64); // cirkulær bases arealinertimoment
   const Href = refKg * G;                            // N
   const Iw = Ipost != null ? Ipost : postSide ** 4 / 12;  // pælens inertimoment (m⁴)
 
@@ -38,4 +38,12 @@ function foundation({ postSide, depth, hole, topHeight, Ipost,
   const kLat  = Href / dTop;                                 // samlet sidestivhed (N/m)
 
   return { Ktheta, dBend, dRot, dTop, kLat };
+}
+
+// Hvilket bidrag dominerer topsvinget? Faktor 1,5 undgår at udpege en årsag
+// på baggrund af en ubetydelig forskel.
+function foundationSwayCause(result, ratio = 1.5) {
+  if (result.dBend >= result.dRot * ratio) return 'member';
+  if (result.dRot >= result.dBend * ratio) return 'foundation';
+  return 'mixed';
 }

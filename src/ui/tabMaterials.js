@@ -15,60 +15,6 @@ const tabMaterials = {
 
     container.append(el('h2', {}, tt('tab.materials')), el('p', { class: 'intro' }, tt('mats.intro')));
 
-    // Godstykkelsen er en egenskab ved rørtypen og ændres derfor ét sted for
-    // hele designet. Standardrør starter med katalogets dokumenterede værdi.
-    const pipes = sortLibrary(design.library).filter(m => m.kind === 'pipe');
-    if (pipes.length) {
-      const body = el('tbody', {});
-      pipes.forEach(pipe => {
-        const standard = findMaterial(pipe.id);
-        const maxWall = maxPipeWallMm(pipe);
-        const wallInp = el('input', {
-          type: 'number', step: '0.1', min: String(MIN_PIPE_WALL_MM), max: String(maxWall),
-          value: String(pipe.wall), class: 'pipe-wall-input',
-          title: `${MIN_PIPE_WALL_MM}–${fmt(maxWall, 1, lang)} mm`,
-          'aria-label': `${pipe.name}: ${tt('mat.wall')} (mm)`,
-        });
-        const updateWall = value => {
-          const wall = clampPipeWallMm(pipe, value, standard ? standard.wall : pipe.wall);
-          store.update(d => {
-            const m = d.library.find(x => x.id === pipe.id); if (!m) return;
-            m.wall = wall;
-            if (standard && Math.abs(wall - standard.wall) < 1e-9) delete m.wallCustom;
-            else m.wallCustom = true;
-          });
-          wallInp.value = String(wall);
-        };
-        wallInp.addEventListener('input', () => {
-          const value = parseFloat(wallInp.value);
-          if (!isNaN(value)) updateWall(value);
-        });
-        wallInp.addEventListener('change', () => updateWall(parseFloat(wallInp.value)));
-        const reset = standard
-          ? el('button', {
-              class: 'pipe-wall-reset', type: 'button',
-              title: tt('mats.pipeReset'), 'aria-label': tt('mats.pipeReset'),
-              onclick: () => { updateWall(standard.wall); ctx.rerender(); },
-            }, '↺')
-          : el('span', { class: 'pipe-wall-custom' }, tt('mats.pipeCustom'));
-        body.append(el('tr', {},
-          el('td', { class: 'pipe-spec-name' }, pipe.name),
-          el('td', { class: 'numc' }, `${fmt(pipe.od, 1, lang)} mm`),
-          el('td', { class: 'pipe-wall-cell' }, wallInp, el('span', {}, 'mm')),
-          el('td', { class: 'pipe-standard-cell' }, standard ? `${fmt(standard.wall, 1, lang)} mm` : '–', reset)));
-      });
-      container.append(el('section', { class: 'pipe-specs' },
-        el('div', { class: 'pipe-specs-head' },
-          el('h3', {}, tt('mats.pipeTitle')),
-          el('p', { class: 'mat-note' }, tt('mats.pipeHint'))),
-        el('div', { class: 'pipe-specs-scroll' }, el('table', { class: 'pipe-spec-table' },
-          el('thead', {}, el('tr', {},
-            el('th', {}, tt('mats.pipeName')),
-            el('th', {}, tt('mats.pipeOd')),
-            el('th', {}, tt('mat.wall')),
-            el('th', {}, tt('mats.pipeStandard')))), body))));
-    }
-
     if (!design.posts.length) {
       container.append(el('div', { class: 'empty-state empty-mats' },
         el('div', { class: 'material-ghost', 'aria-hidden': 'true' },
@@ -86,8 +32,11 @@ const tabMaterials = {
 
     // ---- materialeliste (tabel) ----
     const rows = [];
-    rows.push({ l: `${M.postMat.name} (${tt('mats.posts')})`, q: `${M.postCount} ${tt('mats.pcs')} · ${fm(M.postTotalLen)} ${tt('mats.total')}`, c: materialColor(M.postMat) });
-    rows.push({ l: `${tt('mats.incl')} ${fm(M.buriedTotal)} ${tt('mats.buried')}`, q: '', sub: true });
+    for (const id of Object.keys(M.postGroups)) {
+      const g = M.postGroups[id];
+      rows.push({ l: `${matLabel(g.mat, 'mm', lang)} (${tt('mats.posts')})`, q: `${g.count} ${tt('mats.pcs')} · ${fm(g.totalLen)} ${tt('mats.total')}`, c: materialColor(g.mat) });
+      rows.push({ l: `${tt('mats.incl')} ${fm(g.buried)} ${tt('mats.buried')}`, q: '', sub: true });
+    }
     for (const id of Object.keys(M.barGroups)) {
       const g = M.barGroups[id];
       const kind = g.mat.kind === 'wood' ? tt('mat.kind.wood') : tt('mat.kind.pipe');
@@ -97,7 +46,8 @@ const tabMaterials = {
     if (M.ladderCount > 0) {
       rows.push({ l: tt('mats.ladderVert'), q: fm(M.ladVert) });
       rows.push({ l: `${tt('mats.ladderRungs')} (${M.ladRungCount} ${tt('mats.pcs')})`, q: fm(M.ladRungLen) });
-      rows.push({ l: tt('mats.ladderKee'), q: `${M.ladKee} ${tt('mats.pcs')}` });
+      rows.push({ l: tt('mats.ladderPostFittings'), q: `${M.ladPostFittings} ${tt('mats.pcs')}` });
+      rows.push({ l: tt('mats.ladderTees'), q: `${M.ladTees} ${tt('mats.pcs')}` });
     }
     if (M.monkeyCount > 0) {
       rows.push({ l: `${tt('mats.monkeyRungs')} (${M.monRungCount} ${tt('mats.pcs')})`, q: fm(M.monRungLen) });
@@ -106,6 +56,7 @@ const tabMaterials = {
     }
     rows.push({ l: tt('mats.screws'), q: `~${32 + (M.ladRungCount + M.monRungCount) * 4} ${tt('mats.pcs')}` });
     rows.push({ l: tt('mats.gravel'), q: `${Math.round(M.gravelVol * 1000)} L` });
+    rows.push({ l: tt('mats.filterFabric'), q: `${M.filterFabricCount} ${tt('mats.pcs')} · ~${fmt(M.filterFabricArea, 2, lang)} m²` });
     rows.push({ l: tt('mats.concrete'), q: `${fmt(M.concVol, 2, lang)} m³` });
     rows.push({ l: tt('mats.bags'), q: `~${M.bags25}`, sub: true });
     rows.push({ l: tt('mats.tar'), q: `~${fmt(M.tarLitre, 1, lang)} L` });
@@ -116,7 +67,7 @@ const tabMaterials = {
         el('td', { class: 'q' }, r.q)))));
     container.append(el('h3', {}, tt('mats.tableTitle')), tbl);
     container.append(el('p', { class: 'mat-note' },
-      `${tt('mats.assume1')} ${Math.round(M.hole * 100)}×${Math.round(M.hole * 100)} cm, ${Math.round(GRAVEL_H * 100)} cm ${tt('mats.gravelShort')}. ${tt('mats.assume2')}`));
+      `${tt('mats.assume1')} ${Math.round(M.hole * 100)} cm, ${Math.round(GRAVEL_H * 100)} cm ${tt('mats.gravelShort')}. ${tt('mats.assume2')}`));
 
     // ---- skæreliste (rør/træ pakket i hele stænger; købslængde pr. materiale) ----
     container.append(el('h3', { class: 'cut-h' }, tt('mats.cutTitle')));

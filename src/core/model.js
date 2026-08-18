@@ -30,6 +30,7 @@ function defaultDesign() {
     stock: {},
     // Kort-editorens indstillinger:
     site: {
+      postRefLoad_kg: 50, // vandret testlast pr. stolpe (topsving pÃ¥ kortet)
       grid_m: 0.125,          // gitter-opløsning (default = stolpetykkelse 12,5 cm)
       connMaterialId: 'pipe-1',
       connHeight_m: 2.0,
@@ -52,6 +53,19 @@ function defaultDesign() {
 // Slå et materiale op i designets bibliotek (falder tilbage til første).
 function resolveMaterial(design, id) {
   return design.library.find(m => m.id === id) || design.library[0];
+}
+
+// Stolpemateriale: en stolpe kan overstyre projektets standardmateriale.
+function postMatOf(design, p) {
+  const id = p && p.materialId ? p.materialId : design.defaults.post.materialId;
+  return resolveMaterial(design, id);
+}
+
+// Mindste diameter for et rundt borehul. En kvadratisk træstolpe skal kunne
+// passere gennem cirklen, så diagonalen (side·√2) er det geometriske minimum.
+function minRoundHoleMmForMaterial(material) {
+  if (!material) return 0;
+  return material.kind === 'wood' ? (material.side || 0) * Math.SQRT2 : (material.od || 0);
 }
 
 // ---- Delte visnings-/opslags-hjælpere for stolper og forbindelser ----
@@ -91,7 +105,7 @@ function connMatOf(design, ref) {
   return base;
 }
 
-// Stolpens højde over jord, dybde og hul/betonklods (mm) — egne værdier pr.
+// Stolpens højde over jord, dybde og rund huldiameter (mm) — egne værdier pr.
 // stolpe, ellers design-standarderne.
 function postHeightOfD(design, p) {
   return p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0);
@@ -103,10 +117,90 @@ function postHoleMmOf(design, p) {
   return p.hole_mm != null ? p.hole_mm : ((design.defaults.post && design.defaults.post.hole_mm) || 200);
 }
 
-// Spændvidden (m) for en forbindelse ud fra dens to stolpers positioner; 0 hvis ukendt.
+// Stiger har deres eget runde fundament og egen trinafstand. Fallbacks gør
+// eksisterende gemte tegninger kompatible uden at ændre deres udseende.
+function ladderDepthOf(at) { return Math.max(GRAVEL_H + 0.05, at.depth_m ?? LADDER_FOOT_DEPTH_M); }
+function ladderHoleMmOf(at) { return Math.max(50, at.hole_mm ?? LADDER_FOOT_HOLE_MM); }
+function ladderRungSpacingOf(at) { return Math.max(0.15, at.rungSpacing_m ?? LADDER_RUNG_SPACING_M); }
+
+// Drej hele grundplanen 90 grader med uret omkring stolpernes centrum.
+function rotateDesign90(design) {
+  if (!design.posts.length) return design;
+  const cx = design.posts.reduce((s, p) => s + p.x_m, 0) / design.posts.length;
+  const cz = design.posts.reduce((s, p) => s + p.z_m, 0) / design.posts.length;
+  const rot = p => {
+    const dx = p.x_m - cx, dz = p.z_m - cz;
+    p.x_m = Math.round((cx - dz) * 1e9) / 1e9;
+    p.z_m = Math.round((cz + dx) * 1e9) / 1e9;
+  };
+  design.posts.forEach(rot);
+  design.attachments.forEach(a => {
+    if (a.type === 'avatar') rot(a);
+    if (a.type === 'ladder' && a.angle_rad != null) a.angle_rad += Math.PI / 2;
+  });
+  return design;
+}
+
+// Vælg det største praktiske grid, som mindst 75 % af stolpekoordinaterne kan
+// ramme med en lille korrektion, og snap stolperne til det. Returnerer gridmål.
+function autoFitPostGrid(design) {
+  if (!design.posts.length) return { grid_m: design.site.grid_m || 0.1, moved: 0 };
+  const candidates = [1, 0.5, 0.25, 0.2, 0.125, 0.1, 0.05, 0.025, 0.02, 0.01];
+  const axisFit = (vals, g) => {
+    const mods = vals.map(v => ((v % g) + g) % g);
+    let best = null;
+    for (const off of mods) {
+      const targets = vals.map(v => Math.round((v - off) / g) * g);
+      // Mål til det forskudte grid bruges til kvalitetsscoren; selve outputtet
+      // flyttes bagefter til grid-origo, så de synlige linjer går gennem punkterne.
+      const deltas = targets.map((v, i) => v + off - vals[i]);
+      const rms = Math.sqrt(deltas.reduce((s, d) => s + d * d, 0) / deltas.length);
+      const tol = Math.max(0.006, g * 0.08);
+      const hit = deltas.filter(d => Math.abs(d) <= tol).length / deltas.length;
+      if (!best || rms < best.rms) best = { off, targets, deltas, rms, hit };
+    }
+    return best;
+  };
+  let chosen = null;
+  for (const g of candidates) {
+    const fx = axisFit(design.posts.map(p => p.x_m), g);
+    const fz = axisFit(design.posts.map(p => p.z_m), g);
+    const rms = Math.sqrt((fx.rms * fx.rms + fz.rms * fz.rms) / 2);
+    const hit = (fx.hit + fz.hit) / 2;
+    const unique = new Set(fx.targets.map((x, i) => `${x.toFixed(6)}:${fz.targets[i].toFixed(6)}`)).size === design.posts.length;
+    if (unique && hit >= 0.75 && rms <= Math.max(0.012, g * 0.12)) { chosen = { g, fx, fz }; break; }
+  }
+  if (!chosen) chosen = { g: 0.01, fx: axisFit(design.posts.map(p => p.x_m), 0.01), fz: axisFit(design.posts.map(p => p.z_m), 0.01) };
+  let dxSum = 0, dzSum = 0, moved = 0;
+  design.posts.forEach((p, i) => {
+    const nx = chosen.fx.targets[i], nz = chosen.fz.targets[i];
+    dxSum += nx - p.x_m; dzSum += nz - p.z_m;
+    if (Math.hypot(nx - p.x_m, nz - p.z_m) > 1e-6) moved++;
+    p.x_m = Math.round(nx * 1e9) / 1e9; p.z_m = Math.round(nz * 1e9) / 1e9;
+  });
+  const adx = dxSum / design.posts.length, adz = dzSum / design.posts.length;
+  design.attachments.forEach(a => { if (a.type === 'avatar') { a.x_m += adx; a.z_m += adz; } });
+  design.site.grid_m = chosen.g;
+  return { grid_m: chosen.g, moved };
+}
+
+// Afstand fra centrum til stolpefladen i forbindelsens retning.
+function postFaceOffset(design, p, ux, uz) {
+  const mat = postMatOf(design, p);
+  if (!mat) return 0;
+  if (mat.kind === 'pipe') return (mat.od || 0) / 2000;
+  const half = (mat.side || 0) / 2000;
+  return half / Math.max(Math.abs(ux), Math.abs(uz), 1e-9);
+}
+
+// Faktisk fri forbindelseslængde mellem stolpernes flader; 0 hvis ukendt.
 function spanOfConn(design, c) {
   const a = design.posts.find(p => p.id === c.a), b = design.posts.find(p => p.id === c.b);
-  return (a && b) ? Math.hypot(b.x_m - a.x_m, b.z_m - a.z_m) : 0;
+  if (!a || !b) return 0;
+  const dx = b.x_m - a.x_m, dz = b.z_m - a.z_m, center = Math.hypot(dx, dz);
+  if (center < 1e-9) return 0;
+  const ux = dx / center, uz = dz / center;
+  return Math.max(0, center - postFaceOffset(design, a, ux, uz) - postFaceOffset(design, b, -ux, -uz));
 }
 
 // Hvilken vandret bar binder en stige sig til? Den forbindelse på stolpen, hvis

@@ -94,6 +94,7 @@ function fill(d) {
   merged.analysis.bar.load_kg = atLeast(merged.analysis.bar.load_kg, 0, base.analysis.bar.load_kg);
   merged.analysis.bar.fixity = Math.min(1, atLeast(merged.analysis.bar.fixity, 0, base.analysis.bar.fixity));
   merged.site.grid_m = atLeast(merged.site.grid_m, 0.01, base.site.grid_m);
+  merged.site.postRefLoad_kg = atLeast(merged.site.postRefLoad_kg, 0, base.site.postRefLoad_kg);
   merged.site.connHeight_m = atLeast(merged.site.connHeight_m, 0, base.site.connHeight_m);
   merged.site.postHeight_m = atLeast(merged.site.postHeight_m, 0.1, base.site.postHeight_m);
   merged.site.avatarHeight_m = atLeast(merged.site.avatarHeight_m, 0.3, base.site.avatarHeight_m);
@@ -110,19 +111,22 @@ function fill(d) {
   });
   merged.site.monkeySpacing_m = atLeast(merged.site.monkeySpacing_m, 0.15, base.site.monkeySpacing_m);
   if (!SOIL_FACTORS[merged.site.soil]) merged.site.soil = base.site.soil;
-  // hul/betonklods kan aldrig være mindre end stolpens eget tværsnit
+  // rund huldiameter kan aldrig være mindre end stolpens diagonal/diameter
   const pmFill = resolveMaterial(merged, merged.defaults.post.materialId);
-  const postSideMmFill = pmFill ? ((pmFill.kind === 'wood' ? pmFill.side : pmFill.od) || 125) : 125;
+  const postSideMmFill = pmFill ? (minRoundHoleMmForMaterial(pmFill) || 125) : 125;
   merged.defaults.post.hole_mm = Math.max(merged.defaults.post.hole_mm, postSideMmFill);
   const pmAna = resolveMaterial(merged, merged.analysis.post.materialId);
   merged.analysis.post.hole_mm = Math.max(merged.analysis.post.hole_mm,
-    pmAna ? ((pmAna.kind === 'wood' ? pmAna.side : pmAna.od) || 125) : 125);
+    pmAna ? (minRoundHoleMmForMaterial(pmAna) || 125) : 125);
   // stolper: koordinater SKAL være endelige tal — ellers giver spænd/tegning NaN
   merged.posts = merged.posts.filter(p => isFinite(p.x_m) && isFinite(p.z_m) && p.id != null);
   merged.posts.forEach(p => {
+    if (p.materialId != null && !merged.library.some(m => m.id === p.materialId)) delete p.materialId;
+    const pMat = postMatOf(merged, p);
+    const pSideMm = pMat ? (minRoundHoleMmForMaterial(pMat) || postSideMmFill) : postSideMmFill;
     if (p.height_m != null) p.height_m = atLeast(p.height_m, 0.1, merged.site.postHeight_m);
     if (p.depth_m != null) p.depth_m = atLeast(p.depth_m, 0.1, merged.defaults.post.depth_m);
-    if (p.hole_mm != null) p.hole_mm = atLeast(p.hole_mm, postSideMmFill, merged.defaults.post.hole_mm);
+    if (p.hole_mm != null) p.hole_mm = atLeast(p.hole_mm, pSideMm, merged.defaults.post.hole_mm);
   });
   // forbindelser skal pege på eksisterende stolper
   const postIds = new Set(merged.posts.map(p => p.id));
@@ -149,7 +153,12 @@ function fill(d) {
   merged.attachments = merged.attachments.filter(a =>
     a.type !== 'avatar' || (isFinite(a.x_m) && isFinite(a.z_m)));
   merged.attachments.forEach(a => {
-    if (a.type === 'ladder') a.width_m = atLeast(a.width_m, 0.05, merged.site.ladderWidth_m);
+    if (a.type === 'ladder') {
+      a.width_m = atLeast(a.width_m, 0.05, merged.site.ladderWidth_m);
+      a.depth_m = atLeast(a.depth_m, GRAVEL_H + 0.05, LADDER_FOOT_DEPTH_M);
+      a.hole_mm = atLeast(a.hole_mm, 50, LADDER_FOOT_HOLE_MM);
+      a.rungSpacing_m = atLeast(a.rungSpacing_m, 0.15, LADDER_RUNG_SPACING_M);
+    }
     if (a.type === 'avatar') a.height_m = atLeast(a.height_m, 0.3, merged.site.avatarHeight_m);
     if (a.type === 'monkey') a.spacing_m = atLeast(a.spacing_m, 0.15, merged.site.monkeySpacing_m);
   });

@@ -79,7 +79,7 @@ const tabSite = {
       const r = mapBox.getBoundingClientRect();
       return [(e.clientX - r.left) * (W / r.width), (e.clientY - r.top) * (H / r.height)];
     };
-    const postSideM = () => { const m = resolveMaterial(design, design.defaults.post.materialId); return (m.kind === 'wood' ? m.side : m.od) / 1000; };
+    const postSideM = p => { const m = p ? postMatOf(design, p) : resolveMaterial(design, design.defaults.post.materialId); return (m.kind === 'wood' ? m.side : m.od) / 1000; };
     const connMat = ref => connMatOf(design, ref);
     const colorOf = ref => materialColor(connMat(ref));   // blå = rør, brun = træ
     // Hold Kort-tabellen kompakt; fulde rørdata vises/redigeres under Materialer.
@@ -203,6 +203,7 @@ const tabSite = {
       }
       const selL = at.id === selectedLadder ? `<line x1="${ox.toFixed(1)}" y1="${oy.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="#4f9bff" stroke-width="${(wHalf * 2 + 8).toFixed(1)}" stroke-linecap="round" opacity="0.3"/>` : '';
       return `<g data-el="ladder" data-id="${at.id}">${selL}
+        <circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${Math.max(4, 0.11 * view.k).toFixed(1)}" fill="#d9dde3" fill-opacity="0.18" stroke="#8b949e" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/>
         <line x1="${r1x.toFixed(1)}" y1="${r1y.toFixed(1)}" x2="${r1ex.toFixed(1)}" y2="${r1ey.toFixed(1)}" stroke="#0e7490" stroke-width="2"/>
         <line x1="${r2x.toFixed(1)}" y1="${r2y.toFixed(1)}" x2="${r2ex.toFixed(1)}" y2="${r2ey.toFixed(1)}" stroke="#0e7490" stroke-width="2"/>
         ${rungs}
@@ -243,24 +244,23 @@ const tabSite = {
     // Alle stolper deler post-materialet (defaults.post); dybde/hul/højde er
     // pr. stolpe. "Blød" = top-sving ≥ 20 mm (samme tærskel som Stolpe-fanen).
     const SOFT_SWAY_MM = 20;
-    const postMatObj = () => resolveMaterial(design, design.defaults.post.materialId);
     const postHeightOf = p => postHeightOfD(design, p);
     const postDepthOf = p => postDepthOfD(design, p);
     const postHoleOf = p => postHoleMmOf(design, p);
     const maxBarHOf = pid => { let h = 0, found = false; for (const c of design.connections) { if (c.a === pid || c.b === pid) { found = true; h = Math.max(h, c.height_m || 0); } } return found ? h : null; };
-    const postSwayMm = p => {
-      const pm = postMatObj();
+    const postFoundationResult = p => {
+      const pm = postMatOf(design, p);
       const postSide = (pm.kind === 'wood' ? pm.side : pm.od) / 1000;
       const arm = maxBarHOf(p.id);
       const topHeight = Math.max(0.3, arm != null ? arm : postHeightOf(p));
-      const f = foundation({ postSide, depth: Math.max(postDepthOf(p), 0.05), hole: postHoleOf(p) / 1000, topHeight, Ipost: sectionProps(pm).I, E: pm.E, kSoil: K_SOIL * soilFactorOf(design) });
-      return f.dTop * 1000;
+      return foundation({ postSide, depth: Math.max(postDepthOf(p), 0.05), hole: postHoleOf(p) / 1000, topHeight, Ipost: sectionProps(pm).I, E: pm.E, kSoil: K_SOIL * soilFactorOf(design), refKg: design.site.postRefLoad_kg ?? 50 });
     };
+    const postSwayMm = p => postFoundationResult(p).dTop * 1000;
     const postSoft = p => postSwayMm(p) >= SOFT_SWAY_MM;
 
     function redraw(live) {
       const g = design.site.grid_m || 0.125;
-      const refLoad = design.site.refLoad_kg || 120;
+      const refLoad = design.site.refLoad_kg ?? 120;
       const [minWx, minWz] = toWorld(0, 0), [maxWx, maxWz] = toWorld(W, H);
       let step = g; while (step * view.k < 7) step *= 2;
 
@@ -275,7 +275,6 @@ const tabSite = {
       }
 
       const byId = byPost();
-      const side = Math.max(7, postSideM() * view.k);
 
       let conns = '';
       design.connections.forEach((c, i) => {
@@ -368,8 +367,11 @@ const tabSite = {
 
       let posts = '';
       design.posts.forEach((p, i) => {
+        const side = Math.max(7, postSideM(p) * view.k);
+        const holeDia = Math.max(side, postHoleOf(p) / 1000 * view.k);
         const [sx, sy] = toScreen(p.x_m, p.z_m);
         const sel = p.id === selectedPost || p.id === connectFrom;
+        posts += `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${(holeDia / 2).toFixed(1)}" fill="#d9dde3" fill-opacity="0.18" stroke="#8b949e" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/>`;
         if (postSoft(p)) posts += `<rect x="${(sx - side / 2 - 4).toFixed(1)}" y="${(sy - side / 2 - 4).toFixed(1)}" width="${(side + 8).toFixed(1)}" height="${(side + 8).toFixed(1)}" rx="3" fill="#e11d1d" opacity="0.5"/>`;
         posts += `<rect data-el="post" data-id="${p.id}" x="${(sx - side / 2).toFixed(1)}" y="${(sy - side / 2).toFixed(1)}" width="${side.toFixed(1)}" height="${side.toFixed(1)}" rx="2" fill="#b6986a" stroke="${sel ? '#4f9bff' : '#7a5d35'}" stroke-width="${sel ? 2.5 : 1.2}"/>`;
         if (!live) {
@@ -417,7 +419,8 @@ const tabSite = {
         if (!a || !b || !isFinite(newLenSI)) return;
         let ux = b.x_m - a.x_m, uz = b.z_m - a.z_m; const len = Math.hypot(ux, uz);
         if (len < 1e-6) { ux = 1; uz = 0; } else { ux /= len; uz /= len; }
-        b.x_m = a.x_m + ux * newLenSI; b.z_m = a.z_m + uz * newLenSI;
+        const centerLen = newLenSI + postFaceOffset(d, a, ux, uz) + postFaceOffset(d, b, -ux, -uz);
+        b.x_m = a.x_m + ux * centerLen; b.z_m = a.z_m + uz * centerLen;
       });
     }
     const stopProp = e => e.stopPropagation();
@@ -470,7 +473,8 @@ const tabSite = {
     function renderPanel() {
       clear(selPanel);
       liveConnUpdate = null;
-      const refLoad = design.site.refLoad_kg || 120;
+      const refLoad = design.site.refLoad_kg ?? 120;
+      const postRefLoad = design.site.postRefLoad_kg ?? 50;
       const byId = byPost();
       const postH = id => { const p = byId[id]; return p ? (p.height_m != null ? p.height_m : (design.site.postHeight_m || 3.0)) : (design.site.postHeight_m || 3.0); };
       const maxBarH = c => Math.min(postH(c.a), postH(c.b));
@@ -478,17 +482,35 @@ const tabSite = {
       if (design.posts.length) {
         selPanel.append(el('h3', {}, tt('site.posts.title')));
         const holeUnitTxt = su === 'ft' ? tt('unit.in') : 'cm';
-        const postSideMm = postSideM() * 1000;
         const holeToMm = v => su === 'ft' ? v * 25.4 : v * 10;
         const holeFromMm = mm => Math.round((su === 'ft' ? mm / 25.4 : mm / 10) * 100) / 100;
         const phead = el('tr', {}, el('th', {}, '#'),
+          el('th', {}, tt('site.postmaterial')),
           el('th', {}, `${tt('site.postheight')} (${suTxt})`),
           el('th', {}, `${tt('site.postdepth')} (${suTxt})`),
           el('th', {}, `${tt('site.posthole')} (${holeUnitTxt})`),
+          el('th', { class: 'post-sway-col', title: tt('site.postsway.hint').replace('{load}', fmt(postRefLoad, 0, lang)) }, `↔ ${fmt(postRefLoad, 0, lang)} kg`),
           el('th', { class: 'delete-col' }, ''));
         const prows = design.posts.map((p, i) => {
           const tr = el('tr', {});
-          const paintRow = () => { const soft = postSoft(p); tr.className = 'crow' + (p.id === selectedPost ? ' on' : '') + (soft ? ' crit' : ''); tr.title = soft ? tt('site.postsoft') : ''; };
+          const swayCell = el('td', { class: 'numc post-sway' }, '');
+          const paintRow = () => {
+            const f = postFoundationResult(p), sway = f.dTop * 1000, soft = sway >= SOFT_SWAY_MM, warn = sway >= 10 && !soft;
+            const causeText = tt('site.postsoft.' + foundationSwayCause(f));
+            clear(swayCell); swayCell.append(`${fmt(sway, 1, lang)} mm${soft ? ' ⚠' : ''}`);
+            swayCell.className = 'numc post-sway' + (soft ? ' crit-value' : warn ? ' warn-value' : ' ok-value');
+            tr.className = 'crow' + (p.id === selectedPost ? ' on' : '') + (soft ? ' crit' : warn ? ' warn' : '');
+            tr.title = `${tt('site.postsway')}: ${fmt(sway, 1, lang)} mm (${tt('site.postsway.member')}: ${fmt(f.dBend * 1000, 1, lang)} mm · ${tt('site.postsway.foundation')}: ${fmt(f.dRot * 1000, 1, lang)} mm)` + (soft ? `. ${causeText}` : '');
+          };
+          const matSel = select(libOpts(), postMatOf(design, p).id, v => {
+            store.update(d => {
+              const q = d.posts.find(x => x.id === p.id); if (!q) return;
+              q.materialId = v;
+              const m = postMatOf(d, q), minHole = minRoundHoleMmForMaterial(m);
+              q.hole_mm = Math.max(postHoleMmOf(d, q), minHole);
+            });
+            redraw(); renderPanel();
+          });
           // højde (klamper også bar-højder på stolpen)
           const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))), value: String(round(lenFromSI(postHeightOf(p), su))), 'aria-label': `${tt('site.delete.post')} ${letterFor(i)}: ${tt('site.postheight')} (${suTxt})` });
           const clampPost = (v, commit) => {
@@ -513,8 +535,12 @@ const tabSite = {
           };
           dInp.addEventListener('input', () => { const v = parseFloat(dInp.value); if (!isNaN(v)) setDepth(v, false); });
           dInp.addEventListener('change', () => { dInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(dInp.value) || 0, su), 0.1), su))); setDepth(parseFloat(dInp.value), true); });
-          // hul/betonklods — mindst stolpens sidemål
-          const holeInp = el('input', { type: 'number', step: su === 'ft' ? '0.5' : '1', min: String(holeFromMm(postSideMm)),
+          // rundt hul/beton — mindst stolpens diagonal/diameter
+          const postSideMm = minRoundHoleMmForMaterial(postMatOf(design, p));
+          // Hele centimeter som grundspring: et decimalt minimum ville ellers
+          // få browserens piletaster til at hoppe fx 18,7 → 19,7 cm.
+          const holeMin = su === 'ft' ? holeFromMm(postSideMm) : Math.ceil(holeFromMm(postSideMm));
+          const holeInp = el('input', { type: 'number', step: su === 'ft' ? '0.5' : '1', min: String(holeMin),
             value: String(holeFromMm(postHoleOf(p))), title: `${tt('post.holeMin')}: ${holeFromMm(postSideMm)} ${holeUnitTxt}`,
             'aria-label': `${tt('site.delete.post')} ${letterFor(i)}: ${tt('site.posthole')} (${holeUnitTxt})` });
           const setHole = (v, commit) => {
@@ -525,13 +551,15 @@ const tabSite = {
           };
           holeInp.addEventListener('input', () => { const v = parseFloat(holeInp.value); if (!isNaN(v)) setHole(v, false); });
           holeInp.addEventListener('change', () => { holeInp.value = String(holeFromMm(Math.max(holeToMm(parseFloat(holeInp.value) || 0), postSideMm))); setHole(parseFloat(holeInp.value), true); });
-          [hInp, dInp, holeInp].forEach(x => x.addEventListener('pointerdown', stopProp));
+          [matSel, hInp, dInp, holeInp].forEach(x => x.addEventListener('pointerdown', stopProp));
           paintRow();
           tr.append(
             el('td', {}, el('span', { class: 'pdot' }), letterFor(i)),
+            el('td', { class: 'editc post-mat-cell' }, matSel),
             el('td', { class: 'editc' }, hInp),
             el('td', { class: 'editc' }, dInp),
             el('td', { class: 'editc' }, holeInp),
+            swayCell,
             el('td', { class: 'delete-col' }, deleteButton('post', p.id)));
           tr.addEventListener('click', e => { if (e.target.closest('input,select,button')) return; selectedPost = p.id; selectedConn = null; selectedLadder = null; selectedMonkey = null; selectedAvatar = null; redraw(); renderPanel(); });
           return tr;
@@ -549,7 +577,7 @@ const tabSite = {
           el('th', { class: 'conn-mat-col' }, tt('site.conn.th.mat')),
           el('th', { class: 'conn-wall-col', title: tt('site.conn.wallHint') }, `${tt('mat.wall')} (mm)`),
           el('th', { class: 'conn-measure-col' }, `H (${suTxt})`),
-          el('th', { class: 'conn-measure-col' }, `L (${suTxt})`),
+          el('th', { class: 'conn-measure-col', title: tt('site.conn.lengthHint') }, `L (${suTxt})`),
           el('th', { class: 'conn-result-col' }, `${tt('site.conn.th.load')} (kg)`),
           el('th', { class: 'conn-result-col' }, `${tt('bar.res.ultimate')} (kg)`),
           el('th', { class: 'conn-defl-col' }, `↓ ${Math.round(refLoad)}kg`),
@@ -646,18 +674,42 @@ const tabSite = {
         const lhead = el('tr', {},
           el('th', {}, '#'), el('th', {}, tt('site.ladder.post')),
           el('th', {}, tt('site.ladder.bar')), el('th', {}, `${tt('site.ladderwidth')} (${suTxt})`),
+          el('th', {}, `${tt('site.ladder.depth')} (${suTxt})`),
+          el('th', {}, `${tt('site.ladder.hole')} (${su === 'ft' ? tt('unit.in') : 'cm'})`),
+          el('th', {}, `${tt('site.ladder.rungs')} (${su === 'ft' ? tt('unit.in') : 'cm'})`),
           el('th', { class: 'delete-col' }, ''));
         const lrows = laddersList.map(a => {
           const bar = ladderBarOf(design, a);
           const widthInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(MIN_LADDER_WIDTH_M, su))), value: String(round(lenFromSI(a.width_m || design.site.ladderWidth_m, su))), 'aria-label': `${tt('site.delete.ladder')} ${ladderLabelOf(design, a)}: ${tt('site.ladderwidth')} (${suTxt})` });
           widthInp.addEventListener('input', () => { const v = parseFloat(widthInp.value); if (isNaN(v)) return; store.update(d => { const at = d.attachments.find(x => x.id === a.id); if (at) at.width_m = Math.max(lenToSI(v, su), MIN_LADDER_WIDTH_M); }); redraw(); });
           widthInp.addEventListener('change', () => { widthInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(widthInp.value) || 0, su), MIN_LADDER_WIDTH_M), su))); });
-          widthInp.addEventListener('pointerdown', stopProp);
+          const depthInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(GRAVEL_H + 0.05, su))), value: String(round(lenFromSI(ladderDepthOf(a), su))), 'aria-label': `${tt('site.delete.ladder')} ${ladderLabelOf(design, a)}: ${tt('site.ladder.depth')} (${suTxt})` });
+          const setDepth = v => store.update(d => { const at = d.attachments.find(x => x.id === a.id); if (at) at.depth_m = Math.max(lenToSI(v, su), GRAVEL_H + 0.05); });
+          depthInp.addEventListener('input', () => { const v = parseFloat(depthInp.value); if (!isNaN(v)) { setDepth(v); redraw(); } });
+          depthInp.addEventListener('change', () => { depthInp.value = String(round(lenFromSI(Math.max(lenToSI(parseFloat(depthInp.value) || 0, su), GRAVEL_H + 0.05), su))); });
+          const holeUnit = su === 'ft' ? 'in' : 'cm';
+          const holeFromMm = mm => Math.round((holeUnit === 'in' ? mm / 25.4 : mm / 10) * 100) / 100;
+          const holeToMm = v => holeUnit === 'in' ? v * 25.4 : v * 10;
+          const holeInp = el('input', { type: 'number', step: holeUnit === 'in' ? '0.5' : '1', min: String(holeUnit === 'in' ? holeFromMm(50) : 5), value: String(holeFromMm(ladderHoleMmOf(a))), 'aria-label': `${tt('site.delete.ladder')} ${ladderLabelOf(design, a)}: ${tt('site.ladder.hole')}` });
+          const setHole = v => store.update(d => { const at = d.attachments.find(x => x.id === a.id); if (at) at.hole_mm = Math.max(holeToMm(v), 50); });
+          holeInp.addEventListener('input', () => { const v = parseFloat(holeInp.value); if (!isNaN(v)) { setHole(v); redraw(); } });
+          holeInp.addEventListener('change', () => { holeInp.value = String(holeFromMm(Math.max(holeToMm(parseFloat(holeInp.value) || 0), 50))); });
+          const spacingUnit = su === 'ft' ? 'in' : 'cm';
+          const spacingFromM = m => Math.round((spacingUnit === 'in' ? m / 0.0254 : m * 100) * 10) / 10;
+          const spacingToM = v => spacingUnit === 'in' ? v * 0.0254 : v / 100;
+          const spacingInp = el('input', { type: 'number', step: spacingUnit === 'in' ? '0.5' : '1', min: String(spacingUnit === 'in' ? spacingFromM(0.15) : 15), value: String(spacingFromM(ladderRungSpacingOf(a))), 'aria-label': `${tt('site.delete.ladder')} ${ladderLabelOf(design, a)}: ${tt('site.ladder.rungs')}` });
+          const setSpacing = v => store.update(d => { const at = d.attachments.find(x => x.id === a.id); if (at) at.rungSpacing_m = Math.max(spacingToM(v), 0.15); });
+          spacingInp.addEventListener('input', () => { const v = parseFloat(spacingInp.value); if (!isNaN(v)) { setSpacing(v); redraw(); renderPanel(); } });
+          spacingInp.addEventListener('change', () => { spacingInp.value = String(spacingFromM(Math.max(spacingToM(parseFloat(spacingInp.value) || 0), 0.15))); });
+          [widthInp, depthInp, holeInp, spacingInp].forEach(x => x.addEventListener('pointerdown', stopProp));
           const tr = el('tr', { class: 'crow' + (a.id === selectedLadder ? ' on' : '') },
             el('td', {}, el('span', { class: 'ladder-dot' }), ladderLabelOf(design, a)),
             el('td', { class: 'numc' }, postLetter(a.postId)),
             el('td', { class: 'numc' }, bar ? connLabel(bar.conn) : '—'),
             el('td', { class: 'editc' }, widthInp),
+            el('td', { class: 'editc' }, depthInp),
+            el('td', { class: 'editc' }, holeInp),
+            el('td', { class: 'editc' }, spacingInp),
             el('td', { class: 'delete-col' }, deleteButton('ladder', a.id)));
           tr.addEventListener('click', e => { if (e.target.closest('input,select,button')) return; selectedLadder = a.id; selectedPost = null; selectedConn = null; selectedMonkey = null; selectedAvatar = null; redraw(); renderPanel(); });
           return tr;
@@ -959,7 +1011,7 @@ const tabSite = {
       if (mode === 'place-ladder') {
         const sp = ghostLadder;
         // placér KUN hvis pladsen er ledig (ingen dobbelt-stige oven på hinanden)
-        if (sp && !sp.invalid) store.update(d => d.attachments.push({ id: nextId(d.attachments, 'a'), type: 'ladder', postId: sp.postId, width_m: Math.max(d.site.ladderWidth_m, MIN_LADDER_WIDTH_M), angle_rad: sp.angle_rad }));
+        if (sp && !sp.invalid) store.update(d => d.attachments.push({ id: nextId(d.attachments, 'a'), type: 'ladder', postId: sp.postId, width_m: Math.max(d.site.ladderWidth_m, MIN_LADDER_WIDTH_M), depth_m: LADDER_FOOT_DEPTH_M, hole_mm: LADDER_FOOT_HOLE_MM, rungSpacing_m: LADDER_RUNG_SPACING_M, angle_rad: sp.angle_rad }));
         drag = null; down = null; ghostLadder = null;
         redraw(); renderPanel();
         return;
@@ -1046,6 +1098,18 @@ const tabSite = {
       redraw(); saveView();
     }
 
+    const rotate90 = () => {
+      store.update(d => rotateDesign90(d));
+      fit(); redraw(); renderPanel();
+    };
+    const fitGrid = () => {
+      let result;
+      store.update(d => { result = autoFitPostGrid(d); });
+      gridInp.value = String(Math.round(result.grid_m * 1000) / 10);
+      fit(); redraw(); renderPanel();
+      help.textContent = tt('site.gridAuto.done').replace('{grid}', gridInp.value).replace('{count}', String(result.moved));
+    };
+
     const palette = el('div', { class: 'toolpalette' },
       ...TOOLS.map(([id, icon, key]) =>
         el('button', { class: 'toolbtn' + (tool === id ? ' on' : ''), type: 'button', title: tt(key), 'data-tool': id, 'aria-pressed': tool === id ? 'true' : 'false',
@@ -1057,10 +1121,6 @@ const tabSite = {
             });
             redraw(); renderPanel(); } },
           el('span', { class: 'toolbtn-i', html: toolIcon(id) }), el('span', { class: 'toolbtn-t' }, tt(key)))),
-      el('div', { class: 'zoombar' },
-        el('button', { class: 'btn-sm', type: 'button', title: 'zoom +', onclick: () => zoom(1.2) }, '＋'),
-        el('button', { class: 'btn-sm', type: 'button', title: 'zoom −', onclick: () => zoom(1 / 1.2) }, '−'),
-        el('button', { class: 'btn-sm', type: 'button', title: tt('site.fit'), onclick: fit, html: `<svg width='14' height='14' viewBox='0 0 24 24' style='vertical-align:middle'><path d='M3 8V3h5 M16 3h5v5 M21 16v5h-5 M8 21H3v-5' fill='none' stroke='currentColor' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>` })),
       el('div', { class: 'zoombar' },
         // rerenderAll: fortryd erstatter design-objektet, så også header (navn/print) skal gentegnes
         el('button', { class: 'btn-sm', type: 'button', title: tt('site.undo') + ' (Ctrl+Z)', onclick: () => { if (store.undo()) ctx.rerenderAll(); } }, '↶'),
@@ -1099,11 +1159,30 @@ const tabSite = {
       unitToggle(tt('units.length'), [['m', tt('unit.m')], ['ft', tt('unit.ft')]], su,
         v => { store.update(d => { d.units.site.len = v; }); ctx.rerender(); }),
       el('label', { class: 'fld inline' }, el('span', { class: 'fld-l' }, `${tt('site.grid')} (cm)`), gridInp),
+      el('div', { class: 'site-control-group' },
+        el('span', { class: 'fld-l' }, tt('site.viewControls')),
+        el('div', { class: 'site-zoom-actions' },
+          el('button', { class: 'btn-sm', type: 'button', title: 'zoom +', onclick: () => zoom(1.2) }, '＋'),
+          el('button', { class: 'btn-sm', type: 'button', title: 'zoom −', onclick: () => zoom(1 / 1.2) }, '−'),
+          el('button', { class: 'btn-sm', type: 'button', title: tt('site.fit'), onclick: fit }, tt('site.center')))),
+      el('div', { class: 'site-grid-actions' },
+        el('button', { class: 'btn-sm', type: 'button', title: tt('site.rotate90'), onclick: rotate90 }, '↻ 90°'),
+        el('button', { class: 'btn-sm grid-auto-btn', type: 'button', title: tt('site.gridAuto.hint'), onclick: fitGrid }, tt('site.gridAuto'))),
       el('label', { class: 'fld inline' }, el('span', { class: 'fld-l' }, `${tt('site.ladderwidth')} (${suTxt})`),
-        lenInput(design.site.ladderWidth_m, su, v => { store.update(d => { d.site.ladderWidth_m = Math.max(v, MIN_LADDER_WIDTH_M); }); redraw(); }, { minSI: MIN_LADDER_WIDTH_M })),
-      el('label', { class: 'fld inline', title: tt('site.refload.hint') }, el('span', { class: 'fld-l' }, `${tt('site.refload')} (kg)`),
-        numInput(design.site.refLoad_kg || 120, 5, v => { store.update(d => { d.site.refLoad_kg = Math.max(v, 0); }); redraw(); renderPanel(); }, { min: 0 })),
-      el('label', { class: 'fld inline', title: tt('site.soil.hint') }, el('span', { class: 'fld-l' }, tt('site.soil')),
+        lenInput(design.site.ladderWidth_m, su, v => { store.update(d => { d.site.ladderWidth_m = Math.max(v, MIN_LADDER_WIDTH_M); }); redraw(); }, { minSI: MIN_LADDER_WIDTH_M })));
+
+    const analysisSettings = el('div', { class: 'site-analysis-settings' },
+      el('div', { class: 'site-analysis-title' }, tt('site.analysisSettings')),
+      el('div', { class: 'site-testload-title' }, tt('site.testload')),
+      el('div', { class: 'site-testload-grid' },
+        el('label', { class: 'fld inline', title: tt('site.refload.hint') },
+          el('span', { class: 'fld-l' }, `${tt('site.testload.bar')} (kg)`),
+          numInput(design.site.refLoad_kg ?? 120, 5, v => { store.update(d => { d.site.refLoad_kg = Math.max(v, 0); }); redraw(); renderPanel(); }, { min: 0 })),
+        el('label', { class: 'fld inline', title: tt('site.postrefload.hint') },
+          el('span', { class: 'fld-l' }, `${tt('site.testload.post')} (kg)`),
+          numInput(design.site.postRefLoad_kg ?? 50, 5, v => { store.update(d => { d.site.postRefLoad_kg = Math.max(v, 0); }); redraw(); renderPanel(); }, { min: 0 }))),
+      el('label', { class: 'fld inline site-soil-setting', title: tt('site.soil.hint') },
+        el('span', { class: 'fld-l' }, tt('site.soil')),
         select([['soft', tt('site.soil.soft')], ['normal', tt('site.soil.normal')], ['firm', tt('site.soil.firm')]],
           design.site.soil || 'normal',
           v => { store.update(d => { d.site.soil = v; }); redraw(); renderPanel(); })));
@@ -1141,7 +1220,7 @@ const tabSite = {
           el('p', { class: 'intro' }, tt('site.intro'))),
         summary),
       el('div', { class: 'site-shell' },
-        settings,
+        el('div', { class: 'site-controls-row' }, settings, analysisSettings),
         el('div', { class: 'map-wrap' }, palette, mapBox, selPanel),
         help));
   },

@@ -73,6 +73,7 @@ function computeMaterials(design) {
   const postMat = resolveMaterial(design, design.defaults.post.materialId);
   const postSide = (postMat.side || postMat.od || 125) / 1000;
   const postCount = design.posts.length;
+  const postGroups = {};
   const connLbl = c => connLabelOf(design, c);
 
   // bar-grupper (perimeter) til tabellen, pr. materiale
@@ -94,7 +95,12 @@ function computeMaterials(design) {
   };
   // stolper (lodrette) — hver: egen højde over jord + egen nedgravning (fra Kort)
   let postTotalLen = 0, buriedTotal = 0;
-  design.posts.forEach((p, i) => { const lenP = postHeightOf(p) + postDepthOf(p); postTotalLen += lenP; buriedTotal += postDepthOf(p); addCut(postMat, lenP, letterFor(i)); });
+  design.posts.forEach((p, i) => {
+    const mat = postMatOf(design, p), lenP = postHeightOf(p) + postDepthOf(p);
+    const key = materialKey(mat), g = postGroups[key] = postGroups[key] || { mat, count: 0, totalLen: 0, buried: 0 };
+    g.count++; g.totalLen += lenP; g.buried += postDepthOf(p);
+    postTotalLen += lenP; buriedTotal += postDepthOf(p); addCut(mat, lenP, letterFor(i));
+  });
   // barer / overliggere
   design.connections.forEach(c => addCut(connMat(c.material), spanOf(c), connLbl(c)));
 
@@ -103,7 +109,8 @@ function computeMaterials(design) {
   // ladderMat kan være null (intet rør-bibliotek) — addCut no-opper stille når mat er null,
   // så stige-/armgangs-tællere (ladVert, ladRungCount osv.) opgøres stadig, men uden skæreliste-stykker.
   const ladderMat = design.library.find(m => m.id === 'pipe-1') || design.library.find(m => m.kind === 'pipe') || null;
-  let ladVert = 0, ladRungLen = 0, ladRungCount = 0, ladKee = 0, ladderCount = 0;
+  let ladVert = 0, ladRungLen = 0, ladRungCount = 0;
+  let ladPostFittings = 0, ladTees = 0, ladKee = 0, ladderCount = 0;
   design.attachments.forEach(at => {
     if (at.type !== 'ladder') return;
     ladderCount++;
@@ -111,9 +118,14 @@ function computeMaterials(design) {
     const bar = ladderBarOf(design, at);
     const barY = Math.max(0, bar ? bar.height : (design.site.connHeight_m || 2.2));
     const width = Math.max(0.05, at.width_m || 0.5);
-    const vert = barY + 0.5;
-    const rc = Math.max(0, Math.floor((barY - 0.25) / 0.40));
-    ladVert += vert; ladRungCount += rc; ladRungLen += rc * width; ladKee += 1 + rc * 2;
+    const depth = ladderDepthOf(at);
+    const rungSpacing = ladderRungSpacingOf(at);
+    const vert = barY + depth;
+    const rc = Math.max(0, Math.floor((barY - 0.25) / rungSpacing));
+    // Hvert trin: ét almindeligt beslag mod hovedstolpen + ét T-stykke på
+    // stigens yderrør. Yderrøret afsluttes desuden med ét T-stykke i toppen.
+    ladVert += vert; ladRungCount += rc; ladRungLen += rc * width;
+    ladPostFittings += rc; ladTees += rc + 1; ladKee += 1 + rc * 2;
     addCut(ladderMat, vert, lbl);
     for (let k = 0; k < rc; k++) addCut(ladderMat, width, lbl + 't' + (k + 1));
   });
@@ -135,26 +147,40 @@ function computeMaterials(design) {
   });
 
   // fundament — pr. stolpe (egen dybde + hul fra Kort)
-  const footVol = 0.22 * 0.22 * 0.5;
+  const circleArea = diameter => Math.PI * diameter ** 2 / 4;
   let concVol = 0, gravelVol = 0, tarArea = 0;
   design.posts.forEach(p => {
     const dP = postDepthOf(p), hP = postHoleM(p);
-    concVol += (hP * hP - postSide * postSide) * Math.max(0, dP - GRAVEL_H);
-    gravelVol += hP * hP * GRAVEL_H;
-    // tjære-zone = hele den nedgravede del + TAR_TOP over jord (matcher print.step3)
-    tarArea += 4 * postSide * (TAR_TOP + dP) + postSide * postSide;
+    const pMat = postMatOf(design, p), pSide = (pMat.side || pMat.od || 125) / 1000;
+    const postArea = pMat.kind === 'pipe' ? circleArea(pSide) : pSide * pSide;
+    const holeArea = circleArea(hP);
+    concVol += Math.max(0, holeArea - postArea) * Math.max(0, dP - GRAVEL_H);
+    gravelVol += holeArea * GRAVEL_H;
+    // Trætjære er kun et ekstra jordlinjebånd; det erstatter ikke NTR A/UC4.
+    // Stolpebunden og resten af den nedgravede del regnes derfor ikke med.
+    if (pMat.kind === 'wood') {
+      // Jordlinjebånd + den øverste endeflade, hvor endetræet er eksponeret.
+      tarArea += 4 * pSide * (TAR_TOP + Math.min(TAR_BOTTOM, dP)) + pSide * pSide;
+    }
   });
-  concVol += footVol * ladderCount;
-  gravelVol += 0.22 * 0.22 * GRAVEL_H * ladderCount;
+  design.attachments.filter(a => a.type === 'ladder').forEach(at => {
+    const depth = ladderDepthOf(at), area = circleArea(ladderHoleMmOf(at) / 1000);
+    const gravelH = Math.min(GRAVEL_H, depth);
+    concVol += area * Math.max(0, depth - gravelH);
+    gravelVol += area * gravelH;
+  });
+  const filterFabricCount = postCount + ladderCount;
+  const filterFabricArea = design.posts.reduce((sum, p) => sum + circleArea(postHoleM(p)), 0)
+    + design.attachments.filter(a => a.type === 'ladder').reduce((sum, at) => sum + circleArea(ladderHoleMmOf(at) / 1000), 0);
   const bags25 = Math.ceil(concVol / 0.0125);
   const tarLitre = tarArea * 0.35;
   const pipeConnCount = design.connections.filter(c => connMat(c.material).kind === 'pipe').length;
 
   return {
-    postMat, postCount, postTotalLen, buriedTotal, depth, postSide, hole,
+    postMat, postGroups, postCount, postTotalLen, buriedTotal, depth, postSide, hole,
     barGroups, cut, pipeConnCount,
-    ladderCount, ladVert, ladRungLen, ladRungCount, ladKee,
+    ladderCount, ladVert, ladRungLen, ladRungCount, ladPostFittings, ladTees, ladKee,
     monkeyCount, monRungCount, monRungLen, monKee, monSwivel,
-    concVol, gravelVol, bags25, tarLitre,
+    concVol, gravelVol, filterFabricCount, filterFabricArea, bags25, tarLitre,
   };
 }

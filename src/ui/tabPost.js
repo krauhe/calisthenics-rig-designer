@@ -16,13 +16,16 @@ const tabPost = {
     const results = el('div', { class: 'results' });
     const chartHost = el('div', { class: 'charthost' });
 
-    // Hullets sidemål kan ikke være mindre end stolpens sidemål/diameter.
+    // Det runde hul skal mindst kunne rumme stolpens diagonal/diameter.
     const matPost = resolveMaterial(design, a.materialId);
-    const postSideMm = matPost.kind === 'wood' ? matPost.side : matPost.od;
+    const postSideMm = minRoundHoleMmForMaterial(matPost);
     const holeToMm = v => u.dim === 'in' ? v * 25.4 : v * 10;
     const holeFromMm = mm => Math.round((u.dim === 'in' ? mm / 25.4 : mm / 10) * 100) / 100;
+    // I cm-visning skal pilene altid gå i hele centimeter. Afrund minimum op,
+    // så browseren ikke bruger en decimal minimumsværdi som spring-udgangspunkt.
+    const holeMin = u.dim === 'in' ? holeFromMm(postSideMm) : Math.ceil(holeFromMm(postSideMm));
     const holeInp = el('input', { type: 'number', step: u.dim === 'in' ? '0.5' : '1',
-      min: String(holeFromMm(postSideMm)), value: String(holeFromMm(a.hole_mm)) });
+      min: String(holeMin), value: String(holeFromMm(a.hole_mm)) });
     holeInp.addEventListener('input', () => {
       const v = parseFloat(holeInp.value); if (isNaN(v)) return;
       set(d => { d.analysis.post.hole_mm = Math.max(holeToMm(v), postSideMm); });

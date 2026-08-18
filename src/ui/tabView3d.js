@@ -75,7 +75,7 @@ function build3d(THREE, host, design, ctx) {
   const lang = design.settings.lang;
   const suTxt = su === 'ft' ? ctx.t('unit.ft', lang) : ctx.t('unit.m', lang);
 
-  // ---- faste fundament-mål (zoner fra constants.js — GRAVEL_H/TAR_TOP) ----
+  // ---- faste fundament-mål (zoner fra constants.js) ----
   const DEPTH = (design.defaults.post && design.defaults.post.depth_m) || 1.2;
   const HOLE = ((design.defaults.post && design.defaults.post.hole_mm) || 200) / 1000;
 
@@ -229,14 +229,14 @@ function build3d(THREE, host, design, ctx) {
     const post = new THREE.Mesh(new THREE.BoxGeometry(POST, total, POST), woodMat);
     post.position.set(X, (above - dP) / 2, Z); post.castShadow = true; post.receiveShadow = true; group.add(post);
 
-    const gravel = new THREE.Mesh(new THREE.BoxGeometry(hP, GRAVEL_H, hP), gravelMat);
+    const gravel = new THREE.Mesh(new THREE.CylinderGeometry(hP / 2, hP / 2, GRAVEL_H, 32), gravelMat);
     gravel.position.set(X, -dP + GRAVEL_H / 2, Z); group.add(gravel);
 
     const concH = Math.max(0.01, dP - GRAVEL_H);
-    const conc = new THREE.Mesh(new THREE.BoxGeometry(hP, concH, hP), concMat);
+    const conc = new THREE.Mesh(new THREE.CylinderGeometry(hP / 2, hP / 2, concH, 32), concMat);
     conc.position.set(X, -dP + GRAVEL_H + concH / 2, Z); group.add(conc);
 
-    const tarBot = -dP, tarH = TAR_TOP - tarBot;   // tjære: hele den nedgravede del + TAR_TOP over jord
+    const tarBot = -Math.min(dP, TAR_BOTTOM), tarH = TAR_TOP - tarBot;
     const tar = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.06, tarH, POST * 1.06), tarMat);
     tar.position.set(X, (tarBot + TAR_TOP) / 2, Z); group.add(tar);
     const tarTop = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.02, 0.02, POST * 1.02), tarMat);
@@ -314,22 +314,29 @@ function build3d(THREE, host, design, ctx) {
     const barY = bar ? bar.height : (design.site.connHeight_m || 2.2);
     const inset = Math.max(0.05, at.width_m || 0.5);           // afstand stolpe → lodret rør
     const rLad = (33.7 / 1000) / 2;            // 1" stigerør
-    const vBot = -0.5;                         // nedstøbt ½ m
+    const footDepth = ladderDepthOf(at);
+    const footDia = ladderHoleMmOf(at) / 1000;
+    const rungSpacing = ladderRungSpacingOf(at);
+    const vBot = -footDepth;
     const vx = X + dx * inset, vz = Z + dz * inset;
 
     // betonfod + småsten til det lodrette rør
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.5 - GRAVEL_H, 0.22), concMat);
-    foot.position.set(vx, -0.25 + GRAVEL_H / 2, vz); group.add(foot);
-    const footG = new THREE.Mesh(new THREE.BoxGeometry(0.22, GRAVEL_H, 0.22), gravelMat);
-    footG.position.set(vx, -0.5 + GRAVEL_H / 2, vz); group.add(footG);
+    const footGravelH = Math.min(GRAVEL_H, footDepth);
+    const footConcH = Math.max(0.01, footDepth - footGravelH);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(footDia / 2, footDia / 2, footConcH, 32), concMat);
+    foot.position.set(vx, -footDepth + footGravelH + footConcH / 2, vz); group.add(foot);
+    const footG = new THREE.Mesh(new THREE.CylinderGeometry(footDia / 2, footDia / 2, footGravelH, 32), gravelMat);
+    footG.position.set(vx, -footDepth + footGravelH / 2, vz); group.add(footG);
 
     // lodret rør op til baren
     group.add(cylBetween(V3(vx, vBot, vz), V3(vx, barY, vz), rLad, pipeMat));
     // quick-fitting hvor det lodrette rør møder baren
     const qf = makeClamp(rLad); qf.position.set(vx, barY, vz); group.add(qf);
 
-    // trin hver 40 cm
-    for (let y = 0.4; y <= barY - 0.25; y += 0.4) {
+    // Trin med den valgte afstand; øverste trin holder luft til barens beslag.
+    const rungCount = Math.max(0, Math.floor((barY - 0.25) / rungSpacing));
+    for (let k = 1; k <= rungCount; k++) {
+      const y = k * rungSpacing;
       const px = X + dx * POST / 2, pz = Z + dz * POST / 2;
       group.add(cylBetween(V3(px, y, pz), V3(vx, y, vz), rLad, pipeMat));
       const fp = makeFitting(rLad); fp.position.set(px, y, pz);

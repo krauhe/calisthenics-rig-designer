@@ -20,7 +20,7 @@ function materialControl(ctx, scope) {
       d.analysis[scope].materialId = id;
       if (scope === 'post') {
         const mat = resolveMaterial(d, id);
-        const minHole = mat.kind === 'wood' ? mat.side : mat.od;
+        const minHole = minRoundHoleMmForMaterial(mat);
         d.analysis.post.hole_mm = Math.max(d.analysis.post.hole_mm, minHole);
       }
     }) || rerender());

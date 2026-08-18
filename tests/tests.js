@@ -92,12 +92,16 @@ function runTests() {
   }
 
   // ---- foundation: parity m. nuværende postSpec (0,125 m stolpe) ----
-  // Kθ = k·(b·D³/3 + b⁴/12) = 20e6·(0,3·1,728/3 + 0,0081/12) = 3 469 500 Nm/rad.
-  // (Ældre reference 3456 medregnede kun side-leddet og var forældet.)
+  // Rundt Ø30 cm hul: Kθ = k·(d·D³/3 + π·d⁴/64).
   const f = foundation({ postSide: 0.125, depth: 1.20, hole: 0.30, topHeight: 2.7 });
-  near('fund Kθ = 3469,5 kNm/rad', f.Ktheta / 1000, 3469.5, 2e-3);
-  near('fund dTop = 16,85 mm', f.dTop * 1000, 16.85, 5e-3);
-  near('fund kLat = 29,1 N/mm', f.kLat / 1000, 29.1, 5e-3);
+  const expectedKtheta = K_SOIL * (0.3 * 1.2 ** 3 / 3 + Math.PI * 0.3 ** 4 / 64);
+  near('fund Kθ for rundt Ø30 cm hul', f.Ktheta, expectedKtheta, 1e-6);
+  const expectedTop = (50 * G * 2.7 ** 3 / (3 * E_WOOD * (0.125 ** 4 / 12))) + (50 * G * 2.7 / expectedKtheta) * 2.7;
+  near('fund dTop for rundt hul', f.dTop, expectedTop, 1e-12);
+  near('fund kLat for rundt hul', f.kLat, 50 * G / expectedTop, 1e-6);
+  ok('fund årsag: stolpebøjning', foundationSwayCause({ dBend: 3, dRot: 1 }) === 'member');
+  ok('fund årsag: fundament', foundationSwayCause({ dBend: 1, dRot: 3 }) === 'foundation');
+  ok('fund årsag: blandet bidrag', foundationSwayCause({ dBend: 1, dRot: 1.2 }) === 'mixed');
 
   // ---- foundation: dybere hul ⇒ stivere (monotoni-tjek) ----
   const fDeep = foundation({ postSide: 0.125, depth: 1.60, hole: 0.30, topHeight: 2.7 });
@@ -147,7 +151,7 @@ function runTests() {
     ok('fill: stolper uden tal-koordinater smides ud', d.posts.length === 1 && d.posts[0].id === 'p2');
     ok('fill: forbindelser til slettede stolper smides ud', d.connections.length === 0);
     ok('fill: stock af forkert type → {}', typeof d.stock === 'object' && !Array.isArray(d.stock));
-    ok('fill: hul ≥ stolpens sidemål', d.defaults.post.hole_mm >= 125);
+    ok('fill: rundt hul ≥ stolpens diagonal', d.defaults.post.hole_mm >= 125 * Math.SQRT2);
     ok('fill-resultat er gyldigt', validate(d) === true);
   }
   {
@@ -179,9 +183,11 @@ function runTests() {
     ok(`preset ${pr.id}: gyldigt design`, validate(d) === true);
     ok(`preset ${pr.id}: overlever fill()`, validate(fill(JSON.parse(JSON.stringify(d)))) === true);
   });
+  ok('default: horisontal stolpelast er 50 kg', defaultDesign().site.postRefLoad_kg === 50);
+  ok('fill: horisontal stolpelast bevares', fill({ site: { postRefLoad_kg: 75 } }).site.postRefLoad_kg === 75);
   {
     const d = buildPreset('square4');
-    near('preset square4: bredde fra eksempelfil', spanOfConn(d, d.connections[0]), 2.1, 1e-9);
+    near('preset square4: fri forbindelseslængde', spanOfConn(d, d.connections[0]), 1.975, 1e-9);
     ok('preset square4: fire 3 m stolper', d.posts.every(p => p.height_m === 3));
     ok('preset square4: træforbindelse C–D', d.connections[2].material.id === 'wood-10');
   }
@@ -320,13 +326,23 @@ function runTests() {
     // stigen binder til SAMME bar som Kort/3D (angle 0 → c1 i 2,7 m — ikke "den højeste")
     near('mats: stige-rør = barhøjde + 0,5', M.ladVert, 3.2, 1e-9);
     ok('mats: 6 stigetrin (hver 40 cm op til 2,7 m-baren)', M.ladRungCount === 6);
-    // beton: pr. stolpe (hul² − stolpe²)·(dybde − grus) + stigefod
-    const conc = 4 * (0.2 * 0.2 - 0.125 * 0.125) * (1.0 - GRAVEL_H) + 0.22 * 0.22 * 0.5;
+    ok('mats: ét normalt Kee-beslag mod stolpen pr. trin', M.ladPostFittings === 6);
+    ok('mats: ét Kee T-stykke pr. trin plus ét i toppen', M.ladTees === 7);
+    ok('mats: Kee-total er summen af stolpebeslag og T-stykker', M.ladKee === 13);
+    // beton: rundt hul minus stolpens tværsnit samt rund stigefod
+    const holeArea = Math.PI * 0.2 ** 2 / 4, footArea = Math.PI * 0.22 ** 2 / 4;
+    const conc = 4 * (holeArea - 0.125 * 0.125) * (1.0 - GRAVEL_H) + footArea * (0.5 - GRAVEL_H);
     near('mats: betonvolumen', M.concVol, conc, 1e-9);
-    // tjære: hele nedgravningen + TAR_TOP over jord (matcher print-vejledningen)
-    const tar = 4 * (4 * 0.125 * (TAR_TOP + 1.0) + 0.125 * 0.125);
+    // tjære: kun jordlinjebåndet, ikke hele den nedgravede del eller bunden
+    const tar = 4 * (4 * 0.125 * (TAR_TOP + TAR_BOTTOM) + 0.125 * 0.125);
     near('mats: tjæremængde (L)', M.tarLitre, tar * 0.35, 1e-9);
+    ok('mats: filterdug til fire stolpehuller og én stigefod', M.filterFabricCount === 5);
+    near('mats: filterdugsareal følger de runde hulflader', M.filterFabricArea, 4 * holeArea + footArea, 1e-9);
     ok('mats: skæreliste indeholder stolper og stige', !!M.cut['wood-125'] && !!M.cut['pipe-1']);
+    d.posts[3].materialId = 'wood-15';
+    const mixed = computeMaterials(d);
+    ok('mats: individuelle stolpetyper grupperes separat', mixed.postGroups['wood-125'].count === 3 && mixed.postGroups['wood-15'].count === 1);
+    ok('mats: individuelle stolpetyper opdeles i skærelisten', !!mixed.cut['wood-125'] && !!mixed.cut['wood-15']);
   }
   {
     // armgangs-beslag: parallel → kryds-klemmer (crossover); roteret → justerbare
@@ -352,11 +368,30 @@ function runTests() {
   {
     const d = buildPreset('square4');
     const c1 = d.connections.find(c => c.id === 'c1');
-    near('spanOfConn c1 = 2,1 m', spanOfConn(d, c1), 2.1, 1e-9);
-    // stigen (S1 på p1, angle 0 → langs c1) aflaster c1: eff = max(0,5, 2,1-0,5)
-    near('effSpanOfConn med stige = 1,6 m', effSpanOfConn(d, c1), 1.6, 1e-9);
+    near('spanOfConn c1 = 1,975 m mellem stolpeflader', spanOfConn(d, c1), 1.975, 1e-9);
+    // stigen (S1 på p1, angle 0 → langs c1) aflaster c1: eff = max(0,5, 1,975-0,5)
+    near('effSpanOfConn med stige = 1,475 m', effSpanOfConn(d, c1), 1.475, 1e-9);
     const c2 = d.connections.find(c => c.id === 'c2');
     near('effSpanOfConn uden stige = spænd', effSpanOfConn(d, c2), spanOfConn(d, c2), 1e-9);
+  }
+
+  // ---- kortrotation og automatisk grid ----
+  {
+    const d = buildPreset('square4');
+    const before = d.connections.map(c => spanOfConn(d, c));
+    const ladderAngle = d.attachments.find(a => a.type === 'ladder').angle_rad;
+    rotateDesign90(d);
+    ok('rotation 90° bevarer alle forbindelseslængder', d.connections.every((c, i) => approx(spanOfConn(d, c), before[i], 1e-9)));
+    near('rotation 90° drejer stigens retning', d.attachments.find(a => a.type === 'ladder').angle_rad, ladderAngle + Math.PI / 2, 1e-9);
+    rotateDesign90(d); rotateDesign90(d); rotateDesign90(d);
+    ok('fire rotationer giver oprindelige stolpepositioner', d.posts.every((p, i) => approx(p.x_m, buildPreset('square4').posts[i].x_m, 1e-9) && approx(p.z_m, buildPreset('square4').posts[i].z_m, 1e-9)));
+  }
+  {
+    const d = buildPreset('square4');
+    d.posts.forEach(p => { p.x_m += 0.03; p.z_m += 0.07; });
+    const fitted = autoFitPostGrid(d);
+    near('auto-grid vælger 10 cm til 2,1 × 1,6 m layout', fitted.grid_m, 0.1, 1e-9);
+    ok('auto-grid snapper alle stolper til synligt grid', d.posts.every(p => approx(p.x_m / fitted.grid_m, Math.round(p.x_m / fitted.grid_m), 1e-9) && approx(p.z_m / fitted.grid_m, Math.round(p.z_m / fitted.grid_m), 1e-9)));
   }
 
   const passed = results.filter(r => r.ok).length;
