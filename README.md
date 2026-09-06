@@ -2,7 +2,7 @@
 
 An interactive planner for a backyard calisthenics / pull-up rig. Draw the
 ground plan top‑down, place posts, bars, ladders, monkey bars and a person, and
-get live structural feedback (safe load, breaking load, deflection, foundation
+get live structural estimates (bending limit load, breaking load, deflection, foundation
 stiffness) plus a 3D view, a material list, a cutting plan and a printable build
 guide.
 
@@ -18,10 +18,12 @@ guide.
 - **Kort (Map)** — top‑down CAD‑style editor: a left‑hand tool palette (select/move,
   post, connect, ladder, monkey bars, person, delete), grid snapping, alignment guides,
   pan/zoom (remembered across reloads), and editable tables for every placed element.
-  Set **height, burial depth and hole size** per post, and material, height and pipe wall
+  Set **material, height, burial depth and round hole diameter** per post, and material, height and pipe wall
   thickness per connection. Posts are flagged **red** when too soft; connections are
   flagged red when under‑dimensioned. Elements can also be removed from the tables;
   dependent ladders and monkey bars are shown in a confirmation before cascade deletion.
+  Map length labels and table lengths use the clear distance between post faces.
+  On narrow screens the tables become labelled rows with visible delete actions.
 - **3D** — the same design rendered in Three.js (posts, bars, Kee‑fittings, ladders,
   monkey bars, foundations, labels and a person), drag to rotate, scroll to zoom.
 - **Materialer (Materials)** — editable default wall thickness per pipe diameter,
@@ -32,7 +34,7 @@ guide.
 
 **Analysis** (calculators, independent of the drawing)
 - **Stolpe (Post)** — foundation/sway analysis for a single post vs. burial depth.
-- **Bar** — bending: safe working load, breaking load and deflection vs. span.
+- **Bar** — bending: estimated limit load, breaking load and deflection vs. span.
 
 Other: three ready-made **example rigs**, **da/en** i18n, **per‑tab units** (m/ft,
 mm/in), named browser saves, JSON **save/load**, `localStorage` autosave, undo/redo and
@@ -45,10 +47,10 @@ a printable build guide with top and 3D views, dimensions, materials and cutting
   redeploys automatically (~1 min). Three.js is bundled in the repo
   (`vendor/three.module.js`), so the 3D tab has no CDN dependency.
 - **Offline, single file:** double‑click [`calisthenics-lokal.html`](calisthenics-lokal.html)
-  — all HTML/CSS/JS bundled into one file. **Exception:** if the file is shared alone
-  (without the `vendor/` folder next to it), the 3D tab falls back to loading Three.js
-  from a CDN and needs internet; everything else works fully offline.
-- **Locally, multi‑file:** open [`index.html`](index.html) (loads the `src/` scripts).
+  — all HTML/CSS/JS, including Three.js, bundled into one file. It works without
+  internet or a neighbouring `vendor/` folder. A WebGL-capable browser is required.
+- **Locally, multi‑file:** open [`index.html`](index.html) with `src/` and `vendor/`
+  beside it. The generated `vendor/three-source.js` also supports offline 3D from a file URL.
 
 ## Develop
 
@@ -60,8 +62,16 @@ python build.py   # rebuilds index.html (multi-file) and calisthenics-lokal.html
 ```
 
 There is no compile/bundler step to *run* the app — `build.py` just concatenates the
-sources. Math is checked by `tests/`: run `npm test` (Node, no install needed) or open
+sources and embeds the unmodified Three.js module as a data URL. Math and persistence
+are checked by `tests/`: run `npm test` (Node, no install needed) or open
 `tests/run-tests.html` in a browser (works from `file://` too).
+
+Browser regressions (Node 20+): `npm ci`, `npx playwright install chromium`, then
+`npm run test:browser`. Set `PLAYWRIGHT_CHANNEL=chrome` to use an installed Chrome.
+The runner uses temporary local serving and isolated profiles, including offline
+single-file checks; it never reads your saved browser designs.
+GitHub Actions runs the build, core/state tests and browser regressions on pushes
+and pull requests. See [review fixes](docs/review-fixes-2026-09-06.md) for coverage.
 
 ## Engineering assumptions
 
@@ -79,6 +89,9 @@ engineer:
 - Soil horizontal subgrade modulus ≈ 20 MN/m³; foundation rotational stiffness scales
   with hole width and depth.
 - Loads are static; add a dynamic factor (≈ ×2) for swinging/jumping.
+- Limit and breaking loads are estimates for member bending, without safety factors.
+  Connections, buckling, workmanship and whole-rig load combinations are not verified.
+  They are not rated safe working loads.
 
 ## Disclaimer
 
@@ -93,7 +106,7 @@ warranty disclaimer in the [GPLv3](LICENSE).)
 ## Tech
 
 Vanilla JS (framework‑free classic scripts) + Three.js (bundled in `vendor/`, MIT‑licensed,
-with a CDN fallback). No build step required to run.
+embedded for offline use). No build step required to run.
 
 ## License
 

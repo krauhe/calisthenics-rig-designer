@@ -2,7 +2,8 @@
 // og fald kun tilbage på cache, hvis du er offline. Det fjerner cache-bøvlet,
 // hvor browseren ellers genbruger gamle kodefiler.
 
-const CACHE = 'rig-cache-v2';
+const CACHE_PREFIX = 'rig-cache-';
+const CACHE = CACHE_PREFIX + 'v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -10,7 +11,7 @@ self.addEventListener('install', () => self.skipWaiting());
 // (omdøbte/slettede) filer ikke bliver liggende.
 self.addEventListener('activate', (e) => e.waitUntil(
   caches.keys()
-    .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+    .then((keys) => Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE).map((k) => caches.delete(k))))
     .then(() => self.clients.claim())
 ));
 
@@ -28,6 +29,6 @@ self.addEventListener('fetch', (e) => {
         }
         return resp;
       })
-      .catch(() => caches.match(e.request)) // offline → brug sidst gemte
+      .catch(() => caches.open(CACHE).then(c => c.match(e.request))) // only our own cache
   );
 });

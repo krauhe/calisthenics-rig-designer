@@ -21,10 +21,9 @@ function packPieces(pieces, stock = STOCK, kerf = KERF) {
   }
 
   for (const b of bars) {
-    const sum = b.pieces.reduce((s, p) => s + p.len, 0);
     // resterende materiale (savsnit indregnet i 'used'); et overlangt stykke
     // (len > stock) må ikke give negativ rest i visningen — UI'et advarer separat
-    b.waste = Math.max(0, stock - sum);
+    b.waste = Math.max(0, stock - b.used);
   }
 
   return { bars, count: bars.length };

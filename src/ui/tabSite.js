@@ -202,7 +202,7 @@ const tabSite = {
           <circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="3.4" fill="${col}"/></g>`;
       }
       const selL = at.id === selectedLadder ? `<line x1="${ox.toFixed(1)}" y1="${oy.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="#4f9bff" stroke-width="${(wHalf * 2 + 8).toFixed(1)}" stroke-linecap="round" opacity="0.3"/>` : '';
-      return `<g data-el="ladder" data-id="${at.id}">${selL}
+      return `<g data-el="ladder" data-id="${esc(at.id)}">${selL}
         <circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="${Math.max(4, 0.11 * view.k).toFixed(1)}" fill="#d9dde3" fill-opacity="0.18" stroke="#8b949e" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/>
         <line x1="${r1x.toFixed(1)}" y1="${r1y.toFixed(1)}" x2="${r1ex.toFixed(1)}" y2="${r1ey.toFixed(1)}" stroke="#0e7490" stroke-width="2"/>
         <line x1="${r2x.toFixed(1)}" y1="${r2y.toFixed(1)}" x2="${r2ex.toFixed(1)}" y2="${r2ey.toFixed(1)}" stroke="#0e7490" stroke-width="2"/>
@@ -230,7 +230,7 @@ const tabSite = {
       if (ghost) return `<g pointer-events="none" opacity="${mode === 'ghostDown' || bad ? 0.9 : 0.55}">${rungs}</g>`;
       const selM = at.id === selectedMonkey
         ? `<line x1="${hx1.toFixed(1)}" y1="${hy1.toFixed(1)}" x2="${hx2.toFixed(1)}" y2="${hy2.toFixed(1)}" stroke="#4f9bff" stroke-width="${Math.max(14, g.rungLen * view.k * 0.9).toFixed(1)}" stroke-linecap="round" opacity="0.25"/>` : '';
-      return `<g data-el="monkey" data-id="${at.id}">${selM}${rungs}
+      return `<g data-el="monkey" data-id="${esc(at.id)}">${selM}${rungs}
         <line x1="${hx1.toFixed(1)}" y1="${hy1.toFixed(1)}" x2="${hx2.toFixed(1)}" y2="${hy2.toFixed(1)}" stroke="#000" opacity="0" stroke-width="16" stroke-linecap="round" pointer-events="all"/></g>`;
     }
 
@@ -290,7 +290,7 @@ const tabSite = {
         if (c.id === selectedConn) conns += `<line x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#4f9bff" stroke-width="${sw + 6}" stroke-linecap="round" opacity="0.45"/>`;
         if (critical) conns += `<line x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#e11d1d" stroke-width="${sw + 5}" stroke-linecap="round" opacity="0.5"/>`;
         conns += `<line x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="${colorOf(c.material)}" stroke-width="${sw}" stroke-linecap="round"/>`;
-        conns += `<line data-el="conn" data-id="${c.id}" x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#000" opacity="0" stroke-width="14" stroke-linecap="round" pointer-events="all"/>`;
+        conns += `<line data-el="conn" data-id="${esc(c.id)}" x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}" stroke="#000" opacity="0" stroke-width="14" stroke-linecap="round" pointer-events="all"/>`;
         if (!live) {
           const lbl = connLabel(c);
           const aDeg = readableDeg(Math.atan2(by - ay, bx - ax) * 180 / Math.PI);
@@ -300,7 +300,7 @@ const tabSite = {
         // eller når forbindelsen er valgt — så man kan slippe på rette afstand.
         const dragged = live && drag && drag.mode === 'move' && (c.a === drag.id || c.b === drag.id);
         if (dragged || c.id === selectedConn) {
-          const txt = `${fmt(lenFromSI(span, su), 2, lang)} ${suTxt}`;
+          const txt = `${tt('site.conn.clearLength')} ${fmt(lenFromSI(spanOf(c), su), 3, lang)} ${suTxt}`;
           const aDeg = readableDeg(Math.atan2(by - ay, bx - ax) * 180 / Math.PI);
           const rad = aDeg * Math.PI / 180;
           const off = sw / 2 + 11;                       // vinkelret offset fra baren
@@ -359,7 +359,7 @@ const tabSite = {
         const [sx, sy] = toScreen(at.x_m, at.z_m);
         const rS = Math.max(7, 0.22 * view.k), rH = Math.max(3, 0.1 * view.k);
         const selA = at.id === selectedAvatar;
-        avatars += `<g data-el="avatar" data-id="${at.id}">
+        avatars += `<g data-el="avatar" data-id="${esc(at.id)}">
           <circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${rS.toFixed(1)}" fill="#8fa3c9" fill-opacity="0.28" stroke="${selA ? '#4f9bff' : '#8fa3c9'}" stroke-width="${selA ? 2.4 : 1.2}"/>
           <circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${rH.toFixed(1)}" fill="#8fa3c9"/>
           <circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${(rS + 4).toFixed(1)}" fill="#000" opacity="0" pointer-events="all"/></g>`;
@@ -373,7 +373,7 @@ const tabSite = {
         const sel = p.id === selectedPost || p.id === connectFrom;
         posts += `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${(holeDia / 2).toFixed(1)}" fill="#d9dde3" fill-opacity="0.18" stroke="#8b949e" stroke-width="1" stroke-dasharray="4 3" pointer-events="none"/>`;
         if (postSoft(p)) posts += `<rect x="${(sx - side / 2 - 4).toFixed(1)}" y="${(sy - side / 2 - 4).toFixed(1)}" width="${(side + 8).toFixed(1)}" height="${(side + 8).toFixed(1)}" rx="3" fill="#e11d1d" opacity="0.5"/>`;
-        posts += `<rect data-el="post" data-id="${p.id}" x="${(sx - side / 2).toFixed(1)}" y="${(sy - side / 2).toFixed(1)}" width="${side.toFixed(1)}" height="${side.toFixed(1)}" rx="2" fill="#b6986a" stroke="${sel ? '#4f9bff' : '#7a5d35'}" stroke-width="${sel ? 2.5 : 1.2}"/>`;
+        posts += `<rect data-el="post" data-id="${esc(p.id)}" x="${(sx - side / 2).toFixed(1)}" y="${(sy - side / 2).toFixed(1)}" width="${side.toFixed(1)}" height="${side.toFixed(1)}" rx="2" fill="#b6986a" stroke="${sel ? '#4f9bff' : '#7a5d35'}" stroke-width="${sel ? 2.5 : 1.2}"/>`;
         if (!live) {
           const d = postLabelDir(p, i);
           const gap = Math.max(13, side / 2 + 11);
@@ -398,6 +398,7 @@ const tabSite = {
       // ---- justerings-hjælpelinjer (stiplet) + spøgelses-stolpe ----
       let guideSvg = '';
       if (guides) {
+        const side = Math.max(7, postSideM(null) * view.k);
         if (guides.x != null) { const [gx] = toScreen(guides.x, 0); guideSvg += `<line x1="${gx.toFixed(1)}" y1="0" x2="${gx.toFixed(1)}" y2="${H}" stroke="#4f9bff" stroke-width="1" stroke-dasharray="5 4" opacity="0.8"/>`; }
         if (guides.z != null) { const [, gy] = toScreen(0, guides.z); guideSvg += `<line x1="0" y1="${gy.toFixed(1)}" x2="${W}" y2="${gy.toFixed(1)}" stroke="#4f9bff" stroke-width="1" stroke-dasharray="5 4" opacity="0.8"/>`; }
         if (guides.ghost) { const [gx, gy] = toScreen(guides.ghost.x, guides.ghost.z); guideSvg += `<rect x="${(gx - side / 2).toFixed(1)}" y="${(gy - side / 2).toFixed(1)}" width="${side.toFixed(1)}" height="${side.toFixed(1)}" rx="2" fill="#b6986a" fill-opacity="0.4" stroke="#4f9bff" stroke-width="1.4" stroke-dasharray="4 3"/>`; }
@@ -518,7 +519,13 @@ const tabSite = {
             store.update(d => {
               const q = d.posts.find(x => x.id === p.id); if (q) q.height_m = m;
               const ph = id => { const pp = d.posts.find(x => x.id === id); return pp ? (pp.height_m != null ? pp.height_m : (d.site.postHeight_m || 3.0)) : (d.site.postHeight_m || 3.0); };
-              d.connections.forEach(cc => { if (cc.a === p.id || cc.b === p.id) { const mx = Math.min(ph(cc.a), ph(cc.b)); if (cc.height_m > mx) cc.height_m = mx; } });
+              d.connections.forEach(cc => {
+                if (cc.a !== p.id && cc.b !== p.id) return;
+                const mx = Math.min(ph(cc.a), ph(cc.b));
+                const wanted = cc.desiredHeight_m != null ? cc.desiredHeight_m : cc.height_m;
+                cc.desiredHeight_m = wanted;
+                cc.height_m = Math.min(wanted, mx);
+              });
             });
             redraw(); paintRow();
             if (commit) renderPanel();   // opdater bar-højder i tabellen efter klamp
@@ -617,11 +624,11 @@ const tabSite = {
                 if (Math.abs(wall - baseMat.wall) < 1e-9) delete cc.material.wall;
                 else cc.material.wall = wall;
               });
-              wallInp.value = String(wall);
+              if (document.activeElement !== wallInp) wallInp.value = String(wall);
               redraw(); paint();
             };
             wallInp.addEventListener('input', () => { const v = parseFloat(wallInp.value); if (!isNaN(v)) updateWall(v); });
-            wallInp.addEventListener('change', () => updateWall(parseFloat(wallInp.value)));
+            wallInp.addEventListener('change', () => { updateWall(parseFloat(wallInp.value)); wallInp.value = String(connMat(c.material).wall); });
             wallControl = wallInp;
           } else {
             wallControl = el('span', { class: 'not-applicable', title: tt('site.conn.wallHint') }, '–');
@@ -631,7 +638,7 @@ const tabSite = {
           const hInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: '0', max: String(round(lenFromSI(mh, su))),
             value: String(round(lenFromSI(c.height_m, su))), title: `${tt('site.barheight.max')} ${fmt(lenFromSI(mh, su), 2, lang)} ${suTxt}`,
             'aria-label': `${tt('site.delete.connection')} ${connLabel(c)}: H (${suTxt})` });
-          hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (isNaN(v)) return; const m = Math.min(Math.max(lenToSI(v, su), 0), mh); store.update(d => { const cc = d.connections.find(x => x.id === c.id); if (cc) cc.height_m = m; }); redraw(); });
+          hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (isNaN(v)) return; const m = Math.min(Math.max(lenToSI(v, su), 0), mh); store.update(d => { const cc = d.connections.find(x => x.id === c.id); if (cc) { cc.desiredHeight_m = m; cc.height_m = m; } }); redraw(); });
           hInp.addEventListener('change', () => { hInp.value = String(round(lenFromSI(Math.min(Math.max(lenToSI(parseFloat(hInp.value) || 0, su), 0), mh), su))); });
           // længde: ≥ 0,1 m; flytter stolpe c.b langs forbindelsen
           const lInp = el('input', { type: 'number', step: su === 'ft' ? '0.1' : '0.05', min: String(round(lenFromSI(0.1, su))),
@@ -699,7 +706,7 @@ const tabSite = {
           const spacingToM = v => spacingUnit === 'in' ? v * 0.0254 : v / 100;
           const spacingInp = el('input', { type: 'number', step: spacingUnit === 'in' ? '0.5' : '1', min: String(spacingUnit === 'in' ? spacingFromM(0.15) : 15), value: String(spacingFromM(ladderRungSpacingOf(a))), 'aria-label': `${tt('site.delete.ladder')} ${ladderLabelOf(design, a)}: ${tt('site.ladder.rungs')}` });
           const setSpacing = v => store.update(d => { const at = d.attachments.find(x => x.id === a.id); if (at) at.rungSpacing_m = Math.max(spacingToM(v), 0.15); });
-          spacingInp.addEventListener('input', () => { const v = parseFloat(spacingInp.value); if (!isNaN(v)) { setSpacing(v); redraw(); renderPanel(); } });
+          spacingInp.addEventListener('input', () => { const v = parseFloat(spacingInp.value); if (!isNaN(v)) { setSpacing(v); redraw(); } });
           spacingInp.addEventListener('change', () => { spacingInp.value = String(spacingFromM(Math.max(spacingToM(parseFloat(spacingInp.value) || 0), 0.15))); });
           [widthInp, depthInp, holeInp, spacingInp].forEach(x => x.addEventListener('pointerdown', stopProp));
           const tr = el('tr', { class: 'crow' + (a.id === selectedLadder ? ' on' : '') },
@@ -780,8 +787,8 @@ const tabSite = {
             store.update(d => {
               const ca = d.connections.find(c => c.id === a.connA);
               const cb = d.connections.find(c => c.id === a.connB);
-              if (ca) ca.height_m = clamped;
-              if (cb) cb.height_m = clamped;   // trinnene hæfter i BEGGE sider → samme kote
+              if (ca) { ca.desiredHeight_m = clamped; ca.height_m = clamped; }
+              if (cb) { cb.desiredHeight_m = clamped; cb.height_m = clamped; }   // trinnene hæfter i BEGGE sider → samme kote
             });
           };
           hInp.addEventListener('input', () => { const v = parseFloat(hInp.value); if (isNaN(v)) return; setHeight(lenToSI(v, su)); paintInfo(); redraw(); });
@@ -854,6 +861,16 @@ const tabSite = {
         });
         selPanel.append(el('table', { class: 'conntab full dense persons-tab' }, el('thead', {}, ahead), el('tbody', {}, ...arows)));
       }
+      // Keep every field and action visible when rows become a mobile layout.
+      selPanel.querySelectorAll('table').forEach(table => {
+        table.setAttribute('role', 'table');
+        const headers = [...table.querySelectorAll('thead th')].map(th => th.textContent);
+        table.querySelectorAll('tr').forEach(row => row.setAttribute('role', 'row'));
+        table.querySelectorAll('tbody tr').forEach(row => [...row.cells].forEach((cell, i) => {
+          cell.setAttribute('role', 'cell');
+          if (i > 0 && !cell.classList.contains('delete-col')) cell.dataset.label = headers[i] || '';
+        }));
+      });
     }
 
     // ---- interaktion (husk klik-mål ved pointerdown — robust mod pan-capture) ----
@@ -1070,7 +1087,7 @@ const tabSite = {
         else if (connectFrom !== id) {
           const a = connectFrom, b = id;
           const exists = design.connections.some(c => (c.a === a && c.b === b) || (c.a === b && c.b === a));
-          if (!exists) store.update(d => d.connections.push({ id: nextId(d.connections, 'c'), a, b, height_m: d.site.connHeight_m, material: { source: 'library', id: d.site.connMaterialId }, onTop: false }));
+          if (!exists) store.update(d => d.connections.push({ id: nextId(d.connections, 'c'), a, b, height_m: d.site.connHeight_m, desiredHeight_m: d.site.connHeight_m, material: { source: 'library', id: d.site.connMaterialId }, onTop: false }));
           connectFrom = null;
         }
         redraw(); renderPanel();

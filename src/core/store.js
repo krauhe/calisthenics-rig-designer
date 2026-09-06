@@ -10,28 +10,33 @@ let saveTimer = null;
 
 // Fortryd/gentag: stak af serialiserede tilstande (top = nuværende tilstand).
 const HISTORY_MAX = 80;
-// Commits tættere på hinanden end dette koalesceres til ÉT fortryd-trin, så
-// fx at skrive et navn ikke giver ét trin pr. tastetryk.
+// Kun indtastning i samme aktive felt samles til ét fortryd-trin.
+// Selvstændige handlinger (slet, flyt, import) skal altid kunne fortrydes separat.
 const COALESCE_MS = 800;
 let undoStack = [JSON.stringify(design)];
 let redoStack = [];
 let lastCommitAt = 0;
+let lastEditTarget = null;
 
 function getDesign() { return design; }
 function consumeLoadWarning() { const warning = loadWarning; loadWarning = null; return warning; }
 
 // Kald efter en ændring i design: opdatér historik + gem (debounced).
 function commit() {
+  clampConnectionHeights(design);
   design.meta.modified = Date.now();
   const snap = JSON.stringify(design);
   const now = Date.now();
-  if (now - lastCommitAt < COALESCE_MS && undoStack.length > 1) {
+  const target = typeof document !== 'undefined' ? document.activeElement : null;
+  const editTarget = target && target.matches('input:not([type=button]):not([type=file]),textarea') ? target : null;
+  if (editTarget && editTarget === lastEditTarget && now - lastCommitAt < COALESCE_MS && undoStack.length > 1) {
     undoStack[undoStack.length - 1] = snap;   // samme "skrive-burst" → erstat toppen
   } else {
     undoStack.push(snap);
     if (undoStack.length > HISTORY_MAX) undoStack.shift();
   }
   lastCommitAt = now;
+  lastEditTarget = editTarget;
   redoStack = [];
   scheduleSave();
 }
@@ -76,7 +81,7 @@ function redo() {
 function update(mutator) { mutator(design); commit(); }
 
 // Erstat hele designet (fx ved fil-load eller "Ny tegning").
-function replace(newDesign) { design = newDesign; commit(); }
+function replace(newDesign) { design = newDesign; lastEditTarget = null; lastCommitAt = 0; commit(); }
 
 function flushSave() {
   clearTimeout(saveTimer);

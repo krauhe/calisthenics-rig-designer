@@ -42,6 +42,7 @@ function runTests() {
   ok('katalog 3/4" gods = 2,6 (EN 10255 medium)', findMaterial('pipe-3-4').wall === 2.6);
   ok('katalog 1" od = 33,7', findMaterial('pipe-1').od === 33.7);
   ok('katalog 1¼" od = 42,4', findMaterial('pipe-1-4').od === 42.4);
+  ok('katalog 8,5×8,5 træ side = 85', findMaterial('wood-85').side === 85);
   ok('katalog 10×10 træ side = 100', findMaterial('wood-10').side === 100);
 
   // ---- beam: træ, rene tal (L=2 m, 100 kg, fixity 0,25) ----
@@ -164,6 +165,16 @@ function runTests() {
       connections: [{ id: 'c1', a: 'p1', b: 'p2', height_m: 99, material: { source: 'library', id: 'pipe-1' } }],
     });
     ok('fill: barhøjde klampes til laveste stolpe', d.connections[0].height_m === 1.4);
+  }
+  {
+    const d = fill({ schemaVersion: 1,
+      posts: [{ id: 'p1', x_m: 0, z_m: 0, height_m: 1.4 }, { id: 'p2', x_m: 1, z_m: 0, height_m: 3 }],
+      connections: [{ id: 'c1', a: 'p1', b: 'p2', height_m: 1.4, desiredHeight_m: 2.7, material: { source: 'library', id: 'pipe-1' } }],
+    });
+    ok('fill: gemmer ønsket barhøjde når stolpe er kort', d.connections[0].height_m === 1.4 && d.connections[0].desiredHeight_m === 2.7);
+    d.posts.find(p => p.id === 'p1').height_m = 3;
+    const raised = fill(d);
+    ok('fill: barhøjde vender tilbage når stolpen hæves igen', raised.connections[0].height_m === 2.7);
   }
 
   // ---- legacy-import (gammelt fast-firkant format) ----
@@ -392,6 +403,68 @@ function runTests() {
     const fitted = autoFitPostGrid(d);
     near('auto-grid vælger 10 cm til 2,1 × 1,6 m layout', fitted.grid_m, 0.1, 1e-9);
     ok('auto-grid snapper alle stolper til synligt grid', d.posts.every(p => approx(p.x_m / fitted.grid_m, Math.round(p.x_m / fitted.grid_m), 1e-9) && approx(p.z_m / fitted.grid_m, Math.round(p.z_m / fitted.grid_m), 1e-9)));
+  }
+
+  // Review regressions: imports, physical dimensions and shared geometry.
+  {
+    for (const raw of [{}, [], { shopping: ['milk'] }]) {
+      let rejected = false;
+      try { adopt(raw); } catch (_) { rejected = true; }
+      ok('import rejects non-design ' + JSON.stringify(raw), rejected);
+    }
+    for (const id of ['bad"><img>', '__proto__', 'constructor', 'a|b']) {
+      const d = buildPreset('square4'); d.connections[0].id = id;
+      let rejected = false;
+      try { deserialize(serialize(d)); } catch (_) { rejected = true; }
+      ok('import rejects unsafe id ' + id, rejected);
+    }
+    const d = buildPreset('square4');
+    d.posts[1].id = d.posts[0].id;
+    let rejected = false;
+    try { adopt(d); } catch (_) { rejected = true; }
+    ok('import rejects duplicate ids', rejected);
+    ok('empty saved design remains importable', validate(adopt(defaultDesign())));
+  }
+  {
+    const d = buildPreset('pullup2');
+    d.defaults.post.hole_mm = 300;
+    d.posts.forEach(p => { delete p.hole_mm; p.height_m = 1.3; });
+    d.connections[0].height_m = 2;
+    delete d.connections[0].desiredHeight_m;
+    clampConnectionHeights(d);
+    near('new connection is limited immediately', d.connections[0].height_m, 1.3, 1e-9);
+    const copy = deserialize(serialize(d));
+    near('reload preserves connection height', copy.connections[0].height_m, 1.3, 1e-9);
+    near('reload preserves explicit 300 mm hole', postHoleMmOf(copy, copy.posts[0]), 300, 1e-9);
+    copy.posts.forEach(p => { p.height_m = 3; });
+    clampConnectionHeights(copy);
+    near('desired height restored after taller posts', copy.connections[0].height_m, 2, 1e-9);
+  }
+  {
+    const bar = packPieces([{ len: 2 }, { len: 2 }], 6, 0.004).bars[0];
+    near('cut remainder excludes kerf', bar.waste, 1.992, 1e-9);
+    near('cuts and remainder fill stock exactly', bar.used + bar.waste, 6, 1e-9);
+  }
+  {
+    const d = buildPreset('square4');
+    const mat = resolveMaterial(d, 'pipe-1');
+    mat.wall = 2.6; mat.wallCustom = true;
+    d.connections[0].material = { source: 'library', id: mat.id, wall: 2.6 };
+    const copy = deserialize(serialize(d));
+    near('custom library wall survives reload', resolveMaterial(copy, mat.id).wall, 2.6, 1e-9);
+    resolveMaterial(copy, mat.id).wall = 3.2;
+    near('explicit connection wall stays independent even when formerly equal', connMatOf(copy, copy.connections[0].material).wall, 2.6, 1e-9);
+  }
+  {
+    const d = buildPreset('long6'), at = d.attachments.find(a => a.type === 'monkey');
+    const a = d.connections.find(c => c.id === at.connA), b = d.connections.find(c => c.id === at.connB);
+    a.height_m = 2.4; b.height_m = 2.2;
+    const g = monkeyGeometry(d, a.id, b.id);
+    ok('sloped monkey bars require adjustable fittings', g.angled);
+    const r = g.rungs[0];
+    near('rung follows support height difference', r.ay - r.by, 0.2, 1e-9);
+    near('rung cutting length includes rise', r.len, Math.hypot(r.bx - r.ax, r.bz - r.az, r.by - r.ay), 1e-9);
+    ok('sloped rung longer than plan projection', r.len > Math.hypot(r.bx - r.ax, r.bz - r.az));
   }
 
   const passed = results.filter(r => r.ok).length;

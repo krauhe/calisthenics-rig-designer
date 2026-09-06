@@ -22,14 +22,34 @@ function deserialize(text) {
 
 // Tag et rå-objekt (fra fil eller localStorage) og gør det til et gyldigt design.
 function adopt(raw) {
-  if (!raw || typeof raw !== 'object') throw new Error('not-a-design');
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('not-a-design');
   // Gammelt format fra den oprindelige app?
-  if (raw.schemaVersion == null && (raw.lenLong != null || raw.sideSizes != null)) {
-    return fromLegacy(raw);
+  if (raw.schemaVersion == null && ((Number.isFinite(raw.lenLong) && Number.isFinite(raw.lenShort))
+    || (Array.isArray(raw.sideSizes) && raw.sideSizes.length === 4 && raw.sideSizes.every(Number.isInteger)))) {
+    return fill(fromLegacy(raw));
+  }
+  if (!Array.isArray(raw.posts) || !Array.isArray(raw.connections)
+    || (raw.schemaVersion != null && (!Number.isInteger(raw.schemaVersion) || raw.schemaVersion < 0))) {
+    throw new Error('not-a-design');
+  }
+  // IDs enter lookup tables, SVG attributes and pair selectors.
+  for (const key of ['posts', 'connections', 'attachments', 'library']) {
+    if (raw[key] == null && key !== 'posts' && key !== 'connections') continue;
+    if (!Array.isArray(raw[key])) throw new Error('invalid-design');
+    const seen = new Set();
+    for (const item of raw[key]) {
+      if (!item || !validDesignId(item.id) || seen.has(item.id)) throw new Error('invalid-design');
+      seen.add(item.id);
+    }
   }
   const migrated = migrate(raw);
   if (!validate(migrated)) throw new Error('invalid-design');
   return migrated;
+}
+
+function validDesignId(id) {
+  return typeof id === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/.test(id)
+    && !['__proto__', 'prototype', 'constructor'].includes(id);
 }
 
 function migrate(raw) {
@@ -81,11 +101,7 @@ function fill(d) {
     },
     site: { ...base.site, ...(isObj(d.site) ? d.site : {}) },
   };
-  // Opgradér den gamle hul-standard (30 cm) til den nye (20 cm). Bemærk: en
-  // legacy-import kan have sat feltet fra brugerens gamle valg (0,3 m var
-  // legacy-default) — default og bevidst valg kan ikke skelnes, så vi
-  // accepterer at et bevidst 30 cm-valg også opgraderes.
-  if (merged.defaults.post.hole_mm === 300) merged.defaults.post.hole_mm = base.defaults.post.hole_mm;
+  // Missing values inherit today's defaults; explicit saved dimensions stay unchanged.
   merged.library = mergeCatalog(merged.library);
   merged.analysis.post.depth_m = atLeast(merged.analysis.post.depth_m, 0, base.analysis.post.depth_m);
   merged.analysis.post.hole_mm = atLeast(merged.analysis.post.hole_mm, 0, base.analysis.post.hole_mm);
@@ -95,6 +111,7 @@ function fill(d) {
   merged.analysis.bar.fixity = Math.min(1, atLeast(merged.analysis.bar.fixity, 0, base.analysis.bar.fixity));
   merged.site.grid_m = atLeast(merged.site.grid_m, 0.01, base.site.grid_m);
   merged.site.postRefLoad_kg = atLeast(merged.site.postRefLoad_kg, 0, base.site.postRefLoad_kg);
+  merged.site.cutKerf_mm = atLeast(merged.site.cutKerf_mm, 0.1, base.site.cutKerf_mm);
   merged.site.connHeight_m = atLeast(merged.site.connHeight_m, 0, base.site.connHeight_m);
   merged.site.postHeight_m = atLeast(merged.site.postHeight_m, 0.1, base.site.postHeight_m);
   merged.site.avatarHeight_m = atLeast(merged.site.avatarHeight_m, 0.3, base.site.avatarHeight_m);
@@ -131,17 +148,13 @@ function fill(d) {
   // forbindelser skal pege på eksisterende stolper
   const postIds = new Set(merged.posts.map(p => p.id));
   merged.connections = merged.connections.filter(c => postIds.has(c.a) && postIds.has(c.b) && c.id != null);
-  const postById = Object.fromEntries(merged.posts.map(p => [p.id, p]));
-  const postHeight = p => p.height_m != null ? p.height_m : merged.site.postHeight_m;
+  clampConnectionHeights(merged);
   merged.connections.forEach(c => {
-    const maxHeight = Math.min(postHeight(postById[c.a]), postHeight(postById[c.b]));
-    c.height_m = Math.min(atLeast(c.height_m, 0, merged.site.connHeight_m), maxHeight);
     if (c.material && typeof c.material === 'object') {
       const baseMat = resolveMaterial(merged, c.material.id);
       if (baseMat.kind === 'pipe' && c.material.wall != null) {
         const wall = clampPipeWallMm(baseMat, c.material.wall, baseMat.wall);
-        if (Math.abs(wall - baseMat.wall) < 1e-9) delete c.material.wall;
-        else c.material.wall = wall;
+        c.material.wall = wall;
       } else {
         delete c.material.wall;
       }

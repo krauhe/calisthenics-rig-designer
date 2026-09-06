@@ -25,7 +25,7 @@ function numInput(value, step, onValue, opts = {}) {
     return out;
   };
   const inp = el('input', attrs);
-  inp.addEventListener('input', () => {
+  inp.addEventListener(opts.commitOnChange ? 'change' : 'input', () => {
     const v = parseFloat(inp.value);
     if (!isNaN(v)) onValue(clamp(v));
   });

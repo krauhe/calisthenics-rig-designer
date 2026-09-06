@@ -15,6 +15,40 @@ const tabMaterials = {
 
     container.append(el('h2', {}, tt('tab.materials')), el('p', { class: 'intro' }, tt('mats.intro')));
 
+    const pipeTable = el('table', { class: 'pipe-spec-table' },
+      el('thead', {}, el('tr', {},
+        ...['mats.pipeName', 'mat.wall', 'mats.pipeStandard'].map(k => el('th', {}, tt(k))))));
+    const pipeRows = el('tbody');
+    for (const mat of design.library.filter(m => m.kind === 'pipe')) {
+      const standard = findMaterial(mat.id);
+      const inp = numInput(mat.wall, 0.1, value => {
+        store.update(d => {
+          const m = resolveMaterial(d, mat.id);
+          m.wall = clampPipeWallMm(m, value, m.wall);
+          m.wallCustom = true;
+        });
+        renderResults();
+      }, { min: MIN_PIPE_WALL_MM, max: maxPipeWallMm(mat), commitOnChange: true });
+      inp.className = 'pipe-wall-input';
+      inp.setAttribute('aria-label', `${mat.name}: ${tt('mat.wall')} (mm)`);
+      const reset = standard ? el('button', { type: 'button', class: 'pipe-wall-reset',
+        title: tt('mats.pipeReset'), 'aria-label': `${mat.name}: ${tt('mats.pipeReset')}`,
+        onclick: () => {
+          store.update(d => { const m = resolveMaterial(d, mat.id); m.wall = standard.wall; delete m.wallCustom; });
+          inp.value = String(standard.wall);
+          renderResults();
+        } }, '↺') : null;
+      pipeRows.append(el('tr', {},
+        el('td', {}, mat.name, el('small', {}, ` Ø ${fmt(mat.od, 1, lang)} mm`)),
+        el('td', { class: 'pipe-wall-cell' }, inp, ' mm'),
+        el('td', { class: 'pipe-standard-cell' }, standard ? `${fmt(standard.wall, 1, lang)} mm` : tt('mats.pipeCustom'), reset)));
+    }
+    pipeTable.append(pipeRows);
+    container.append(el('section', { class: 'pipe-specs' }, el('h3', {}, tt('mats.pipeTitle')), pipeTable));
+    const resultsHost = el('div');
+    container.append(resultsHost);
+    const renderResults = () => {
+    const container = clear(resultsHost);
     if (!design.posts.length) {
       container.append(el('div', { class: 'empty-state empty-mats' },
         el('div', { class: 'material-ghost', 'aria-hidden': 'true' },
@@ -70,14 +104,25 @@ const tabMaterials = {
       `${tt('mats.assume1')} ${Math.round(M.hole * 100)} cm, ${Math.round(GRAVEL_H * 100)} cm ${tt('mats.gravelShort')}. ${tt('mats.assume2')}`));
 
     // ---- skæreliste (rør/træ pakket i hele stænger; købslængde pr. materiale) ----
-    container.append(el('h3', { class: 'cut-h' }, tt('mats.cutTitle')));
+    let kerfMm = Math.max(0.1, design.site.cutKerf_mm ?? KERF * 1000);
+    let kerfM = kerfMm / 1000;
+    const refreshers = [];
+    const kerfInp = numInput(kerfMm, 0.1, v => {
+      store.update(d => { d.site.cutKerf_mm = Math.max(v, 0.1); });
+      kerfMm = design.site.cutKerf_mm; kerfM = kerfMm / 1000;
+      refreshers.forEach(refresh => refresh());
+    }, { min: 0.1 });
+    container.append(el('h3', { class: 'cut-h' }, tt('mats.cutTitle')),
+      el('div', { class: 'cut-settings', title: tt('mats.kerfHint') },
+        el('label', { class: 'fld inline' }, el('span', { class: 'fld-l' }, `${tt('mats.kerf')} (mm)`), kerfInp),
+        el('span', { class: 'cut-settings-hint' }, tt('mats.kerfHint'))));
     const cutHost = el('div', { class: 'cutlist' });
     const ids = Object.keys(M.cut).sort();
     const counts = {};
     const footNote = el('p', { class: 'mat-note' });
     const updateFoot = () => {
       const total = Object.values(counts).reduce((s, n) => s + n, 0);
-      footNote.textContent = `${tt('mats.cutTotal1')} ${total} ${tt('mats.cutTotal2')} ${KERF * 1000} mm ${tt('mats.cutTotal3')}`;
+      footNote.textContent = `${tt('mats.cutTotal1')} ${total} ${tt('mats.cutTotal2')} ${tt('mats.kerf')}: ${fmt(kerfMm, 1, lang)} mm ${tt('mats.cutTotal3')}`;
     };
 
     for (const id of ids) {
@@ -98,8 +143,8 @@ const tabMaterials = {
 
       const refresh = () => {
         const stockLen = (design.stock && design.stock[id]) || (grp.mat.kind === 'wood' ? 4.8 : STOCK);
-        stockInp.value = String(round(lenFromSI(stockLen, su)));
-        const { bars, count } = packPieces(grp.pieces, stockLen, KERF);
+        if (document.activeElement !== stockInp) stockInp.value = String(round(lenFromSI(stockLen, su)));
+        const { bars, count } = packPieces(grp.pieces, stockLen, kerfM);
         counts[id] = count;
         const oversize = grp.pieces.some(p => p.len > stockLen + 1e-9);
         titleB.querySelector('.cl-name').textContent = ` ${matLabel(grp.mat, 'mm', lang)}: ${count} × ${fm(stockLen)}`;
@@ -110,12 +155,14 @@ const tabMaterials = {
             barEl.append(el('span', { class: 'cl-seg', title: `${p.label}: ${fm(p.len)}`,
               style: `width:${Math.min(100, p.len / stockLen * 100).toFixed(2)}%;background:${shades[pi % shades.length]}` },
               el('span', { class: 'cl-seg-lbl' }, p.label), fmt(lenFromSI(p.len, su), 2, lang)));
+            barEl.append(el('span', { class: 'cl-kerf', title: `${tt('mats.kerf')}: ${fmt(kerfMm, 1, lang)} mm`,
+              style: `width:${(kerfM / stockLen * 100).toFixed(2)}%` }));
           });
           if (b.waste > 0.01) barEl.append(el('span', { class: 'cl-waste', title: `${tt('mats.waste')} ${fm(b.waste)}`,
             style: `width:${(b.waste / stockLen * 100).toFixed(2)}%` }, fmt(lenFromSI(b.waste, su), 2, lang)));
           body.append(barEl);
           const list = b.pieces.map(p => `${p.label} ${fmt(lenFromSI(p.len, su), 2, lang)}`).join('  ·  ');
-          body.append(el('div', { class: 'cl-list' }, `${list}${b.waste > 0.01 ? `  ·  ${tt('mats.waste')} ${fm(b.waste)}` : ''}`));
+          body.append(el('div', { class: 'cl-list' }, `${list}  ·  ${tt('mats.kerf')} ${fmt(kerfMm, 1, lang)} mm × ${b.pieces.length}${b.waste > 0.01 ? `  ·  ${tt('mats.waste')} ${fm(b.waste)}` : ''}`));
         });
         clear(warnHost);
         if (oversize) warnHost.append(el('div', { class: 'cl-warn' }, tt('mats.tooLong')));
@@ -127,10 +174,13 @@ const tabMaterials = {
       });
       stockInp.addEventListener('change', () => { stockInp.value = String(Math.max(parseFloat(stockInp.value) || 0, round(lenFromSI(0.5, su)))); });
       refresh();
+      refreshers.push(refresh);
       cutHost.append(grpEl);
     }
     if (!Object.keys(M.cut).length) cutHost.append(el('div', { class: 'sel-hint' }, tt('mats.noPipes')));
     container.append(cutHost);
     container.append(footNote);
+    };
+    renderResults();
   },
 };

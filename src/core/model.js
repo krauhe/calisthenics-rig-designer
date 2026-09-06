@@ -31,6 +31,7 @@ function defaultDesign() {
     // Kort-editorens indstillinger:
     site: {
       postRefLoad_kg: 50, // vandret testlast pr. stolpe (topsving pÃ¥ kortet)
+      cutKerf_mm: KERF * 1000, // klinge-/snitbredde, medregnes i skærelisten
       grid_m: 0.125,          // gitter-opløsning (default = stolpetykkelse 12,5 cm)
       connMaterialId: 'pipe-1',
       connHeight_m: 2.0,
@@ -115,6 +116,18 @@ function postDepthOfD(design, p) {
 }
 function postHoleMmOf(design, p) {
   return p.hole_mm != null ? p.hole_mm : ((design.defaults.post && design.defaults.post.hole_mm) || 200);
+}
+
+// Apply the same physical height limit during edits and deserialization.
+function clampConnectionHeights(design) {
+  const posts = new Map(design.posts.map(p => [p.id, p]));
+  for (const c of design.connections) {
+    const a = posts.get(c.a), b = posts.get(c.b);
+    if (!a || !b) continue;
+    const current = atLeast(c.height_m, 0, design.site.connHeight_m);
+    c.desiredHeight_m = atLeast(c.desiredHeight_m, 0, current);
+    c.height_m = Math.min(c.desiredHeight_m, postHeightOfD(design, a), postHeightOfD(design, b));
+  }
 }
 
 // Stiger har deres eget runde fundament og egen trinafstand. Fallbacks gør
@@ -347,6 +360,11 @@ function monkeyGeometry(design, connA, connB, spacing_m) {
   const n = usable >= 0 ? Math.floor(usable / sp) + 1 : 1;
   const off = start + (end - start - (n - 1) * sp) / 2;
   const rungs = [];
+  const underside = c => {
+    const m = connMatOf(design, c.material);
+    return c.height_m - (m.kind === 'wood' ? m.side : m.od) / 1000 - 0.0337 / 2;
+  };
+  const ay = underside(ca), by = underside(cb), rise = by - ay;
   for (let k = 0; k < n; k++) {
     const t = off + k * sp;
     const ax = a1.x_m + ux * t, az = a1.z_m + uz * t;
@@ -356,18 +374,18 @@ function monkeyGeometry(design, connA, connB, spacing_m) {
     const tb = (ax - b1.x_m) * vx + (az - b1.z_m) * vz;
     if (tb < margin - 1e-9 || tb > Lb - margin + 1e-9) continue;
     const bx = b1.x_m + vx * tb, bz = b1.z_m + vz * tb;
-    rungs.push({ ax, az, bx, bz, len: Math.hypot(bx - ax, bz - az) });
+    rungs.push({ ax, ay, az, bx, by, bz, len: Math.hypot(bx - ax, bz - az, rise) });
   }
   if (!rungs.length) return null;
   const lens = rungs.map(r => r.len);
   const hdiff = Math.abs((ca.height_m || 0) - (cb.height_m || 0));
   return {
-    ca, cb, rungs, count: rungs.length, rungLen: gap, gap, cross, hdiff,
+    ca, cb, rungs, count: rungs.length, rungLen: Math.hypot(gap, rise), gap, cross, hdiff,
     lenMin: Math.min(...lens), lenMax: Math.max(...lens),
     // roteret samling: barerne er ikke parallelle (> ~2°) — kan konstrueres
     // med DREJELIGE beslag; trinlængderne varierer, og materialelisten skal
     // fakturere svingbare koblinger i stedet for faste klemmer
-    angled: cross > 0.035,
+    angled: cross > 0.035 || Math.abs(rise) > 1e-6,
     overlap: end - start,
     mid: { x: (pmx + qm.x) / 2, z: (pmz + qm.z) / 2 },
     y: Math.min(ca.height_m || 0, cb.height_m || 0),   // grebshøjde = laveste bar
@@ -400,6 +418,7 @@ function alignMonkeyBars(design, connA, connB) {
   if (!ca || !cb) return;
   if (Math.abs((ca.height_m || 0) - (cb.height_m || 0)) <= 0.3) return;
   const h = Math.min(ca.height_m || 0, cb.height_m || 0);
+  ca.desiredHeight_m = h; cb.desiredHeight_m = h;
   ca.height_m = h; cb.height_m = h;
 }
 

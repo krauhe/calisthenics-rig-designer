@@ -2,23 +2,13 @@
 // i ægte 3D — bygget til at ligne den oprindelige enkelt-fil-app
 // (calisthenics-3d.html): halvgennemsigtig jord så fundamentet ses (småsten,
 // beton, tjære-zone), Kee-beslag på rørene, og en LODRET stige der binder sig
-// til en vandret bar. Three.js hentes som ES-modul — FØRST fra den lokale
-// kopi (vendor/three.module.js, virker offline og uafhængigt af CDN),
-// dernæst fra unpkg-CDN som reserve (fx for den delte enkelt-fil uden
-// vendor-mappen). Lægges på window, så det passer ind i den klassiske
-// script-arkitektur. Egen lille bane-styring bruges i stedet for OrbitControls
-// (som ville kræve et importmap).
-
-const THREE_CDN = 'https://unpkg.com/three@0.160.0/build/three.module.js';
+// til en vandret bar. Buildet medtager Three.js som data-modul, også i
+// enkeltfilen. Dermed virker 3D offline ved dobbeltklik uden CDN eller CORS.
 let _threeP = null;
 function ensureThree() {
   if (window.__rigTHREE) return Promise.resolve(window.__rigTHREE);
   if (_threeP) return _threeP;
-  // absolut URL relativt til SIDEN (ikke scriptet), så det virker både for
-  // index.html, enkelt-filen og GitHub Pages' undermappe
-  const local = new URL('vendor/three.module.js', document.baseURI).href;
-  _threeP = import(local)
-    .catch(() => import(THREE_CDN))
+  _threeP = import(RIG_THREE_URL)
     .then(T => (window.__rigTHREE = T));
   // Fejlet load må ikke caches for evigt — glem promisen, så næste
   // fanebesøg prøver igen (fx når nettet er tilbage).
@@ -98,18 +88,11 @@ function build3d(THREE, host, design, ctx) {
     return yaw;
   };
   const postLabelDir = (p, idx) => postLabelDirOf(design, p, idx);   // delt med Kort (model.js)
-  const pm = resolveMaterial(design, design.defaults.post.materialId);
-  const POST = ((pm && (pm.side || pm.od)) || 125) / 1000;
   const connMat = ref => connMatOf(design, ref);
   const siteDefH = design.site.postHeight_m || 3.0;
-  // pr. stolpe: over-jord-højde = stolpens egen højde (dog mindst en bars
-  // overkant, så bjælken ikke svæver over toppen — bar ≤ stolpe via Kort-klamp).
+  // Render the actual post dimensions; never hide invalid heights by stretching.
   const aboveOf = {};
   design.posts.forEach(p => { aboveOf[p.id] = (p.height_m != null ? p.height_m : siteDefH); });
-  design.connections.forEach(c => {
-    if (aboveOf[c.a] != null) aboveOf[c.a] = Math.max(aboveOf[c.a], c.height_m);
-    if (aboveOf[c.b] != null) aboveOf[c.b] = Math.max(aboveOf[c.b], c.height_m);
-  });
   const maxAbove = Math.max(2.0, ...design.posts.map(p => aboveOf[p.id]));
 
   // ---- scene + renderer ----
@@ -220,13 +203,19 @@ function build3d(THREE, host, design, ctx) {
 
   // ---- stolper + fundament ----
   design.posts.forEach((p, pi) => {
+    const mat = postMatOf(design, p);
+    const POST = (mat.kind === 'wood' ? mat.side : mat.od) / 1000;
     const X = p.x_m - cx, Z = p.z_m - cz;
     const above = aboveOf[p.id];
     const dP = p.depth_m != null ? p.depth_m : DEPTH;          // egen dybde (fra Kort)
     const hP = p.hole_mm != null ? p.hole_mm / 1000 : HOLE;    // eget hul/betonklods
     maxR = Math.max(maxR, Math.hypot(X, Z));
     const total = above + dP;
-    const post = new THREE.Mesh(new THREE.BoxGeometry(POST, total, POST), woodMat);
+    const geometry = mat.kind === 'pipe'
+      ? new THREE.CylinderGeometry(POST / 2, POST / 2, total, 24)
+      : new THREE.BoxGeometry(POST, total, POST);
+    const post = new THREE.Mesh(geometry, mat.kind === 'pipe' ? pipeMat : woodMat);
+    post.name = 'post:' + p.id;
     post.position.set(X, (above - dP) / 2, Z); post.castShadow = true; post.receiveShadow = true; group.add(post);
 
     const gravel = new THREE.Mesh(new THREE.CylinderGeometry(hP / 2, hP / 2, GRAVEL_H, 32), gravelMat);
@@ -236,11 +225,13 @@ function build3d(THREE, host, design, ctx) {
     const conc = new THREE.Mesh(new THREE.CylinderGeometry(hP / 2, hP / 2, concH, 32), concMat);
     conc.position.set(X, -dP + GRAVEL_H + concH / 2, Z); group.add(conc);
 
+    if (mat.kind === 'wood') {
     const tarBot = -Math.min(dP, TAR_BOTTOM), tarH = TAR_TOP - tarBot;
     const tar = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.06, tarH, POST * 1.06), tarMat);
     tar.position.set(X, (tarBot + TAR_TOP) / 2, Z); group.add(tar);
     const tarTop = new THREE.Mesh(new THREE.BoxGeometry(POST * 1.02, 0.02, POST * 1.02), tarMat);
     tarTop.position.set(X, above + 0.01, Z); tarTop.castShadow = true; group.add(tarTop);
+    }
 
     // Stolpe-label: fast gulvmarkering uden for stolpegruppen, med toppen vendt udad.
     const ld = postLabelDir(p, pi);
@@ -262,6 +253,12 @@ function build3d(THREE, host, design, ctx) {
     const yBar = c.height_m - barHalf;
     const A = V3(a.x_m - cx, yBar, a.z_m - cz);
     const B = V3(b.x_m - cx, yBar, b.z_m - cz);
+    const direction = B.clone().sub(A).normalize();
+    const offsetA = postFaceOffset(design, a, direction.x, direction.z);
+    const offsetB = postFaceOffset(design, b, -direction.x, -direction.z);
+    A.addScaledVector(direction, offsetA);
+    B.addScaledVector(direction, -offsetB);
+    if (span <= offsetA + offsetB) return;
     const eff = effSpan(c, span);   // stige aflaster baren (ekstra støttepunkt)
     const crit = eff > 0 && beam(eff, mat, 1, 0.25).pYield < refLoad;
     const baseMat = crit ? critMat : (mat.kind === 'wood' ? woodMat : pipeMat);
@@ -279,7 +276,7 @@ function build3d(THREE, host, design, ctx) {
       [[A, B], [B, A]].forEach(([end, other]) => {
         const f = makeFitting(r);
         const toMid = new THREE.Vector3().subVectors(other, end).setY(0).normalize();
-        f.position.set(end.x + toMid.x * POST / 2, yBar, end.z + toMid.z * POST / 2);
+        f.position.copy(end);
         f.quaternion.setFromUnitVectors(V3(1, 0, 0), toMid);
         group.add(f);
       });
@@ -337,7 +334,8 @@ function build3d(THREE, host, design, ctx) {
     const rungCount = Math.max(0, Math.floor((barY - 0.25) / rungSpacing));
     for (let k = 1; k <= rungCount; k++) {
       const y = k * rungSpacing;
-      const px = X + dx * POST / 2, pz = Z + dz * POST / 2;
+      const offset = postFaceOffset(design, p, dx, dz);
+      const px = X + dx * offset, pz = Z + dz * offset;
       group.add(cylBetween(V3(px, y, pz), V3(vx, y, vz), rLad, pipeMat));
       const fp = makeFitting(rLad); fp.position.set(px, y, pz);
       fp.quaternion.setFromUnitVectors(V3(1, 0, 0), V3(dx, 0, dz)); group.add(fp);
@@ -351,14 +349,14 @@ function build3d(THREE, host, design, ctx) {
     const g = monkeyGeometry(design, at.connA, at.connB, at.spacing_m);
     if (!g || !g.rungs.length) continue;
     const rRung = (33.7 / 1000) / 2;                          // 1" rør
-    const diaOf = c => { const m = connMat(c.material); return (m.kind === 'wood' ? (m.side || 100) : (m.od || 33)) / 1000; };
-    // trin-centrum lige under UNDERKANTEN af den laveste bar (barens top = height_m)
-    const y = Math.min(g.ca.height_m - diaOf(g.ca), g.cb.height_m - diaOf(g.cb)) - rRung;
+    // Both ends attach to their own support, including unequal heights/diameters.
     for (const r of g.rungs) {
-      group.add(cylBetween(V3(r.ax - cx, y, r.az - cz), V3(r.bx - cx, y, r.bz - cz), rRung, pipeMat));
+      const rung = cylBetween(V3(r.ax - cx, r.ay, r.az - cz), V3(r.bx - cx, r.by, r.bz - cz), rRung, pipeMat);
+      rung.name = 'monkey:' + at.id;
+      group.add(rung);
       // klemme-beslag i hver ende (mod de to barer)
-      const c1 = makeClamp(rRung); c1.position.set(r.ax - cx, y, r.az - cz); group.add(c1);
-      const c2 = makeClamp(rRung); c2.position.set(r.bx - cx, y, r.bz - cz); group.add(c2);
+      const c1 = makeClamp(rRung); c1.position.set(r.ax - cx, r.ay, r.az - cz); group.add(c1);
+      const c2 = makeClamp(rRung); c2.position.set(r.bx - cx, r.by, r.bz - cz); group.add(c2);
     }
   }
 
@@ -399,8 +397,16 @@ function build3d(THREE, host, design, ctx) {
   grid.position.y = 0.001; scene.add(grid);
 
   // ---- bane-styret kamera (rotér / zoom / panorér) ----
-  const target = V3(0, maxAbove * 0.45, 0);
-  const orbit = { r: Math.max(maxR * 2.4, maxAbove * 1.9, 4), theta: Math.PI * 0.25, phi: Math.PI * 0.36 };
+  const bounds = new THREE.Box3().setFromObject(group);
+  const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+  const target = sphere.center.clone();
+  const fitDistance = aspect => {
+    const halfFov = camera.fov * Math.PI / 360;
+    const halfAngle = Math.min(halfFov, Math.atan(Math.tan(halfFov) * aspect));
+    return Math.max(4, sphere.radius * 1.12 / Math.sin(halfAngle));
+  };
+  let fittedDistance = fitDistance((host.clientWidth || 1) / (host.clientHeight || 1));
+  const orbit = { r: fittedDistance, theta: Math.PI * 0.25, phi: Math.PI * 0.36 };
   function applyCam() {
     const sp = Math.sin(orbit.phi);
     camera.position.set(
@@ -486,6 +492,9 @@ function build3d(THREE, host, design, ctx) {
     if (w !== lastW || h !== lastH) {
       lastW = w; lastH = h;
       renderer.setSize(w, h, false);
+      const nextFit = fitDistance(w / h);
+      orbit.r *= nextFit / fittedDistance; fittedDistance = nextFit;
+      applyCam();
       camera.aspect = w / h; camera.updateProjectionMatrix();
       dirty = true;
     }

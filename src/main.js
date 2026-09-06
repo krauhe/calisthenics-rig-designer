@@ -55,7 +55,7 @@ function renderTabbar() {
         role: 'tab',
         'aria-controls': 'content',
         'aria-selected': tab.id === active ? 'true' : 'false',
-        tabindex: tab.id === active ? '0' : '-1',
+        tabindex: tab.id === (group.tabs.find(x => x.id === active) || group.tabs[0]).id ? '0' : '-1',
         onkeydown: e => {
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
           e.preventDefault();
@@ -94,10 +94,12 @@ function setLang(code) {
 }
 
 function setActive(id) {
+  const keepTabFocus = document.activeElement && document.activeElement.closest('#tabbar [role="tab"]');
   active = id;
   try { localStorage.setItem(ACTIVE_KEY, id); } catch (_) {}
   renderTabbar();
   renderActive();
+  if (keepTabFocus) document.getElementById('tab-' + active)?.focus();
 }
 
 function renderAll() {

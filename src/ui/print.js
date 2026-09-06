@@ -145,7 +145,7 @@ function printConnectionElevationLegacy(design, c, lang) {
     ${vdim(67, yTopA, ground, `${la}: ${fm(ha)}`, -1)}${vdim(573, yTopB, ground, `${lb}: ${fm(hb)}`, 1)}${vdim(505, yBar, ground, `bar: ${fm(c.height_m)}`, -1)}
     <text x="${xA}" y="278" text-anchor="middle" font-size="9">dybde ${fm(da)} - hul ${Math.round(holeA/10)} x ${Math.round(holeA/10)} cm</text>
     <text x="${xB}" y="278" text-anchor="middle" font-size="9">dybde ${fm(db)} - hul ${Math.round(holeB/10)} x ${Math.round(holeB/10)} cm</text>
-    <text x="18" y="307" font-size="9">${la}: ${dim(ma)} | ${lb}: ${dim(mb)} | forbindelse: ${matLabel(cm, 'mm', lang)}</text>
+    <text x="18" y="307" font-size="9">${la}: ${dim(ma)} | ${lb}: ${dim(mb)} | forbindelse: ${esc(matLabel(cm, 'mm', lang))}</text>
   </svg>`;
 }
 
@@ -237,7 +237,7 @@ function printConnectionElevation(design, c, lang) {
     ${vdim(xA - pwA / 2 - 5, yTopA, ground, `${la}: ${fm(ha)}`, -1)}${vdim(xB + pwB / 2 + 5, yTopB, ground, `${lb}: ${fm(hb)}`, 1)}${vdim(xB - pwB / 2 - 5, yBar, ground, `${tx.bar}: ${fm(c.height_m)}`, -1)}
     <text x="${xA.toFixed(1)}" y="239" text-anchor="middle" font-size="2.7">${tx.depth} ${fm(da)} · ${tx.hole} Ø ${Math.round(holeA / 10)} cm</text>
     <text x="${xB.toFixed(1)}" y="244" text-anchor="middle" font-size="2.7">${tx.depth} ${fm(db)} · ${tx.hole} Ø ${Math.round(holeB / 10)} cm</text>
-    <text x="5" y="249" font-size="2.6">${la}: ${dim(ma)} | ${lb}: ${dim(mb)} | forbindelse: ${matLabel(cm, 'mm', lang)}</text>
+    <text x="5" y="249" font-size="2.6">${la}: ${dim(ma)} | ${lb}: ${dim(mb)} | forbindelse: ${esc(matLabel(cm, 'mm', lang))}</text>
   </svg>`;
 }
 
@@ -385,19 +385,34 @@ async function printGuide(ctx) {
 
   // ---- skæreliste (tekstform pr. materiale) ----
   root.append(el('h2', {}, tt('mats.cutTitle')));
+  const kerfMm = Math.max(0.1, design.site.cutKerf_mm ?? KERF * 1000);
+  const kerfM = kerfMm / 1000;
   for (const id of Object.keys(M.cut).sort()) {
     const grp = M.cut[id];
     const stockLen = (design.stock && design.stock[id]) || (grp.mat.kind === 'wood' ? 4.8 : STOCK);
-    const { bars, count } = packPieces(grp.pieces, stockLen, KERF);
+    const { bars, count } = packPieces(grp.pieces, stockLen, kerfM);
     root.append(el('p', { class: 'pr-cut-h' }, `${matLabel(grp.mat, 'mm', lang)}: ${count} × ${fm(stockLen)} (${tt('mats.stockLen').toLowerCase()})`));
-    const ul = el('ul', { class: 'pr-cut' });
+    const cutOverview = el('div', { class: 'pr-cut-overview' });
+    const shades = segShades(grp.mat);
     bars.forEach((b, bi) => {
-      const list = b.pieces.map(p => `${p.label} ${fmt(p.len, 2, lang)}`).join(' · ');
-      ul.append(el('li', {}, `#${bi + 1}: ${list}${b.waste > 0.01 ? ` · ${tt('mats.waste')} ${fm(b.waste)}` : ''}`));
+      const bar = el('div', { class: 'pr-cut-bar' });
+      b.pieces.forEach((p, pi) => {
+        bar.append(el('span', { class: 'pr-cut-seg', title: `${p.label}: ${fm(p.len)}`,
+          style: `width:${Math.min(100, p.len / stockLen * 100).toFixed(2)}%;background:${shades[pi % shades.length]}` },
+          el('b', {}, p.label), ` ${fmt(lenFromSI(p.len, su), 2, lang)}`));
+        bar.append(el('span', { class: 'pr-cut-kerf', title: `${tt('mats.kerf')}: ${fmt(kerfMm, 1, lang)} mm`,
+          style: `width:${Math.min(100, kerfM / stockLen * 100).toFixed(2)}%` }));
+      });
+      if (b.waste > 1e-6) bar.append(el('span', { class: 'pr-cut-waste', title: `${tt('mats.waste')} ${fm(b.waste)}`,
+        style: `width:${Math.min(100, b.waste / stockLen * 100).toFixed(2)}%` }, `${tt('mats.waste')} ${fmt(lenFromSI(b.waste, su), 2, lang)}`));
+      const list = b.pieces.map(p => `${p.label} ${fm(p.len)}`).join(' · ');
+      cutOverview.append(el('div', { class: 'pr-cut-item' },
+        el('span', { class: 'pr-cut-no' }, `#${bi + 1}`), bar,
+        el('div', { class: 'pr-cut-list' }, `${list} · ${tt('mats.kerf')} ${fmt(kerfMm, 1, lang)} mm × ${b.pieces.length}${b.waste > 0.01 ? ` · ${tt('mats.waste')} ${fm(b.waste)}` : ''}`)));
     });
-    root.append(ul);
+    root.append(cutOverview);
   }
-  root.append(el('p', { class: 'pr-note' }, `${tt('mats.cutTotal3')} ${KERF * 1000} mm. ${tt('mats.assume2')}`));
+  root.append(el('p', { class: 'pr-note' }, `${tt('mats.kerf')}: ${fmt(kerfMm, 1, lang)} mm — ${tt('mats.cutTotal3')} ${tt('mats.assume2')}`));
 
   // ---- støbe-trin ----
   root.append(el('h2', {}, tt('print.how')),
